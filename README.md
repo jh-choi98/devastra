@@ -1,3 +1,42 @@
+# DevAtlas
+
+Turn your GitHub into a developer world map. A living world that grows as you code.
+
+## Running locally
+
+See [`/docs/dev-setup.md`](/docs/dev-setup.md) for the full list of required environment variables.
+
+```bash
+git clone <repo-url> devatlas
+cd devatlas
+npm install
+cp .env.example .env.local   # populate with your credentials
+npm run dev                   # Next.js dev server at http://localhost:3000
+```
+
+To run background jobs locally, start the Inngest dev server in a second terminal:
+
+```bash
+npx inngest-cli@latest dev
+```
+
+### Tests
+
+```bash
+npm test              # unit + integration (Vitest)
+npm run e2e:local     # E2E smoke test (requires running dev server + ALLOW_MOCK_OAUTH=1)
+```
+
+## Deploying to production
+
+1. Create a Supabase project (prod) and run `npm run db:migrate` against it.
+2. Configure a GitHub OAuth App — callback URL: `https://devatlas.app/api/auth/callback`.
+3. Set all required env vars in Vercel (see [`/docs/dev-setup.md`](/docs/dev-setup.md)).
+4. Deploy via `git push` — Vercel builds and deploys automatically.
+5. Set up SPF/DKIM/DMARC on `devatlas.app` for Resend deliverability.
+
+---
+
 # claude-harness-template
 
 A minimal Stage-0 harness for Claude Code projects. The flow:

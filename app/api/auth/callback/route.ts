@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/auth/supabase-server'
 import { getUserById } from '@/lib/db/queries/users'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -24,6 +25,8 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.redirect(new URL('/?auth_error=cancelled', request.url))
   }
+
+  await captureServerEvent(user.id, 'oauth.completed')
 
   const dbUser = await getUserById(user.id)
 

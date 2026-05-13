@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/auth/supabase-server'
+import { PosthogIdentifier } from '@/app/_components/PosthogIdentifier'
 
 export default async function AuthenticatedLayout({
   children,
@@ -11,5 +12,10 @@ export default async function AuthenticatedLayout({
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/')
-  return <>{children}</>
+  return (
+    <>
+      <PosthogIdentifier userId={user.id} />
+      {children}
+    </>
+  )
 }

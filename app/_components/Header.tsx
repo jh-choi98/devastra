@@ -6,6 +6,7 @@ import { signOut } from '@/lib/auth/actions'
 import { RefreshButton } from './RefreshButton'
 import { ShareModal } from './ShareModal'
 import { togglePublicStub } from './share-actions'
+import { posthog, initPosthog } from '@/lib/posthog'
 
 interface HeaderUser {
   id: string
@@ -35,7 +36,11 @@ export function Header({
           <RefreshButton userId={user.id} lastSyncStartedAt={lastSyncStartedAt} />
 
           <button
-            onClick={() => setShareModalOpen(true)}
+            onClick={() => {
+              initPosthog()
+              posthog.capture('share.clicked')
+              setShareModalOpen(true)
+            }}
             className="px-3 py-1.5 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
           >
             Share

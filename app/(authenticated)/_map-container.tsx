@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { LivingMap } from '@/app/_components/Map/LivingMap'
 import { TerritoryDrawer } from '@/app/_components/TerritoryDrawer'
 import { useRealtimeMapData, type SyncJobUpdate } from '@/lib/realtime/use-realtime-map-data'
 import { useRevealSequence } from './_use-reveal-sequence'
 import { getDrawerData, fetchPrTitles } from './_actions'
+import { posthog, initPosthog } from '@/lib/posthog'
 import type { MapData } from '@/app/_components/Map/LivingMap'
 import type { TerritoryDrawerData } from '@/app/_components/TerritoryDrawer'
 import type { TerritoryType } from '@/features/territories/registry'
@@ -18,12 +19,21 @@ interface Props {
 
 export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
   const [syncJobUpdate, setSyncJobUpdate] = useState<SyncJobUpdate | null>(null)
+  const revealFiredRef = useRef(false)
 
   const data = useRealtimeMapData(userId, initial, (update) => {
     setSyncJobUpdate(update)
   })
 
-  const { syncProgressText } = useRevealSequence({ firstReveal, syncJobUpdate })
+  const { revealComplete, syncProgressText } = useRevealSequence({ firstReveal, syncJobUpdate })
+
+  useEffect(() => {
+    if (firstReveal && revealComplete && !revealFiredRef.current) {
+      revealFiredRef.current = true
+      initPosthog()
+      posthog.capture('first_reveal.completed')
+    }
+  }, [firstReveal, revealComplete])
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerTerritory, setDrawerTerritory] = useState<TerritoryType | null>(null)

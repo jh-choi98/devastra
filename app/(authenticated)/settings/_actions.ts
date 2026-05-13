@@ -12,6 +12,7 @@ import { repositories } from '@/lib/db/schema/repositories'
 import { updateUserField } from '@/lib/db/queries/users'
 import { inngest } from '@/lib/inngest/client'
 import { EVENTS } from '@/features/sync/events'
+import { captureServerEvent } from '@/lib/posthog-server'
 import { createAdminClient } from '@/lib/auth/supabase-server'
 
 const TogglePublicSchema = z.object({ next: z.boolean() })
@@ -20,7 +21,10 @@ export async function togglePublic(input: unknown): Promise<void> {
   const { next } = TogglePublicSchema.parse(input)
   const user = await requireUser()
   await updateUserField(user.id, 'isPublic', next)
-  if (next) revalidatePublicProfile(user.displayUsername)
+  if (next) {
+    revalidatePublicProfile(user.displayUsername)
+    await captureServerEvent(user.id, 'public_toggle.enabled')
+  }
 }
 
 const ToggleEmailRecapSchema = z.object({ next: z.boolean() })

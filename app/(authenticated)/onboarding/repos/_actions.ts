@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth/session'
 import { upsertRepository } from '@/lib/db/queries/repositories'
 import { inngest } from '@/lib/inngest/client'
 import { EVENTS } from '@/features/sync/events'
+import { captureServerEvent } from '@/lib/posthog-server'
 import type { OnboardingRepo } from '@/lib/github/onboarding-fetch'
 
 const SaveRepoSelectionSchema = z.object({
@@ -47,6 +48,11 @@ export async function saveRepoSelectionAndStartSync(input: unknown): Promise<voi
   await inngest.send({
     name: EVENTS.SYNC_INITIAL_REQUESTED,
     data: { userId: user.id, includedRepoIds },
+  })
+
+  await captureServerEvent(user.id, 'repo_selection.completed', {
+    repo_count: repos.length,
+    included_count: includedRepoIds.length,
   })
 
   redirect('/')
