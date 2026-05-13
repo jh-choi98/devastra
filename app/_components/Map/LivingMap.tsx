@@ -44,7 +44,10 @@ export function LivingMap({
   data: MapData
   onIslandClick?: (territory: TerritoryType) => void
 }) {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const diffThreshold =
+    data.diffSince instanceof Date
+      ? data.diffSince.toISOString()
+      : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
   return (
     <div className="relative w-full h-full min-h-[500px] bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
@@ -76,7 +79,9 @@ export function LivingMap({
           const territoryLandmarks = data.landmarks.filter((l) => l.territory === type)
           const [cx, cy] = getIslandPosition(i)
           const recentlyGrown =
-            territory.stageChangedAt != null && territory.stageChangedAt > sevenDaysAgo
+            territory.stageChangedAt != null &&
+            territory.stageChangedAt > diffThreshold &&
+            territory.growth30d > 0
 
           return (
             <motion.g

@@ -37,3 +37,7 @@ export async function updateUserSyncState(
     })
     .where(eq(users.id, userId))
 }
+
+export async function updateLastLoginAt(userId: string): Promise<void> {
+  await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId))
+}
