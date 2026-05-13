@@ -9,6 +9,7 @@ import type {
   GitHubCommitListItemRest,
   GitHubCommitRest,
   GitHubPullRequestRest,
+  GitHubFileContentRest,
 } from '@/lib/github/types'
 import type { SourceClient, SourceRepo, SourceActivity } from './interface'
 
@@ -223,6 +224,32 @@ export class GitHubSourceClient implements SourceClient {
       }),
     )
     return result
+  }
+
+  async fetchFileContent(owner: string, repo: string, path: string): Promise<string | null> {
+    try {
+      const response = await this.withAuthRetry(() =>
+        this.rest.get<GitHubFileContentRest>(`/repos/${owner}/${repo}/contents/${path}`),
+      )
+      if (response.type !== 'file' || !response.content) return null
+      return Buffer.from(response.content.replace(/\n/g, ''), 'base64').toString('utf-8')
+    } catch {
+      return null
+    }
+  }
+
+  async getLatestEventId(login: string): Promise<string | null> {
+    try {
+      const events = await this.withAuthRetry(() =>
+        this.rest.get<Array<{ id: string }>>(`/users/${login}/events`, {
+          per_page: '1',
+          page: '1',
+        }),
+      )
+      return Array.isArray(events) && events.length > 0 ? events[0].id : null
+    } catch {
+      return null
+    }
   }
 
   async refreshTokenIfNeeded(): Promise<void> {

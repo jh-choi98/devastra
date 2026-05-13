@@ -50,7 +50,9 @@
     {
       "phase": 6,
       "name": "sync-orchestration",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-14T06:52:22+0900",
+      "completed_at": "2026-05-14T09:14:00+0900"
     },
     {
       "phase": 7,

@@ -62,6 +62,16 @@ export interface GitHubRateLimitRest {
   }
 }
 
+export interface GitHubFileContentRest {
+  type: 'file' | 'dir' | 'symlink' | 'submodule'
+  encoding?: string
+  content?: string
+  name: string
+  path: string
+  sha: string
+  size: number
+}
+
 // GraphQL response shapes
 
 export interface ContributionsByRepoNode {
