@@ -29,7 +29,9 @@
     {
       "phase": 3,
       "name": "auth-layer",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-14T06:22:16+0900",
+      "completed_at": "2026-05-14T08:30:00+0900"
     },
     {
       "phase": 4,

@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/unit/**/*.test.ts', '**/*.test.ts'],
-    exclude: ['tests/integration/**', 'tests/e2e/**', 'node_modules/**'],
+    exclude: ['tests/integration/rls-isolation.test.ts', 'tests/e2e/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
