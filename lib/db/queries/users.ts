@@ -3,6 +3,7 @@ import 'server-only'
 import { eq, isNotNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema/users'
+import { repositories } from '@/lib/db/schema/repositories'
 
 export type DbUser = typeof users.$inferSelect
 
@@ -40,4 +41,59 @@ export async function updateUserSyncState(
 
 export async function updateLastLoginAt(userId: string): Promise<void> {
   await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId))
+}
+
+export type UserSettings = Pick<
+  DbUser,
+  'isPublic' | 'displayUsername' | 'emailRecapEnabled' | 'timezone' | 'githubLogin'
+>
+
+export async function getUserSettings(userId: string): Promise<UserSettings> {
+  const [user] = await db
+    .select({
+      isPublic: users.isPublic,
+      displayUsername: users.displayUsername,
+      emailRecapEnabled: users.emailRecapEnabled,
+      timezone: users.timezone,
+      githubLogin: users.githubLogin,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
+  if (!user) throw new Error('User not found')
+  return user
+}
+
+export type DbRepositoryRow = {
+  id: string
+  externalRepoId: string
+  owner: string
+  name: string
+  primaryLanguage: string | null
+  isIncluded: boolean
+}
+
+export async function listUserRepos(userId: string): Promise<DbRepositoryRow[]> {
+  return db
+    .select({
+      id: repositories.id,
+      externalRepoId: repositories.externalRepoId,
+      owner: repositories.owner,
+      name: repositories.name,
+      primaryLanguage: repositories.primaryLanguage,
+      isIncluded: repositories.isIncluded,
+    })
+    .from(repositories)
+    .where(eq(repositories.userId, userId))
+}
+
+export async function updateUserField<K extends keyof typeof users.$inferSelect>(
+  userId: string,
+  field: K,
+  value: (typeof users.$inferSelect)[K],
+): Promise<void> {
+  await db
+    .update(users)
+    .set({ [field]: value } as Partial<typeof users.$inferInsert>)
+    .where(eq(users.id, userId))
 }
