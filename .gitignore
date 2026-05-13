@@ -3,6 +3,16 @@ __pycache__/
 .DS_Store
 .env
 .env.*
+!.env.example
 node_modules/
 dist/
 build/
+.next/
+out/
+.env*.local
+*.log
+.vercel/
+coverage/
+playwright-report/
+test-results/
+drizzle/.snapshot/
