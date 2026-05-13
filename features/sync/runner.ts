@@ -45,19 +45,32 @@ export const backfill = inngest.createFunction(
     backfill_.run(event as { data: { userId?: string } }, step),
 )
 
-// Phase 10 stubs: registered here so the route compiles
+import { generateRecapForUser, listUsersForRecap } from '@/features/recap/generate'
+import { sendRecapEmail } from '@/features/recap/send'
+import { computeLastFullWeekUtcMonday, computeSendAtSundayLocal } from '@/features/recap/time'
+
 export const weeklyRecapGenerate = inngest.createFunction(
   { id: 'recap-generate', name: 'Generate weekly recap' },
   { cron: '0 9 * * 0' },
-  async () => {
-    throw new Error('Implemented in Phase 10')
+  async ({ step }) => {
+    const users = await step.run('list-eligible-users', () => listUsersForRecap())
+    const weekStart = computeLastFullWeekUtcMonday()
+    for (const u of users) {
+      const recap = await step.run(`generate-${u.id}`, () =>
+        generateRecapForUser(u.id, weekStart),
+      )
+      const sendAt = computeSendAtSundayLocal(u.timezone)
+      await step.sendEvent(`recap/email.send-${u.id}`, {
+        name: EVENTS.RECAP_EMAIL_SEND,
+        data: { userId: u.id, recapId: recap.recapId, hasActivity: recap.hasActivity },
+        ts: sendAt.getTime(),
+      })
+    }
   },
 )
 
 export const weeklyRecapSend = inngest.createFunction(
   { id: 'recap-send', name: 'Send recap email' },
   { event: EVENTS.RECAP_EMAIL_SEND },
-  async () => {
-    throw new Error('Implemented in Phase 10')
-  },
+  async ({ event }) => sendRecapEmail(event.data as { userId: string; recapId: string; hasActivity: boolean }),
 )
