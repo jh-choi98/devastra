@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { TERRITORIES } from '@/features/territories/registry'
+export { OG_RENDER_VERSION, ogVersionParam } from '@/lib/og/version'
 import type { TerritoryType } from '@/features/territories/registry'
 
 export type OgTerritory = {
