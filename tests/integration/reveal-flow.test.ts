@@ -14,9 +14,9 @@ import {
   computeRevealDuration,
   formatSyncProgressText,
 } from '@/app/(authenticated)/_use-reveal-sequence'
-import type { MapData } from '@/app/_components/Map/LivingMap'
+import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 
-const BASE_MAP_DATA: MapData = {
+const BASE_MAP_DATA: ConstellationData = {
   userId: 'user-1',
   territories: [],
   landmarks: [],

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createBrowserClient } from '@/lib/auth/supabase-browser'
-import type { MapData } from '@/app/_components/Map/LivingMap'
+import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { TerritoryType } from '@/features/territories/registry'
 
 export type SyncJobProgress = {
@@ -18,9 +18,9 @@ export type SyncJobUpdate = {
 
 // Exported pure helpers for testability
 export function mergeTerritoryUpdate(
-  territories: MapData['territories'],
+  territories: ConstellationData['territories'],
   row: Record<string, unknown>,
-): MapData['territories'] {
+): ConstellationData['territories'] {
   const incoming = {
     type: String(row['type'] ?? '') as TerritoryType,
     stage: Number(row['stage'] ?? 1),
@@ -36,9 +36,9 @@ export function mergeTerritoryUpdate(
 }
 
 export function mergeLandmarkUpdate(
-  landmarks: MapData['landmarks'],
+  landmarks: ConstellationData['landmarks'],
   row: Record<string, unknown>,
-): MapData['landmarks'] {
+): ConstellationData['landmarks'] {
   const incoming = {
     tech_key: String(row['tech_key'] ?? ''),
     territory: String(row['territory_type'] ?? '') as TerritoryType,
@@ -54,10 +54,10 @@ export function mergeLandmarkUpdate(
 
 export function useRealtimeMapData(
   userId: string,
-  initial: MapData,
+  initial: ConstellationData,
   onSyncJobUpdate?: (update: SyncJobUpdate) => void,
-): MapData {
-  const [data, setData] = useState<MapData>(initial)
+): ConstellationData {
+  const [data, setData] = useState<ConstellationData>(initial)
   const onSyncJobUpdateRef = useRef(onSyncJobUpdate)
   useEffect(() => {
     onSyncJobUpdateRef.current = onSyncJobUpdate

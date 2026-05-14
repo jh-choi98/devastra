@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation'
-import { LivingMap } from '@/app/_components/Map/LivingMap'
-import type { MapData } from '@/app/_components/Map/LivingMap'
+import { Constellation } from '@/app/_components/Constellation/Constellation'
+import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 
 export const dynamic = 'force-static'
 
-const MOCK_DATA: MapData = {
+const MOCK_DATA: ConstellationData = {
   userId: 'dev-user',
   territories: [
     {
@@ -80,7 +80,7 @@ export default function DevMapPage() {
 
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
-      <LivingMap data={MOCK_DATA} onIslandClick={(t) => console.log('clicked', t)} />
+      <Constellation data={MOCK_DATA} onClusterClick={(t) => console.log('clicked', t)} />
     </div>
   )
 }

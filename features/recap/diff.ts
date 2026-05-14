@@ -20,7 +20,7 @@ export function summarizeForEmail(
 
   if (highlights.newLandmarks.length > 0) {
     const first = highlights.newLandmarks[0]
-    lines.push(`New landmark: ${first.landmarkName}`)
+    lines.push(`New landmark: ${first.displayName}`)
   }
 
   const { activeDays, prsShipped } = highlights.stats

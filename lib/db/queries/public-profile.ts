@@ -4,11 +4,11 @@ import { sql, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { territories } from '@/lib/db/schema/territories'
 import { landmarks } from '@/lib/db/schema/landmarks'
-import type { MapData } from '@/app/_components/Map/LivingMap'
+import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { TerritoryType } from '@/features/territories/registry'
 
 export type PublicProfileResult =
-  | { isPublic: true; username: string; avatarUrl: string | null; map: MapData }
+  | { isPublic: true; username: string; avatarUrl: string | null; map: ConstellationData }
   | null
 
 export async function getPublicProfileByUsername(

@@ -8,8 +8,8 @@ vi.mock('@/lib/db/client', () => ({ db: {} }))
 // ── territory/catalog imports (no DB) ────────────────────────────────────────
 vi.mock('@/features/territories/tech-catalog', () => ({
   TECH_CATALOG: [
-    { tech_key: 'typescript', landmarkName: 'TypeScript Pavilion', territory: 'frontend_land', rules: [] },
-    { tech_key: 'rust', landmarkName: 'Rust Bastion', territory: 'backend_fortress', rules: [] },
+    { tech_key: 'typescript', displayName: 'TypeScript', territory: 'frontend_land', rules: [] },
+    { tech_key: 'rust', displayName: 'Rust', territory: 'backend_fortress', rules: [] },
   ],
 }))
 
@@ -78,7 +78,7 @@ import type { RecapHighlights } from '@/features/recap/generate'
 
 const sampleHighlights: RecapHighlights = {
   topGrowth: { territory: 'backend_fortress', pct: 18 },
-  newLandmarks: [{ tech_key: 'rust', landmarkName: 'Rust Bastion', territory: 'backend_fortress' }],
+  newLandmarks: [{ tech_key: 'rust', displayName: 'Rust', territory: 'backend_fortress' }],
   stageUps: [],
   stats: { activeDays: 5, prsShipped: 3, totalCommits: 12 },
 }
@@ -97,7 +97,7 @@ describe('summarizeForEmail', () => {
 
   it('includes new landmark name', () => {
     const { lines } = summarizeForEmail(sampleHighlights, true)
-    expect(lines.some((l) => l.includes('Rust Bastion'))).toBe(true)
+    expect(lines.some((l) => l.includes('Rust'))).toBe(true)
   })
 
   it('includes stats line', () => {

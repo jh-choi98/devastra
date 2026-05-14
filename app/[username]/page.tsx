@@ -1,6 +1,5 @@
 import { Metadata } from 'next'
 import { getPublicProfileByUsername } from '@/lib/db/queries/public-profile'
-import { LivingMap } from '@/app/_components/Map/LivingMap'
 import { TerritoryDrawer } from '@/app/_components/TerritoryDrawer'
 import { PublicStickyBar } from '@/app/_components/PublicStickyBar'
 import { PrivateProfile } from '@/app/_components/PrivateProfile'

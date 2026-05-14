@@ -13,7 +13,7 @@ import type { TerritoryType } from '@/features/territories/registry'
 
 export type RecapHighlights = {
   topGrowth: { territory: TerritoryType; pct: number } | null
-  newLandmarks: Array<{ tech_key: string; landmarkName: string; territory: TerritoryType }>
+  newLandmarks: Array<{ tech_key: string; displayName: string; territory: TerritoryType }>
   stageUps: Array<{ territory: TerritoryType; from: number; to: number }>
   stats: { activeDays: number; prsShipped: number; totalCommits: number }
 }
@@ -96,7 +96,7 @@ export async function generateRecapForUser(
     const catalogEntry = TECH_CATALOG.find((e) => e.tech_key === lm.techKey)
     return {
       tech_key: lm.techKey,
-      landmarkName: catalogEntry?.landmarkName ?? lm.techKey,
+      displayName: catalogEntry?.displayName ?? lm.techKey,
       territory: lm.territoryType as TerritoryType,
     }
   })

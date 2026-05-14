@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { LivingMap } from '@/app/_components/Map/LivingMap'
-import type { MapData } from '@/app/_components/Map/LivingMap'
+import { Constellation } from '@/app/_components/Constellation/Constellation'
+import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import { ALL_TERRITORY_TYPES } from '@/features/territories/registry'
 
 function seededRandom(seed: number): () => number {
@@ -14,7 +14,7 @@ function seededRandom(seed: number): () => number {
   }
 }
 
-function generateMockData(seed: number): MapData {
+function generateMockData(seed: number): ConstellationData {
   const rand = seededRandom(seed)
   const territories = ALL_TERRITORY_TYPES.map((type) => {
     const totalWeight = Math.floor(rand() * 800 + 50)
@@ -45,7 +45,6 @@ function generateMockData(seed: number): MapData {
 }
 
 export function LandingDemo() {
-  // Seed changes per page load but is stable within the load
   const seed = useMemo(() => Math.floor(Math.random() * 100000), [])
   const data = useMemo(() => generateMockData(seed), [seed])
 
@@ -57,7 +56,7 @@ export function LandingDemo() {
         animate={{ scale: [1, 1.01, 1] }}
         transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
       >
-        <LivingMap data={data} />
+        <Constellation data={data} />
       </motion.div>
     </div>
   )

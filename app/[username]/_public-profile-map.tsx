@@ -1,19 +1,19 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { LivingMap } from '@/app/_components/Map/LivingMap'
+import { Constellation } from '@/app/_components/Constellation/Constellation'
 import { TerritoryDrawer } from '@/app/_components/TerritoryDrawer'
 import { TERRITORIES } from '@/features/territories/registry'
-import type { MapData } from '@/app/_components/Map/LivingMap'
+import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { TerritoryDrawerData } from '@/app/_components/TerritoryDrawer'
 import type { TerritoryType } from '@/features/territories/registry'
 
-export function PublicProfileMap({ mapData }: { mapData: MapData }) {
+export function PublicProfileMap({ mapData }: { mapData: ConstellationData }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerTerritory, setDrawerTerritory] = useState<TerritoryType | null>(null)
   const [drawerData, setDrawerData] = useState<TerritoryDrawerData | null>(null)
 
-  const handleIslandClick = useCallback(
+  const handleClusterClick = useCallback(
     (type: TerritoryType) => {
       const territory = mapData.territories.find((t) => t.type === type)
       if (!territory) return
@@ -45,7 +45,7 @@ export function PublicProfileMap({ mapData }: { mapData: MapData }) {
 
   return (
     <div className="relative w-full h-full flex-1">
-      <LivingMap data={mapData} onIslandClick={handleIslandClick} />
+      <Constellation data={mapData} onClusterClick={handleClusterClick} />
       <TerritoryDrawer
         open={drawerOpen}
         territory={drawerTerritory}

@@ -1,19 +1,19 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { LivingMap } from '@/app/_components/Map/LivingMap'
+import { Constellation } from '@/app/_components/Constellation/Constellation'
 import { TerritoryDrawer } from '@/app/_components/TerritoryDrawer'
 import { useRealtimeMapData, type SyncJobUpdate } from '@/lib/realtime/use-realtime-map-data'
 import { useRevealSequence } from './_use-reveal-sequence'
 import { getDrawerData, fetchPrTitles } from './_actions'
 import { posthog, initPosthog } from '@/lib/posthog'
-import type { MapData } from '@/app/_components/Map/LivingMap'
+import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { TerritoryDrawerData } from '@/app/_components/TerritoryDrawer'
 import type { TerritoryType } from '@/features/territories/registry'
 
 interface Props {
   userId: string
-  initial: MapData
+  initial: ConstellationData
   firstReveal: boolean
 }
 
@@ -40,7 +40,7 @@ export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
   const [drawerData, setDrawerData] = useState<TerritoryDrawerData | null>(null)
   const [drawerLoading, setDrawerLoading] = useState(false)
 
-  const handleIslandClick = useCallback(
+  const handleClusterClick = useCallback(
     async (type: TerritoryType) => {
       const territory = data.territories.find((t) => t.type === type)
       if (!territory) return
@@ -91,7 +91,7 @@ export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
 
   return (
     <div className="relative w-full h-full">
-      <LivingMap data={data} onIslandClick={handleIslandClick} />
+      <Constellation data={data} onClusterClick={handleClusterClick} />
       <TerritoryDrawer
         open={drawerOpen && !drawerLoading}
         territory={drawerTerritory}

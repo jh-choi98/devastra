@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import 'server-only'
 import { STAGE_THRESHOLDS, MAX_STAGE } from './rules'
 

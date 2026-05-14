@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import 'server-only'
 
 export const STAGE_THRESHOLDS = [0, 50, 200, 500, 1500] as const
