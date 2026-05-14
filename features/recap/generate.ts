@@ -1,174 +1,78 @@
 import 'server-only'
 
-import { and, eq, gte, lt, sql } from 'drizzle-orm'
+import { and, eq, isNotNull } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { activities } from '@/lib/db/schema/activities'
-import { activityTerritories } from '@/lib/db/schema/activity-territories'
-import { territories } from '@/lib/db/schema/territories'
-import { landmarks } from '@/lib/db/schema/landmarks'
 import { weeklyRecaps } from '@/lib/db/schema/weekly-recaps'
 import { users } from '@/lib/db/schema/users'
-import { TECH_CATALOG } from '@/features/territories/tech-catalog'
-import type { TerritoryType } from '@/features/territories/registry'
+import { computeWeekAggregations } from './diff'
+import { buildHighlights } from './slot-builder'
 
-export type RecapHighlights = {
-  topGrowth: { territory: TerritoryType; pct: number } | null
-  newLandmarks: Array<{ tech_key: string; displayName: string; territory: TerritoryType }>
-  stageUps: Array<{ territory: TerritoryType; from: number; to: number }>
-  stats: { activeDays: number; prsShipped: number; totalCommits: number }
-}
+export async function generateWeeklyRecapForUser(opts: {
+  userId: string
+  weekStart: Date
+}): Promise<{ recapId: string; kind: 'active' | 'empty' | 'first_week'; shouldSend: boolean }> {
+  const aggregations = await computeWeekAggregations({ userId: opts.userId, weekStart: opts.weekStart })
 
-export async function generateRecapForUser(
-  userId: string,
-  weekStart: Date,
-): Promise<{ recapId: string; highlights: RecapHighlights; hasActivity: boolean }> {
-  const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+  const isEmpty =
+    aggregations.stageUps.length === 0 &&
+    aggregations.newStars.length === 0 &&
+    aggregations.brightenedStars.length === 0 &&
+    aggregations.activity.commits === 0 &&
+    aggregations.activity.prs_shipped === 0
 
-  // Activities in [weekStart, weekEnd)
-  const weekActivities = await db
-    .select({
-      id: activities.id,
-      type: activities.type,
-      occurredAt: activities.occurredAt,
-    })
-    .from(activities)
-    .where(
-      and(
-        eq(activities.userId, userId),
-        gte(activities.occurredAt, weekStart),
-        lt(activities.occurredAt, weekEnd),
-      ),
-    )
+  const [user] = await db
+    .select({ createdAt: users.createdAt })
+    .from(users)
+    .where(eq(users.id, opts.userId))
+    .limit(1)
+  if (!user) throw new Error('user not found')
 
-  // Per-territory weight gained this week via join
-  const weekWeights = await db
-    .select({
-      territoryType: activityTerritories.territoryType,
-      weekWeight: sql<string>`SUM(${activityTerritories.weight})`,
-    })
-    .from(activityTerritories)
-    .innerJoin(activities, eq(activityTerritories.activityId, activities.id))
-    .where(
-      and(
-        eq(activities.userId, userId),
-        gte(activities.occurredAt, weekStart),
-        lt(activities.occurredAt, weekEnd),
-      ),
-    )
-    .groupBy(activityTerritories.territoryType)
+  const firstMondayAfterSignup = nextMondayUtc(user.createdAt)
+  const isFirstWeek = +opts.weekStart === +firstMondayAfterSignup
 
-  // Current territory state
-  const userTerritories = await db
-    .select()
-    .from(territories)
-    .where(eq(territories.userId, userId))
+  const highlights = buildHighlights({ aggregations, isFirstWeek, isEmptyWeek: isEmpty })
 
-  // topGrowth: territory with highest pct growth relative to weight before this week
-  let topGrowth: RecapHighlights['topGrowth'] = null
-  let maxPct = 0
-  for (const ww of weekWeights) {
-    const territory = userTerritories.find((t) => t.type === ww.territoryType)
-    if (!territory) continue
-    const totalWeight = parseFloat(territory.totalWeight as string)
-    const weekWeight = parseFloat(ww.weekWeight)
-    if (weekWeight <= 0) continue
-    const prevWeight = totalWeight - weekWeight
-    const pct = prevWeight > 0 ? Math.round((weekWeight / prevWeight) * 100) : 100
-    if (pct > maxPct) {
-      maxPct = pct
-      topGrowth = { territory: ww.territoryType as TerritoryType, pct }
-    }
-  }
+  const weekStartStr = opts.weekStart.toISOString().split('T')[0]
 
-  // newLandmarks: first_unlocked_at in [weekStart, weekEnd)
-  const newLandmarkRows = await db
-    .select()
-    .from(landmarks)
-    .where(
-      and(
-        eq(landmarks.userId, userId),
-        gte(landmarks.firstUnlockedAt, weekStart),
-        lt(landmarks.firstUnlockedAt, weekEnd),
-      ),
-    )
-
-  const newLandmarks: RecapHighlights['newLandmarks'] = newLandmarkRows.map((lm) => {
-    const catalogEntry = TECH_CATALOG.find((e) => e.tech_key === lm.techKey)
-    return {
-      tech_key: lm.techKey,
-      displayName: catalogEntry?.displayName ?? lm.techKey,
-      territory: lm.territoryType as TerritoryType,
-    }
-  })
-
-  // stageUps: territories with stage_changed_at in [weekStart, weekEnd) and stage > 1
-  const stageUps: RecapHighlights['stageUps'] = userTerritories
-    .filter(
-      (t) =>
-        t.stageChangedAt !== null &&
-        new Date(t.stageChangedAt) >= weekStart &&
-        new Date(t.stageChangedAt) < weekEnd &&
-        t.stage > 1,
-    )
-    .map((t) => ({
-      territory: t.type as TerritoryType,
-      from: t.stage - 1,
-      to: t.stage,
-    }))
-
-  // stats
-  const totalCommits = weekActivities.filter((a) => a.type === 'commit').length
-  const prsShipped = weekActivities.filter((a) => a.type === 'pr').length
-
-  // activeDays: distinct UTC dates
-  const activeDaySet = new Set(
-    weekActivities.map((a) => {
-      const d = new Date(a.occurredAt)
-      return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`
-    }),
-  )
-  const activeDays = activeDaySet.size
-
-  const hasActivity = totalCommits + prsShipped > 0
-
-  const highlights: RecapHighlights = {
-    topGrowth,
-    newLandmarks,
-    stageUps,
-    stats: { activeDays, prsShipped, totalCommits },
-  }
-
-  const dbHighlights = {
-    top_growth: topGrowth ? { territory: topGrowth.territory, pct: topGrowth.pct } : null,
-    new_landmarks: newLandmarks.map((l) => l.tech_key),
-    stage_ups: stageUps.map((s) => ({ territory: s.territory, from: s.from, to: s.to })),
-    stats: { active_days: activeDays, prs_shipped: prsShipped, total_commits: totalCommits },
-  }
-
-  const weekStartDate = weekStart.toISOString().split('T')[0]
-
-  const [upserted] = await db
+  const [inserted] = await db
     .insert(weeklyRecaps)
     .values({
-      userId,
-      weekStart: weekStartDate,
-      highlights: dbHighlights,
-      ogImageUrl: '',
+      userId: opts.userId,
+      weekStart: weekStartStr,
+      highlights,
     })
     .onConflictDoUpdate({
       target: [weeklyRecaps.userId, weeklyRecaps.weekStart],
-      set: { highlights: dbHighlights },
+      set: { highlights },
     })
     .returning({ id: weeklyRecaps.id })
 
-  const recapId = upserted.id
+  // Skip-after-2-empty policy (ADR-32):
+  // First empty week → send. Second consecutive empty week → skip send (still UPSERT).
+  let shouldSend = true
+  if (isEmpty) {
+    const previousMonday = new Date(opts.weekStart)
+    previousMonday.setUTCDate(previousMonday.getUTCDate() - 7)
+    const previousMondayStr = previousMonday.toISOString().split('T')[0]
 
-  await db
-    .update(weeklyRecaps)
-    .set({ ogImageUrl: `/api/og/recap/${recapId}` })
-    .where(eq(weeklyRecaps.id, recapId))
+    const [prev] = await db
+      .select({ highlights: weeklyRecaps.highlights })
+      .from(weeklyRecaps)
+      .where(
+        and(
+          eq(weeklyRecaps.userId, opts.userId),
+          eq(weeklyRecaps.weekStart, previousMondayStr),
+        ),
+      )
+      .limit(1)
 
-  return { recapId, highlights, hasActivity }
+    const prevHighlights = prev?.highlights as { kind?: string } | undefined
+    if (prevHighlights?.kind === 'empty') {
+      shouldSend = false
+    }
+  }
+
+  return { recapId: inserted.id, kind: highlights.kind, shouldSend }
 }
 
 export async function listUsersForRecap(): Promise<
@@ -182,5 +86,20 @@ export async function listUsersForRecap(): Promise<
       displayUsername: users.displayUsername,
     })
     .from(users)
-    .where(eq(users.emailRecapEnabled, true))
+    .where(
+      and(
+        eq(users.emailRecapEnabled, true),
+        isNotNull(users.githubAccessTokenEnc),
+      ),
+    )
+}
+
+function nextMondayUtc(date: Date): Date {
+  const d = new Date(date)
+  const dow = d.getUTCDay()
+  // Days until next Monday strictly after date
+  const daysUntilMonday = dow === 0 ? 1 : (8 - dow) % 7 || 7
+  d.setUTCDate(d.getUTCDate() + daysUntilMonday)
+  d.setUTCHours(0, 0, 0, 0)
+  return d
 }

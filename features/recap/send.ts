@@ -1,85 +1,88 @@
 import 'server-only'
-
-import { render } from '@react-email/components'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
-import { users } from '@/lib/db/schema/users'
 import { weeklyRecaps } from '@/lib/db/schema/weekly-recaps'
+import { users } from '@/lib/db/schema/users'
 import { emailSends } from '@/lib/db/schema/email-sends'
 import { resend } from '@/lib/email/client'
-import { WeeklyRecap } from '@/lib/email/templates/WeeklyRecap'
+import { signUnsubscribeToken } from '@/lib/email/unsubscribe-token'
+import { ogVersionParam } from '@/lib/og/version'
+import { WeeklyRecapActive } from '@/lib/email/templates/WeeklyRecapActive'
 import { WeeklyRecapEmpty } from '@/lib/email/templates/WeeklyRecapEmpty'
-import type { RecapHighlights } from './generate'
+import { WeeklyRecapFirstWeek } from '@/lib/email/templates/WeeklyRecapFirstWeek'
+import { buildSubjectLine } from './subject-line'
+import type { HighlightsPayload } from './slot-builder'
 
-export async function sendRecapEmail(opts: {
-  userId: string
-  recapId: string
-  hasActivity: boolean
-}): Promise<void> {
-  const { userId, recapId, hasActivity } = opts
-
-  const [user] = await db
-    .select({
-      displayUsername: users.displayUsername,
-      email: users.email,
-      timezone: users.timezone,
-      emailRecapEnabled: users.emailRecapEnabled,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-
-  if (!user || !user.emailRecapEnabled) return
-
+export async function sendWeeklyRecapEmail(opts: { recapId: string }): Promise<void> {
   const [recap] = await db
     .select()
     .from(weeklyRecaps)
-    .where(eq(weeklyRecaps.id, recapId))
+    .where(eq(weeklyRecaps.id, opts.recapId))
+    .limit(1)
+  if (!recap) throw new Error('recap not found')
 
-  if (!recap) return
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, recap.userId))
+    .limit(1)
+  if (!user) throw new Error('user not found')
+  if (!user.emailRecapEnabled) return
+  if (!user.email) return
 
-  const emailType = hasActivity ? 'weekly_recap_active' : 'weekly_recap_empty'
-  const subject = 'Your DevAstra — this week'
+  const highlights = recap.highlights as HighlightsPayload
+  const subject = buildSubjectLine(highlights)
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://devastra.app'
+  const ogUrl = `${baseUrl}/api/og/recap/${recap.id}?${ogVersionParam()}`
 
-  let html: string
-  if (hasActivity) {
-    html = await render(
-      WeeklyRecap({
-        recapId,
-        username: user.displayUsername,
-        highlights: recap.highlights as RecapHighlights,
-      }),
-    )
-  } else {
-    html = await render(
-      WeeklyRecapEmpty({
-        recapId,
-        username: user.displayUsername,
-      }),
-    )
+  const emailType =
+    highlights.kind === 'empty'
+      ? ('weekly_recap_empty' as const)
+      : highlights.kind === 'first_week'
+        ? ('weekly_recap_first_week' as const)
+        : ('weekly_recap_active' as const)
+
+  const unsubscribeToken = await signUnsubscribeToken(user.id, emailType)
+  const unsubscribeUrl = `${baseUrl}/unsubscribe?token=${unsubscribeToken}`
+  const weekParam = typeof recap.weekStart === 'string' ? recap.weekStart : recap.weekStart
+  const ctaUrl = `${baseUrl}/?from=recap&week=${weekParam}`
+
+  const templateProps = {
+    ogUrl,
+    highlights,
+    ctaUrl,
+    unsubscribeUrl,
+    displayUsername: user.displayUsername,
   }
 
-  const response = await resend.emails.send({
-    from: 'recap@devatlas.app',
+  const Template =
+    highlights.kind === 'empty'
+      ? WeeklyRecapEmpty
+      : highlights.kind === 'first_week'
+        ? WeeklyRecapFirstWeek
+        : WeeklyRecapActive
+
+  const result = await resend.emails.send({
+    from: 'DevAstra <hello@devastra.app>',
     to: user.email,
     subject,
-    html,
+    react: Template(templateProps),
     headers: {
-      'List-Unsubscribe': '<https://devatlas.app/settings#email>',
+      'List-Unsubscribe': `<${unsubscribeUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
   })
 
-  const externalMessageId = response.data?.id ?? null
-
   await db.insert(emailSends).values({
-    userId,
+    userId: user.id,
     emailType,
-    relatedId: recapId,
-    externalMessageId,
+    relatedId: recap.id,
+    externalMessageId: result.data?.id ?? null,
     bounced: false,
   })
 
   await db
     .update(weeklyRecaps)
     .set({ emailSentAt: new Date() })
-    .where(eq(weeklyRecaps.id, recapId))
+    .where(eq(weeklyRecaps.id, recap.id))
 }

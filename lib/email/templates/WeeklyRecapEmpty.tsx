@@ -1,61 +1,65 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Hr,
-  Html,
-  Img,
-  Link,
-  Preview,
-  Section,
-  Text,
-} from '@react-email/components'
+import { Html, Head, Preview, Body, Container, Text, Img, Link, Section } from '@react-email/components'
 
 type Props = {
-  recapId?: string
-  username: string
+  ogUrl: string
+  highlights: unknown
+  ctaUrl: string
+  unsubscribeUrl: string
+  displayUsername: string
 }
 
-export function WeeklyRecapEmpty({ recapId, username }: Props) {
-  const heroSrc = recapId
-    ? `https://devatlas.app/api/og/recap/${recapId}`
-    : 'https://devatlas.app/og-ocean.png'
-
+export function WeeklyRecapEmpty({ ogUrl, ctaUrl, unsubscribeUrl }: Props): JSX.Element {
   return (
-    <Html lang="en">
+    <Html>
       <Head />
-      <Preview>Your DevAstra — this week</Preview>
-      <Body style={body}>
-        <Container style={container}>
+      <Preview>Steady week — your constellation is the same.</Preview>
+      <Body style={{ backgroundColor: '#0b1020', fontFamily: 'system-ui, sans-serif', margin: 0, padding: 0 }}>
+        <Container style={{ maxWidth: 600, margin: '0 auto', padding: '32px 24px', color: '#f1f5f9' }}>
+          <Text style={{ fontSize: 18, fontWeight: 600, color: '#94a3b8', margin: 0, marginBottom: 24 }}>
+            DevAstra
+          </Text>
+
           <Img
-            src={heroSrc}
-            width="600"
-            alt={`@${username}'s DevAstra world`}
-            style={{ width: '100%', borderRadius: '8px', display: 'block' }}
+            src={ogUrl}
+            alt="Your DevAstra constellation, this week"
+            width="552"
+            height="290"
+            style={{ width: '100%', height: 'auto', borderRadius: 12, marginBottom: 24 }}
           />
 
-          <Section style={section}>
-            <Text style={highlight}>Steady week — see you next Sunday.</Text>
+          <Text style={{ color: '#cbd5e1', fontSize: 16 }}>
+            Steady week — your constellation is the same.
+          </Text>
+
+          <Section style={{ marginTop: 24 }}>
+            <Link
+              href={ctaUrl}
+              style={{
+                backgroundColor: '#3b82f6',
+                color: '#fff',
+                padding: '12px 24px',
+                borderRadius: 6,
+                textDecoration: 'none',
+                fontWeight: 600,
+              }}
+            >
+              See your sky →
+            </Link>
           </Section>
 
-          <Section style={{ textAlign: 'center' as const, padding: '16px 0' }}>
-            <Button href="https://devatlas.app/" style={button}>
-              See your full world →
-            </Button>
-          </Section>
-
-          <Hr style={hr} />
-
-          <Section style={footer}>
-            <Text style={footerText}>
-              <Link href="https://devatlas.app/settings#email" style={footerLink}>
-                Unsubscribe
-              </Link>
-              {' · '}
-              Sent by DevAstra
-            </Text>
-          </Section>
+          <Text style={{ color: '#64748b', fontSize: 12, marginTop: 32 }}>
+            <Link href={unsubscribeUrl} style={{ color: '#64748b' }}>
+              Unsubscribe
+            </Link>
+            {' · '}
+            <Link href="https://devastra.app/privacy" style={{ color: '#64748b' }}>
+              Privacy
+            </Link>
+            {' · '}
+            <Link href="https://devastra.app/settings" style={{ color: '#64748b' }}>
+              Settings
+            </Link>
+          </Text>
         </Container>
       </Body>
     </Html>
@@ -63,61 +67,3 @@ export function WeeklyRecapEmpty({ recapId, username }: Props) {
 }
 
 export default WeeklyRecapEmpty
-
-const body = {
-  backgroundColor: '#0f172a',
-  fontFamily: 'system-ui, -apple-system, sans-serif',
-  margin: '0',
-  padding: '24px 0',
-}
-
-const container = {
-  backgroundColor: '#1e293b',
-  borderRadius: '12px',
-  maxWidth: '600px',
-  margin: '0 auto',
-  overflow: 'hidden' as const,
-}
-
-const section = {
-  padding: '24px 32px 8px',
-}
-
-const highlight = {
-  color: '#94a3b8',
-  fontSize: '16px',
-  lineHeight: '1.6',
-  margin: '0 0 8px',
-}
-
-const button = {
-  backgroundColor: '#7C9DFF',
-  borderRadius: '8px',
-  color: '#fff',
-  fontSize: '16px',
-  fontWeight: '600',
-  padding: '12px 32px',
-  textDecoration: 'none',
-  display: 'inline-block',
-}
-
-const hr = {
-  borderColor: '#334155',
-  margin: '24px 32px 0',
-}
-
-const footer = {
-  padding: '16px 32px 24px',
-}
-
-const footerText = {
-  color: '#64748b',
-  fontSize: '13px',
-  textAlign: 'center' as const,
-  margin: '0',
-}
-
-const footerLink = {
-  color: '#64748b',
-  textDecoration: 'underline',
-}

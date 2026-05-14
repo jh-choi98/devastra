@@ -64,7 +64,9 @@
     {
       "phase": 8,
       "name": "email-recap-pipeline",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-15T08:15:09+0900",
+      "completed_at": "2026-05-15T10:23:00+0900"
     },
     {
       "phase": 9,

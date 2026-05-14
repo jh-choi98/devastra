@@ -45,8 +45,8 @@ export const backfill = inngest.createFunction(
     backfill_.run(event as { data: { userId?: string } }, step),
 )
 
-import { generateRecapForUser, listUsersForRecap } from '@/features/recap/generate'
-import { sendRecapEmail } from '@/features/recap/send'
+import { generateWeeklyRecapForUser, listUsersForRecap } from '@/features/recap/generate'
+import { sendWeeklyRecapEmail } from '@/features/recap/send'
 import { computeLastFullWeekUtcMonday, computeSendAtSundayLocal } from '@/features/recap/time'
 
 export const weeklyRecapGenerate = inngest.createFunction(
@@ -57,12 +57,13 @@ export const weeklyRecapGenerate = inngest.createFunction(
     const weekStart = computeLastFullWeekUtcMonday()
     for (const u of users) {
       const recap = await step.run(`generate-${u.id}`, () =>
-        generateRecapForUser(u.id, weekStart),
+        generateWeeklyRecapForUser({ userId: u.id, weekStart }),
       )
+      if (!recap.shouldSend) continue
       const sendAt = computeSendAtSundayLocal(u.timezone)
       await step.sendEvent(`recap/email.send-${u.id}`, {
         name: EVENTS.RECAP_EMAIL_SEND,
-        data: { userId: u.id, recapId: recap.recapId, hasActivity: recap.hasActivity },
+        data: { recapId: recap.recapId },
         ts: sendAt.getTime(),
       })
     }
@@ -72,5 +73,5 @@ export const weeklyRecapGenerate = inngest.createFunction(
 export const weeklyRecapSend = inngest.createFunction(
   { id: 'recap-send', name: 'Send recap email' },
   { event: EVENTS.RECAP_EMAIL_SEND },
-  async ({ event }) => sendRecapEmail(event.data as { userId: string; recapId: string; hasActivity: boolean }),
+  async ({ event }) => sendWeeklyRecapEmail(event.data as { recapId: string }),
 )
