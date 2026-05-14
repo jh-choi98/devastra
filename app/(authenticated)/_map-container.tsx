@@ -2,13 +2,13 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Constellation } from '@/app/_components/Constellation/Constellation'
-import { TerritoryDrawer } from '@/app/_components/TerritoryDrawer'
+import { ClusterDrawer } from '@/app/_components/ClusterDrawer/ClusterDrawer'
 import { useRealtimeMapData, type SyncJobUpdate } from '@/lib/realtime/use-realtime-map-data'
 import { useRevealSequence } from './_use-reveal-sequence'
-import { getDrawerData, fetchPrTitles } from './_actions'
+import { getDrawerData } from './_actions'
 import { posthog, initPosthog } from '@/lib/posthog'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
-import type { TerritoryDrawerData } from '@/app/_components/TerritoryDrawer'
+import type { ClusterDrawerData } from '@/app/_components/ClusterDrawer/ClusterDrawer'
 import type { TerritoryType } from '@/features/territories/registry'
 
 interface Props {
@@ -35,55 +35,47 @@ export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
     }
   }, [firstReveal, revealComplete])
 
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerTerritory, setDrawerTerritory] = useState<TerritoryType | null>(null)
-  const [drawerData, setDrawerData] = useState<TerritoryDrawerData | null>(null)
-  const [drawerLoading, setDrawerLoading] = useState(false)
+  const [drawer, setDrawer] = useState<{
+    cluster: TerritoryType
+    focusedTechKey?: string
+    drawerData: ClusterDrawerData | null
+    loading: boolean
+  } | null>(null)
 
-  const handleClusterClick = useCallback(
-    async (type: TerritoryType) => {
+  const openDrawer = useCallback(
+    async (type: TerritoryType, focusedTechKey?: string) => {
       const territory = data.territories.find((t) => t.type === type)
       if (!territory) return
 
-      setDrawerTerritory(type)
-      setDrawerOpen(true)
-      setDrawerLoading(true)
-      setDrawerData(null)
+      setDrawer({ cluster: type, focusedTechKey, drawerData: null, loading: true })
 
       try {
-        const { drawerData: base, prHandles } = await getDrawerData(
+        const drawerData = await getDrawerData(
           type,
           territory.stage,
           territory.growth30d,
-          territory.totalWeight,
+          territory.stageChangedAt,
         )
-        setDrawerData(base)
-        setDrawerLoading(false)
-
-        if (prHandles.length > 0) {
-          const titles = await fetchPrTitles({ prs: prHandles })
-          setDrawerData((prev) => {
-            if (!prev) return prev
-            return {
-              ...prev,
-              recentPRs: prev.recentPRs.map((pr, i) => {
-                const handle = prHandles[i]
-                if (!handle) return pr
-                const key = `${handle.owner}/${handle.repo}#${handle.number}`
-                return { ...pr, title: titles[key] ?? pr.title }
-              }),
-            }
-          })
-        }
+        setDrawer({ cluster: type, focusedTechKey, drawerData, loading: false })
       } catch {
-        setDrawerLoading(false)
+        setDrawer(null)
       }
     },
     [data.territories],
   )
 
+  const handleClusterClick = useCallback(
+    (type: TerritoryType) => openDrawer(type),
+    [openDrawer],
+  )
+
+  const handleStarClick = useCallback(
+    (type: TerritoryType, tech_key: string) => openDrawer(type, tech_key),
+    [openDrawer],
+  )
+
   const handleClose = useCallback(() => {
-    setDrawerOpen(false)
+    setDrawer(null)
   }, [])
 
   const showProgress =
@@ -91,13 +83,20 @@ export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
 
   return (
     <div className="relative w-full h-full">
-      <Constellation data={data} onClusterClick={handleClusterClick} />
-      <TerritoryDrawer
-        open={drawerOpen && !drawerLoading}
-        territory={drawerTerritory}
-        data={drawerData}
-        onClose={handleClose}
+      <Constellation
+        data={data}
+        onClusterClick={handleClusterClick}
+        onStarClick={handleStarClick}
       />
+      {drawer && drawer.drawerData && !drawer.loading && (
+        <ClusterDrawer
+          data={drawer.drawerData}
+          userId={userId}
+          focusedTechKey={drawer.focusedTechKey}
+          variant="owner"
+          onClose={handleClose}
+        />
+      )}
       {showProgress && (
         <div className="fixed bottom-4 left-4 text-xs text-slate-300 opacity-70 pointer-events-none">
           {syncProgressText}

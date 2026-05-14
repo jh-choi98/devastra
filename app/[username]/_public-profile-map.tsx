@@ -2,56 +2,93 @@
 
 import { useState, useCallback } from 'react'
 import { Constellation } from '@/app/_components/Constellation/Constellation'
-import { TerritoryDrawer } from '@/app/_components/TerritoryDrawer'
-import { TERRITORIES } from '@/features/territories/registry'
+import { ClusterDrawer } from '@/app/_components/ClusterDrawer/ClusterDrawer'
+import { getPublicTech } from '@/features/territories/tech-catalog-public'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
-import type { TerritoryDrawerData } from '@/app/_components/TerritoryDrawer'
+import type { ClusterDrawerData } from '@/app/_components/ClusterDrawer/ClusterDrawer'
 import type { TerritoryType } from '@/features/territories/registry'
 
-export function PublicProfileMap({ mapData }: { mapData: ConstellationData }) {
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerTerritory, setDrawerTerritory] = useState<TerritoryType | null>(null)
-  const [drawerData, setDrawerData] = useState<TerritoryDrawerData | null>(null)
+function buildVisitorDrawerData(
+  mapData: ConstellationData,
+  type: TerritoryType,
+): ClusterDrawerData | null {
+  const territory = mapData.territories.find((t) => t.type === type)
+  if (!territory) return null
+
+  const litStars = mapData.landmarks
+    .filter((l) => l.territory === type && l.weight >= 5)
+    .sort((a, b) => b.weight - a.weight || a.tech_key.localeCompare(b.tech_key))
+    .map((lm) => ({
+      tech_key: lm.tech_key,
+      displayName: getPublicTech(lm.tech_key)?.displayName ?? lm.tech_key,
+      weight: lm.weight,
+      firstUnlockedAt: lm.firstUnlockedAt,
+      topContributingRepo: null,
+      // Visitor: no detection rule details or repo breakdown exposed
+      matchedRuleKinds: [] as string[],
+      contributingRepos: [] as Array<{ owner: string; name: string; repoId: string; matchCount: number }>,
+      activity: { commits: 0, prs: 0, issues: 0 },
+    }))
+
+  return {
+    type,
+    stage: territory.stage,
+    growth30d: territory.growth30d,
+    stageChangedAt: territory.stageChangedAt,
+    litStars,
+  }
+}
+
+export function PublicProfileMap({
+  mapData,
+  ownerUsername,
+}: {
+  mapData: ConstellationData
+  ownerUsername?: string
+}) {
+  const [drawer, setDrawer] = useState<{
+    cluster: TerritoryType
+    focusedTechKey?: string
+    drawerData: ClusterDrawerData | null
+  } | null>(null)
 
   const handleClusterClick = useCallback(
     (type: TerritoryType) => {
-      const territory = mapData.territories.find((t) => t.type === type)
-      if (!territory) return
-
-      const info = TERRITORIES[type]
-      const stagesLabel =
-        territory.stage >= 2
-          ? `Stage ${territory.stage} — growing territory`
-          : `Stage ${territory.stage} — early territory`
-
-      setDrawerTerritory(type)
-      setDrawerData({
-        type,
-        stage: territory.stage,
-        growth30d: territory.growth30d,
-        totalWeight: territory.totalWeight,
-        topRepos: [],
-        recentPRs: [],
-        interpretation: `${info.name} is at ${stagesLabel} with ${Math.round(territory.totalWeight)} contribution points.`,
-      })
-      setDrawerOpen(true)
+      const drawerData = buildVisitorDrawerData(mapData, type)
+      if (!drawerData) return
+      setDrawer({ cluster: type, drawerData })
     },
-    [mapData.territories],
+    [mapData],
   )
 
-  const handleClose = useCallback(() => {
-    setDrawerOpen(false)
-  }, [])
+  const handleStarClick = useCallback(
+    (type: TerritoryType, tech_key: string) => {
+      const drawerData = buildVisitorDrawerData(mapData, type)
+      if (!drawerData) return
+      setDrawer({ cluster: type, focusedTechKey: tech_key, drawerData })
+    },
+    [mapData],
+  )
+
+  const handleClose = useCallback(() => setDrawer(null), [])
 
   return (
     <div className="relative w-full h-full flex-1">
-      <Constellation data={mapData} onClusterClick={handleClusterClick} />
-      <TerritoryDrawer
-        open={drawerOpen}
-        territory={drawerTerritory}
-        data={drawerData}
-        onClose={handleClose}
+      <Constellation
+        data={mapData}
+        onClusterClick={handleClusterClick}
+        onStarClick={handleStarClick}
       />
+      {drawer && drawer.drawerData && (
+        <ClusterDrawer
+          data={drawer.drawerData}
+          userId={mapData.userId}
+          focusedTechKey={drawer.focusedTechKey}
+          variant="visitor"
+          ownerUsername={ownerUsername}
+          onClose={handleClose}
+        />
+      )}
     </div>
   )
 }

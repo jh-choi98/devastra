@@ -1,6 +1,5 @@
 import { Metadata } from 'next'
 import { getPublicProfileByUsername } from '@/lib/db/queries/public-profile'
-import { TerritoryDrawer } from '@/app/_components/TerritoryDrawer'
 import { PublicStickyBar } from '@/app/_components/PublicStickyBar'
 import { PrivateProfile } from '@/app/_components/PrivateProfile'
 import { PublicProfileMap } from './_public-profile-map'
@@ -41,7 +40,7 @@ export default async function PublicProfilePage({ params }: PageParams) {
 
   return (
     <div className="relative flex flex-col h-screen bg-slate-900 overflow-hidden">
-      <PublicProfileMap mapData={profile.map} />
+      <PublicProfileMap mapData={profile.map} ownerUsername={profile.username} />
       <PublicStickyBar />
     </div>
   )

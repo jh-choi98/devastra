@@ -77,3 +77,78 @@ export class GitHubGraphQLClient {
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
+
+export type RecentPR = {
+  number: number
+  title: string
+  repo: string
+  url: string
+  updated_at: string
+}
+
+/**
+ * Fetches the most recent PRs authored by githubLogin in the given repos.
+ * Repos are pre-filtered by the caller (active repos for the cluster).
+ * PR titles are NOT stored per ADR-9; fetched on demand here.
+ */
+export async function fetchRecentPRsForUserInCluster(params: {
+  token: string
+  githubLogin: string
+  repos: Array<{ owner: string; name: string }>
+  limit: number
+}): Promise<RecentPR[]> {
+  const { token, githubLogin, repos, limit } = params
+  if (repos.length === 0) return []
+
+  // Build "repo:owner/name" clauses (cap at 15 to stay well under query length limits)
+  const repoClauses = repos
+    .slice(0, 15)
+    .map((r) => `repo:${r.owner}/${r.name}`)
+    .join(' ')
+
+  const searchQuery = `is:pr author:${githubLogin} ${repoClauses} sort:updated-desc`
+
+  const gql = `
+    query($q: String!, $limit: Int!) {
+      search(query: $q, type: ISSUE, first: $limit) {
+        nodes {
+          ... on PullRequest {
+            number
+            title
+            url
+            updatedAt
+            repository {
+              name
+              owner { login }
+            }
+          }
+        }
+      }
+    }
+  `
+
+  type SearchResult = {
+    search: {
+      nodes: Array<{
+        number?: number
+        title?: string
+        url?: string
+        updatedAt?: string
+        repository?: { name: string; owner: { login: string } }
+      }>
+    }
+  }
+
+  const client = new GitHubGraphQLClient(token)
+  const data = await client.query<SearchResult>(gql, { q: searchQuery, limit })
+
+  return data.search.nodes
+    .filter((n) => n.number !== undefined && n.title !== undefined)
+    .map((n) => ({
+      number: n.number!,
+      title: n.title!,
+      repo: `${n.repository?.owner.login}/${n.repository?.name}`,
+      url: n.url!,
+      updated_at: n.updatedAt!,
+    }))
+}
