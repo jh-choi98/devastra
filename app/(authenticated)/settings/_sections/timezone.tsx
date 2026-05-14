@@ -2,56 +2,63 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { changeTimezone } from '../_actions'
+import { setTimezone } from '../_actions'
 
 interface TimezoneSectionProps {
-  initial: string
+  initialTimezone: string
+  initialPreviewLine: string
 }
 
-export function TimezoneSection({ initial }: TimezoneSectionProps) {
-  const [timezone, setTimezone] = useState(initial)
+export function TimezoneSection({ initialTimezone, initialPreviewLine }: TimezoneSectionProps) {
+  const [timezone, setTz] = useState(initialTimezone)
+  const [previewLine, setPreviewLine] = useState(initialPreviewLine)
   const [isPending, startTransition] = useTransition()
 
   const timezones = Intl.supportedValuesOf('timeZone')
 
-  function handleSave() {
+  function handleChange(tz: string) {
+    setTz(tz)
+    // Compute preview line client-side
+    try {
+      const sunday = new Date()
+      sunday.setDate(sunday.getDate() + ((7 - sunday.getDay()) % 7 || 7))
+      sunday.setHours(18, 0, 0, 0)
+      const formatted = sunday.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: tz,
+      })
+      setPreviewLine(`Your weekly recap arrives Sunday at ${formatted} in this timezone.`)
+    } catch {
+      setPreviewLine('Your weekly recap arrives Sunday in this timezone.')
+    }
     startTransition(async () => {
       try {
-        await changeTimezone({ timezone })
-        toast.success('Timezone updated.')
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to update timezone.')
+        await setTimezone(tz)
+        toast('Timezone updated')
+      } catch {
+        setTz(initialTimezone)
+        toast.error('Failed to update timezone.')
       }
     })
   }
 
   return (
-    <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-6 mb-4">
-      <h2 className="text-base font-semibold text-white mb-1">Timezone</h2>
-      <p className="text-sm text-zinc-400 mb-4">
-        Affects weekly recap email delivery time. Data is always stored in UTC.
-      </p>
-      <div className="flex gap-3">
-        <select
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          className="flex-1 rounded-lg bg-zinc-800 border border-zinc-600 text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          {timezones.map((tz) => (
-            <option key={tz} value={tz}>
-              {tz}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isPending || timezone === initial}
-          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          Save
-        </button>
-      </div>
-    </div>
+    <section>
+      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">Timezone</h2>
+      <select
+        value={timezone}
+        onChange={(e) => handleChange(e.target.value)}
+        disabled={isPending}
+        className="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+      >
+        {timezones.map((tz) => (
+          <option key={tz} value={tz}>
+            {tz}
+          </option>
+        ))}
+      </select>
+      <p className="text-xs text-zinc-500 mt-2">{previewLine}</p>
+    </section>
   )
 }

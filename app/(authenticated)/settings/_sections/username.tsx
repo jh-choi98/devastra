@@ -16,7 +16,7 @@ export function UsernameSection({ initial, githubLogin }: UsernameSectionProps) 
   function handleSave() {
     startTransition(async () => {
       try {
-        await changeUsername({ username })
+        await changeUsername(username)
         toast.success('Username updated.')
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to update username.')

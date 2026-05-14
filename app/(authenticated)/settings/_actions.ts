@@ -1,128 +1,171 @@
 'use server'
 
 import { z } from 'zod'
-import { eq, and, inArray } from 'drizzle-orm'
+import { eq, and, ne, inArray } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth/session'
-import { revalidatePublicProfile } from '@/lib/cache/revalidate-profile'
-import { isReserved } from '@/lib/utils/reserved-usernames'
+import { isReservedUsername } from '@/lib/utils/reserved-usernames'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema/users'
+import { usernameHistory } from '@/lib/db/schema/username-history'
 import { repositories } from '@/lib/db/schema/repositories'
-import { updateUserField } from '@/lib/db/queries/users'
 import { inngest } from '@/lib/inngest/client'
 import { EVENTS } from '@/features/sync/events'
-import { captureServerEvent } from '@/lib/posthog-server'
 import { createAdminClient } from '@/lib/auth/supabase-server'
 
-const TogglePublicSchema = z.object({ next: z.boolean() })
+// ── Public toggle ─────────────────────────────────────────────────────────────
+export async function setPublicProfile(isPublic: boolean): Promise<void> {
+  const user = await requireUser()
+  await db.update(users).set({ isPublic }).where(eq(users.id, user.id))
+  revalidatePath(`/${user.displayUsername}`)
+  revalidatePath('/settings')
+}
 
+// @deprecated Use setPublicProfile
 export async function togglePublic(input: unknown): Promise<void> {
-  const { next } = TogglePublicSchema.parse(input)
-  const user = await requireUser()
-  await updateUserField(user.id, 'isPublic', next)
-  if (next) {
-    revalidatePublicProfile(user.displayUsername)
-    await captureServerEvent(user.id, 'public_toggle.enabled')
-  }
+  const { next } = z.object({ next: z.boolean() }).parse(input)
+  await setPublicProfile(next)
 }
 
-const ToggleEmailRecapSchema = z.object({ next: z.boolean() })
+// ── Email recap toggle ────────────────────────────────────────────────────────
+export async function setEmailRecapEnabled(enabled: boolean): Promise<void> {
+  const user = await requireUser()
+  await db.update(users).set({ emailRecapEnabled: enabled }).where(eq(users.id, user.id))
+}
 
+// @deprecated Use setEmailRecapEnabled
 export async function toggleEmailRecap(input: unknown): Promise<void> {
-  const { next } = ToggleEmailRecapSchema.parse(input)
-  const user = await requireUser()
-  await updateUserField(user.id, 'emailRecapEnabled', next)
+  const { next } = z.object({ next: z.boolean() }).parse(input)
+  await setEmailRecapEnabled(next)
 }
 
-const ChangeTimezoneSchema = z.object({ timezone: z.string() })
-
-export async function changeTimezone(input: unknown): Promise<void> {
-  const { timezone } = ChangeTimezoneSchema.parse(input)
+// ── Timezone ──────────────────────────────────────────────────────────────────
+export async function setTimezone(tz: string): Promise<void> {
+  const user = await requireUser()
+  const parsed = z.string().min(3).max(60).parse(tz)
   const validTimezones = Intl.supportedValuesOf('timeZone')
-  if (!validTimezones.includes(timezone)) {
-    throw new Error('Invalid timezone.')
-  }
-  const user = await requireUser()
-  await updateUserField(user.id, 'timezone', timezone)
+  if (!validTimezones.includes(parsed)) throw new Error('Invalid timezone.')
+  await db.update(users).set({ timezone: parsed }).where(eq(users.id, user.id))
 }
 
-const ChangeUsernameSchema = z.object({
-  username: z.string().min(2).max(30).regex(/^[a-z0-9-_]+$/),
-})
+// @deprecated Use setTimezone
+export async function changeTimezone(input: unknown): Promise<void> {
+  const { timezone } = z.object({ timezone: z.string() }).parse(input)
+  await setTimezone(timezone)
+}
 
-export async function changeUsername(input: unknown): Promise<void> {
-  const { username } = ChangeUsernameSchema.parse(input)
+// ── Username availability check ───────────────────────────────────────────────
+export async function checkUsernameAvailable(draft: string): Promise<
+  | { kind: 'available' }
+  | { kind: 'taken' }
+  | { kind: 'reserved' }
+  | { kind: 'invalid'; reason: string }
+> {
   const user = await requireUser()
+  const lower = draft.toLowerCase()
+  if (lower === user.displayUsername) return { kind: 'available' }
+  if (!/^[a-z0-9-_]+$/.test(lower)) return { kind: 'invalid', reason: 'regex' }
+  if (lower.length < 2) return { kind: 'invalid', reason: 'too_short' }
+  if (lower.length > 30) return { kind: 'invalid', reason: 'too_long' }
 
-  // Self-match exception: GitHub login can always be used even if reserved
-  if (username !== user.githubLogin && isReserved(username)) {
-    throw new Error('This name is reserved.')
+  // Self-match exception (ADR-15): GitHub login can bypass reserved list
+  if (isReservedUsername(lower) && lower !== user.githubLogin.toLowerCase()) {
+    return { kind: 'reserved' }
   }
 
-  const oldUsername = user.displayUsername
+  const existing = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.displayUsername, lower), ne(users.id, user.id)))
+    .limit(1)
+  if (existing.length > 0) return { kind: 'taken' }
 
-  try {
-    await db
-      .update(users)
-      .set({ displayUsername: username })
-      .where(eq(users.id, user.id))
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : ''
-    if (msg.includes('unique') || msg.includes('duplicate') || msg.includes('23505')) {
-      throw new Error('This name is taken.')
+  // Also check username_history (reserved by another user) per ADR-30
+  const histExisting = await db
+    .select({ userId: usernameHistory.userId })
+    .from(usernameHistory)
+    .where(eq(usernameHistory.oldUsername, lower))
+    .limit(1)
+  if (histExisting.length > 0 && histExisting[0].userId !== user.id) return { kind: 'reserved' }
+
+  return { kind: 'available' }
+}
+
+// ── Username change ───────────────────────────────────────────────────────────
+export async function changeUsername(newUsername: string): Promise<void> {
+  const user = await requireUser()
+  const lower = newUsername.toLowerCase()
+  const result = await checkUsernameAvailable(lower)
+  if (result.kind !== 'available') {
+    throw new Error(`Username change rejected: ${result.kind}`)
+  }
+  if (lower === user.displayUsername) return
+
+  // Atomic: insert old username into history, then update users
+  await db.transaction(async (tx) => {
+    await tx.insert(usernameHistory).values({
+      oldUsername: user.displayUsername,
+      userId: user.id,
+    })
+    await tx.update(users).set({ displayUsername: lower }).where(eq(users.id, user.id))
+  })
+
+  revalidatePath(`/${user.displayUsername}`)
+  revalidatePath(`/${lower}`)
+  revalidatePath('/settings')
+}
+
+// ── Included repos ────────────────────────────────────────────────────────────
+const reposSchema = z.array(z.object({ id: z.string().uuid(), isIncluded: z.boolean() }))
+export async function updateIncludedRepos(
+  updates: z.infer<typeof reposSchema>,
+): Promise<void> {
+  const user = await requireUser()
+  const parsed = reposSchema.parse(updates)
+
+  await db.transaction(async (tx) => {
+    for (const u of parsed) {
+      await tx
+        .update(repositories)
+        .set({ isIncluded: u.isIncluded })
+        .where(and(eq(repositories.id, u.id), eq(repositories.userId, user.id)))
     }
-    throw err
-  }
+  })
 
-  if (user.isPublic) {
-    revalidatePublicProfile(oldUsername)
-    revalidatePublicProfile(username)
-  }
+  await inngest.send({
+    name: EVENTS.SYNC_BACKFILL_REQUESTED,
+    data: { userId: user.id },
+  })
+
+  redirect('/')
 }
 
-const UpdateIncludedReposSchema = z.object({
-  repoIds: z.array(z.string().uuid()),
-  includedIds: z.array(z.string().uuid()),
-})
-
-export async function updateIncludedRepos(input: unknown): Promise<void> {
-  const { repoIds, includedIds } = UpdateIncludedReposSchema.parse(input)
+// @deprecated - keep for backward compat with old section
+export async function updateIncludedReposLegacy(input: unknown): Promise<void> {
+  const { repoIds, includedIds } = z
+    .object({ repoIds: z.array(z.string().uuid()), includedIds: z.array(z.string().uuid()) })
+    .parse(input)
   const user = await requireUser()
 
-  // Verify ownership of every id
   const owned = await db
     .select({ id: repositories.id })
     .from(repositories)
     .where(and(eq(repositories.userId, user.id), inArray(repositories.id, repoIds)))
 
   const ownedIds = new Set(owned.map((r) => r.id))
-  const allOwned = repoIds.every((id) => ownedIds.has(id))
-  if (!allOwned) {
+  if (!repoIds.every((id) => ownedIds.has(id))) {
     throw new Error('One or more repositories do not belong to you.')
   }
 
   const includedSet = new Set(includedIds)
-
-  await Promise.all(
-    repoIds.map((id) =>
-      db
-        .update(repositories)
-        .set({ isIncluded: includedSet.has(id) })
-        .where(and(eq(repositories.id, id), eq(repositories.userId, user.id))),
-    ),
-  )
-
-  await inngest.send({
-    name: EVENTS.SYNC_BACKFILL_REQUESTED,
-    data: { userId: user.id },
-  })
+  const updates = repoIds.map((id) => ({ id, isIncluded: includedSet.has(id) }))
+  await updateIncludedRepos(updates)
 }
 
-export async function disconnectGithub(): Promise<void> {
+// ── Disconnect GitHub ─────────────────────────────────────────────────────────
+export async function disconnectGitHub(): Promise<void> {
   const user = await requireUser()
-  const wasPublic = user.isPublic
-
   await db
     .update(users)
     .set({
@@ -132,23 +175,20 @@ export async function disconnectGithub(): Promise<void> {
       isPublic: false,
     })
     .where(eq(users.id, user.id))
-
-  if (wasPublic) {
-    revalidatePublicProfile(user.displayUsername)
-  }
+  revalidatePath(`/${user.displayUsername}`)
+  redirect('/')
 }
 
-const DeleteAccountSchema = z.object({ confirmation: z.literal('DELETE') })
+// @deprecated Use disconnectGitHub
+export async function disconnectGithub(): Promise<void> {
+  await disconnectGitHub()
+}
 
-export async function deleteAccount(input: unknown): Promise<void> {
-  DeleteAccountSchema.parse(input)
+// ── Delete account ────────────────────────────────────────────────────────────
+export async function deleteAccount(): Promise<void> {
   const user = await requireUser()
-
-  const adminClient = createAdminClient()
-  const { error } = await adminClient.auth.admin.deleteUser(user.id)
-  if (error) {
-    throw new Error('Failed to delete account. Please try again.')
-  }
-
-  redirect('/')
+  const supabase = createAdminClient()
+  const { error } = await supabase.auth.admin.deleteUser(user.id)
+  if (error) throw new Error('Account deletion failed; please contact support.')
+  redirect('/account-deleted')
 }

@@ -21,7 +21,7 @@ export function DeleteAccountSection() {
     if (!isConfirmed) return
     startTransition(async () => {
       try {
-        await deleteAccount({ confirmation: 'DELETE' })
+        await deleteAccount()
       } catch (err) {
         setIsOpen(false)
         toast.error(err instanceof Error ? err.message : 'Failed to delete account.')
