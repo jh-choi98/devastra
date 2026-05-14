@@ -125,6 +125,17 @@ export default async function PublicProfilePage({ params }: PageParams) {
         )}
       </div>
 
+      {/* Screen-reader summary */}
+      {variant === 'owner_self' ? (
+        <div className="sr-only" role="status" aria-live="polite">
+          Your constellation has {litCount} stars lit across {activeClusterCount} clusters.
+        </div>
+      ) : (
+        <div className="sr-only">
+          {canonicalUsername}&apos;s constellation has {litCount} stars lit across {activeClusterCount} clusters.
+        </div>
+      )}
+
       {/* Constellation + drawer (+ sticky bar for visitors) */}
       <div className="flex-1 relative">
         <PublicProfileMap

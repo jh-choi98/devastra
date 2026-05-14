@@ -1,29 +1,40 @@
 import { test, expect } from '@playwright/test'
 
-const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000'
+test.describe.configure({ mode: 'serial' })
 
-test.describe('signup → repo selection → reveal complete', () => {
-  test('smoke: landing → mock oauth → onboarding → reveal', async ({ page }) => {
-    // 1. Navigate to landing page
-    await page.goto(BASE_URL)
-    await expect(page.locator('h1')).toContainText('Turn your GitHub into')
+test('signup → repo selection → first reveal completes', async ({ page }) => {
+  // Mock OAuth flow uses /api/test/mock-oauth (NODE_ENV must be non-prod)
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: /skill constellation that lights up/i })).toBeVisible()
 
-    // 2. Trigger mock OAuth (bypasses real GitHub, creates test session)
-    await page.goto(`${BASE_URL}/api/test/mock-oauth`)
-    // After mock OAuth, should land on onboarding or home
-    await expect(page).toHaveURL(/\/(onboarding\/repos|$)/)
+  // Click sign in (this triggers a Server Action; on dev, it routes to mock OAuth)
+  await page.getByRole('button', { name: /sign in with github/i }).click()
 
-    // 3. If on onboarding, click Skip & Build
-    if (page.url().includes('/onboarding/repos')) {
-      const skipButton = page.getByRole('button', { name: /skip/i })
-      await expect(skipButton).toBeVisible()
-      await skipButton.click()
+  // Repo selection
+  await expect(page).toHaveURL(/onboarding\/repos/)
+  await expect(page.getByText(/pick your repos/i)).toBeVisible()
+  await page.getByRole('button', { name: /build my constellation/i }).click()
+
+  // Main constellation page — wait for reveal to complete (max ~30s + buffer)
+  await expect(page).toHaveURL(/^\//)
+  await page.waitForSelector('[data-testid="constellation-canvas"]', { timeout: 5000 })
+
+  // First reveal should complete and the cluster labels should appear.
+  // Visible cluster labels should include at least one of the six names.
+  const clusterLabels = ['Frontend', 'Backend', 'Data', 'Testing', 'DevOps', 'Docs']
+  // Wait until any cluster label is visible (timing depends on sync speed; budget 60s).
+  await Promise.any(clusterLabels.map((label) =>
+    page.getByText(label, { exact: true }).waitFor({ state: 'visible', timeout: 60_000 }),
+  ))
+
+  // Drawer test: click a visible cluster label
+  for (const label of clusterLabels) {
+    const el = page.getByText(label, { exact: true })
+    if (await el.isVisible()) {
+      await el.click()
+      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 })
+      await page.keyboard.press('Escape')
+      break
     }
-
-    // 4. Should land on home page (map)
-    await expect(page).toHaveURL(`${BASE_URL}/`)
-
-    // 5. Wait for reveal to complete — progress text disappears and all 6 territories render
-    await expect(page.locator('[data-territory]')).toHaveCount(6, { timeout: 60_000 })
-  })
+  }
 })

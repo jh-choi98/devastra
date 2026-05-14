@@ -70,6 +70,7 @@ export function Constellation({
   return (
     <div className="relative w-full h-full">
       <svg
+        data-testid="constellation-canvas"
         viewBox="0 0 1000 700"
         className="w-full h-full"
         role="img"
@@ -92,7 +93,7 @@ export function Constellation({
           const radius = center.r * Math.min(1000, 700)
 
           return (
-            <g key={type} transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
+            <g key={type} data-testid={`cluster-${type}`} transform={`translate(${cx.toFixed(1)}, ${cy.toFixed(1)})`}>
               <ClusterAura
                 type={type}
                 radius={radius}

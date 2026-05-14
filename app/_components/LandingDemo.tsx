@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Constellation } from '@/app/_components/Constellation/Constellation'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import { ALL_TERRITORY_TYPES } from '@/features/territories/registry'
+import { useReducedMotion } from '@/app/_components/Constellation/SparkAnimation'
 
 function seededRandom(seed: number): () => number {
   let s = seed
@@ -47,14 +48,15 @@ function generateMockData(seed: number): ConstellationData {
 export function LandingDemo() {
   const seed = useMemo(() => Math.floor(Math.random() * 100000), [])
   const data = useMemo(() => generateMockData(seed), [seed])
+  const reducedMotion = useReducedMotion()
 
   return (
     <div className="relative w-full h-full overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10 pointer-events-none" />
       <motion.div
         className="w-full h-full"
-        animate={{ scale: [1, 1.01, 1] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        animate={reducedMotion ? {} : { scale: [1, 1.01, 1] }}
+        transition={reducedMotion ? {} : { duration: 8, repeat: Infinity, ease: 'easeInOut' }}
       >
         <Constellation data={data} />
       </motion.div>

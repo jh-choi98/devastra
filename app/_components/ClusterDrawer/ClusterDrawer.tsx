@@ -3,6 +3,7 @@ import { useEffect, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { TerritoryType } from '@/features/territories/registry'
 import { TERRITORIES } from '@/features/territories/registry'
+import { useReducedMotion } from '@/app/_components/Constellation/SparkAnimation'
 import { StarRow } from './StarRow'
 import { RecentPRs } from './RecentPRs'
 
@@ -52,6 +53,7 @@ export function ClusterDrawer(props: {
 }): JSX.Element {
   const { data, userId, focusedTechKey, variant, onClose } = props
   const info = TERRITORIES[data.type]
+  const reducedMotion = useReducedMotion()
 
   const recentlyExpanded =
     data.stageChangedAt != null &&
@@ -81,11 +83,15 @@ export function ClusterDrawer(props: {
       <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <motion.aside
         key="cluster-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${info.name} cluster details`}
+        data-testid="cluster-drawer"
         className="fixed right-0 top-0 bottom-0 z-50 w-full md:w-[480px] bg-slate-900 text-slate-100 shadow-2xl flex flex-col overflow-y-auto"
-        initial={{ x: '100%' }}
+        initial={reducedMotion ? { x: 0 } : { x: '100%' }}
         animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ type: 'tween', duration: 0.28 }}
+        exit={reducedMotion ? { x: 0 } : { x: '100%' }}
+        transition={reducedMotion ? { duration: 0 } : { type: 'tween', duration: 0.28 }}
       >
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-slate-700/60 shrink-0">

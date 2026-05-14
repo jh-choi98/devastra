@@ -26,7 +26,7 @@ export function Star(props: {
   const reducedMotion = useReducedMotion()
 
   return (
-    <g transform={`translate(${x.toFixed(2)}, ${y.toFixed(2)})`} onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
+    <g data-testid={`star-${tech_key}`} transform={`translate(${x.toFixed(2)}, ${y.toFixed(2)})`} aria-hidden="true" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
       {/* Decorative glow layers — aria-hidden, semantics live at cluster <g> */}
       <circle r={r * 3} fill={color} opacity="0.08" aria-hidden="true" />
       <circle r={r * 2} fill={color} opacity="0.18" aria-hidden="true" />

@@ -85,7 +85,9 @@
     {
       "phase": 11,
       "name": "tests-accessibility",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-15T08:39:49+0900",
+      "completed_at": "2026-05-15T19:46:59+0900"
     },
     {
       "phase": 12,

@@ -36,6 +36,7 @@ export function Header({
           <RefreshButton userId={user.id} lastSyncStartedAt={lastSyncStartedAt} />
 
           <button
+            data-testid="share-button"
             onClick={() => {
               initPosthog()
               posthog.capture('share.clicked')

@@ -100,6 +100,7 @@ export function RefreshButton({
 
   return (
     <button
+      data-testid="refresh-button"
       onClick={handleClick}
       disabled={disabled}
       className="px-3 py-1.5 text-sm rounded bg-slate-700 text-slate-200 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

@@ -153,4 +153,57 @@ describeIf('RLS isolation', () => {
     // Restore private
     await adminClient.from('users').update({ is_public: false }).eq('id', userAId)
   })
+
+  it('user A can INSERT misclassification_feedback for own data', async () => {
+    const clientA = createClient(TEST_SUPABASE_URL!, TEST_SUPABASE_ANON_KEY!)
+    await clientA.auth.signInWithPassword({ email: userAEmail, password: testPassword })
+    const { error } = await clientA.from('misclassification_feedback').insert({
+      user_id: userAId,
+      tech_key: 'react',
+      territory_type: 'frontend_land',
+      suggested_territory: 'backend_fortress',
+      note: 'test',
+    })
+    expect(error).toBeNull()
+  })
+
+  it('user A cannot INSERT misclassification_feedback for user B', async () => {
+    const clientA = createClient(TEST_SUPABASE_URL!, TEST_SUPABASE_ANON_KEY!)
+    await clientA.auth.signInWithPassword({ email: userAEmail, password: testPassword })
+    const { error } = await clientA.from('misclassification_feedback').insert({
+      user_id: userBId,
+      tech_key: 'react',
+      territory_type: 'frontend_land',
+      suggested_territory: 'backend_fortress',
+      note: 'test',
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it('user A cannot SELECT from misclassification_feedback', async () => {
+    const clientA = createClient(TEST_SUPABASE_URL!, TEST_SUPABASE_ANON_KEY!)
+    await clientA.auth.signInWithPassword({ email: userAEmail, password: testPassword })
+    const { data, error } = await clientA.from('misclassification_feedback').select('*')
+    // RLS: no select policy for authenticated users
+    expect(data).toHaveLength(0)
+    expect(error).toBeNull()
+  })
+
+  it('anon can SELECT from tech_global_stats', async () => {
+    const anonClient = createClient(TEST_SUPABASE_URL!, TEST_SUPABASE_ANON_KEY!)
+    const { error } = await anonClient.from('tech_global_stats').select('*').limit(1)
+    expect(error).toBeNull()
+  })
+
+  it('anon can SELECT from username_history', async () => {
+    const anonClient = createClient(TEST_SUPABASE_URL!, TEST_SUPABASE_ANON_KEY!)
+    const { error } = await anonClient.from('username_history').select('*').limit(1)
+    expect(error).toBeNull()
+  })
+
+  it('anon can SELECT from system_messages', async () => {
+    const anonClient = createClient(TEST_SUPABASE_URL!, TEST_SUPABASE_ANON_KEY!)
+    const { error } = await anonClient.from('system_messages').select('*').limit(1)
+    expect(error).toBeNull()
+  })
 })

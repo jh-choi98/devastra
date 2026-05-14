@@ -139,8 +139,14 @@ export function LivingMapContainer({
       territory: l.territory,
     }))
 
+  const litStarCount = data.landmarks.length
+  const activeClusterCount = data.territories.filter((t) => t.stage > 1).length
+
   return (
     <div className="relative w-full h-full">
+      <div className="sr-only" role="status" aria-live="polite">
+        Your constellation has {litStarCount} stars lit across {activeClusterCount} clusters.
+      </div>
       <Constellation
         data={data}
         onClusterClick={handleClusterClick}

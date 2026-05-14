@@ -45,24 +45,28 @@ export function Cluster(props: {
       />
 
       {/* Cluster label — keyboard-focusable */}
-      <text
-        y={labelY}
-        textAnchor="middle"
-        fontSize="13"
-        fill="#94a3b8"
-        fontFamily="system-ui, sans-serif"
-        fontWeight="500"
+      <g
         role="button"
         tabIndex={0}
+        aria-label={`${meta.name} cluster, ${litCount} stars lit`}
         style={{ cursor: onClusterClick ? 'pointer' : 'default' }}
         onClick={onClusterClick}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') onClusterClick?.()
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClusterClick?.() }
         }}
       >
-        {meta.name}
-        {stage >= 2 && ` · Stage ${stage}`}
-      </text>
+        <text
+          y={labelY}
+          textAnchor="middle"
+          fontSize="13"
+          fill="#94a3b8"
+          fontFamily="system-ui, sans-serif"
+          fontWeight="500"
+        >
+          {meta.name}
+          {stage >= 2 && ` · Stage ${stage}`}
+        </text>
+      </g>
 
       {/* Stars — each rendered once; hero stars get inline label */}
       {litStars.map((star) => {

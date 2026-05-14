@@ -67,6 +67,7 @@ export function ShareModal({
             <h2 className="text-lg font-semibold text-slate-100">Share your DevAstra</h2>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="p-1.5 rounded hover:bg-slate-700 transition-colors text-slate-400"
             >
               ✕
