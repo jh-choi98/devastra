@@ -5,18 +5,72 @@
   "totalPhases": 13,
   "created_at": "2026-05-15T06:41:52+0900",
   "phases": [
-    { "phase": 0, "name": "pivot-docs-commit", "status": "pending" },
-    { "phase": 1, "name": "schema-migration", "status": "pending" },
-    { "phase": 2, "name": "lib-utilities", "status": "pending" },
-    { "phase": 3, "name": "constellation-renderer", "status": "pending" },
-    { "phase": 4, "name": "cluster-drawer", "status": "pending" },
-    { "phase": 5, "name": "state-banners-and-moments", "status": "pending" },
-    { "phase": 6, "name": "public-profile-variants", "status": "pending" },
-    { "phase": 7, "name": "settings-overhaul", "status": "pending" },
-    { "phase": 8, "name": "email-recap-pipeline", "status": "pending" },
-    { "phase": 9, "name": "og-landing-legal", "status": "pending" },
-    { "phase": 10, "name": "security-hardening", "status": "pending" },
-    { "phase": 11, "name": "tests-accessibility", "status": "pending" },
-    { "phase": 12, "name": "final-polish", "status": "pending" }
+    {
+      "phase": 0,
+      "name": "pivot-docs-commit",
+      "status": "completed",
+      "started_at": "2026-05-15T07:03:06+0900",
+      "completed_at": "2026-05-15T07:10:00+0900"
+    },
+    {
+      "phase": 1,
+      "name": "schema-migration",
+      "status": "pending"
+    },
+    {
+      "phase": 2,
+      "name": "lib-utilities",
+      "status": "pending"
+    },
+    {
+      "phase": 3,
+      "name": "constellation-renderer",
+      "status": "pending"
+    },
+    {
+      "phase": 4,
+      "name": "cluster-drawer",
+      "status": "pending"
+    },
+    {
+      "phase": 5,
+      "name": "state-banners-and-moments",
+      "status": "pending"
+    },
+    {
+      "phase": 6,
+      "name": "public-profile-variants",
+      "status": "pending"
+    },
+    {
+      "phase": 7,
+      "name": "settings-overhaul",
+      "status": "pending"
+    },
+    {
+      "phase": 8,
+      "name": "email-recap-pipeline",
+      "status": "pending"
+    },
+    {
+      "phase": 9,
+      "name": "og-landing-legal",
+      "status": "pending"
+    },
+    {
+      "phase": 10,
+      "name": "security-hardening",
+      "status": "pending"
+    },
+    {
+      "phase": 11,
+      "name": "tests-accessibility",
+      "status": "pending"
+    },
+    {
+      "phase": 12,
+      "name": "final-polish",
+      "status": "pending"
+    }
   ]
 }
