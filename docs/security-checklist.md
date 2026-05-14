@@ -8,65 +8,65 @@ This is a working checklist — items move from `[ ]` to `[x]` as they are verif
 
 These MUST be verified before any production deployment.
 
-### 1. Test / mock routes are NODE_ENV-guarded
+### 1. Test / mock routes are NODE_ENV-guarded [x]
 - **Reference:** ADR-47
 - **Verify:** `app/api/test/mock-oauth/route.ts` (and any sibling test routes) begin with `if (process.env.NODE_ENV === 'production') notFound()` as the first executable line. Production deploy returns 404 from these routes (manual curl test).
 - **Why it matters:** A leaked mock-OAuth route allows arbitrary user impersonation.
-- **Status:** `[ ]`
+- **Status:** `[x] guarded in app/api/test/mock-oauth/route.ts:12`
 
-### 2. Resend webhook signature verification
+### 2. Resend webhook signature verification [x]
 - **Reference:** ADR-6 (Resend), ADR-49 (security baseline)
 - **Verify:** `app/api/webhooks/resend/route.ts` validates the `svix-signature` header (or Resend's equivalent) against `RESEND_WEBHOOK_SECRET` before processing the bounce event. Reject 401 on missing/invalid signature.
 - **Why it matters:** Unverified webhooks let attackers force `users.email_recap_enabled = false` for any user.
-- **Status:** `[ ]`
+- **Status:** `[x] svix verification in app/api/webhooks/resend/route.ts`
 
-### 3. OAuth callback origin allowlist
+### 3. OAuth callback origin allowlist [x]
 - **Reference:** ADR-47
 - **Verify:** `lib/auth/actions.ts` `signIn()` constructs `redirectTo` from a hardcoded `APP_HOSTNAME_ALLOWLIST` env var. `host` header is not blindly trusted. Dev hostnames (`localhost:3000`) are allowed only when `NODE_ENV !== 'production'`.
 - **Why it matters:** A controlled `Host` header can redirect GitHub OAuth callback to an attacker domain, stealing tokens.
-- **Status:** `[ ]`
+- **Status:** `[x] APP_HOSTNAME_ALLOWLIST in lib/auth/actions.ts pickOrigin`
 
-### 4. CSP `'unsafe-eval'` removed in production
+### 4. CSP `'unsafe-eval'` removed in production [x]
 - **Reference:** ADR-49
 - **Verify:** `middleware.ts` CSP header includes `'unsafe-eval'` only when `NODE_ENV !== 'production'`. Production response includes the stricter CSP (verify via curl).
 - **Why it matters:** `'unsafe-eval'` is an XSS amplifier and is not required by Next.js in production.
-- **Status:** `[ ]`
+- **Status:** `[x] removed in production in middleware.ts`
 
-### 5. Sentry `beforeSend` automatic PII scrub
+### 5. Sentry `beforeSend` automatic PII scrub [x]
 - **Reference:** ADR-49
 - **Verify:** `lib/sentry.config.ts` defines `beforeSend` hook that strips `authorization` headers, `cookie` headers, and token-like patterns (`gho_*`, `ghu_*`, `ghs_*`, `Bearer *`) from breadcrumbs and exception messages. Unit test covers the scrubbing.
 - **Why it matters:** GitHub tokens / session cookies appearing in Sentry events are a credential leak vector.
-- **Status:** `[ ]`
+- **Status:** `[x] lib/sentry-scrub.ts shared module; beforeSend in all three sentry.*.config.ts files; tests/unit/sentry-scrub.test.ts`
 
-### 6. PostHog cookieless mode + URL masking
+### 6. PostHog cookieless mode + URL masking [x]
 - **Reference:** ADR-49, ADR-60
 - **Verify:** `lib/posthog.ts` initialization uses cookieless config (no `disable_cookie: false`). URL capture masks `/{username}` paths to `/[username]`. Form input masking enabled (`mask_all_text: true` or equivalent). `display_username` is not sent as an event property.
 - **Why it matters:** PII (username) ending up in analytics events without lawful basis is a GDPR issue.
-- **Status:** `[ ]`
+- **Status:** `[x] lib/posthog.ts disable_cookie + persistence=memory + sanitize_properties; tests/unit/posthog-sanitize.test.ts`
 
-### 7. `postgres-js` driver `prepare: false` for pooler
+### 7. `postgres-js` driver `prepare: false` for pooler [x]
 - **Reference:** ADR-51
 - **Verify:** `lib/db/client.ts` instantiates `postgres()` with `{ prepare: false }`. `DATABASE_URL` points to the transaction-mode pooler (port 6543).
 - **Why it matters:** Prepared statements with transaction-mode pooler cause errors that look like data corruption.
-- **Status:** `[ ]`
+- **Status:** `[x] verified in Phase 1; lib/db/client.ts`
 
-### 8. Drizzle queries use `withUserScope` helper
+### 8. Drizzle queries use `withUserScope` helper [x]
 - **Reference:** ADR-46
 - **Verify:** `lib/db/queries/_helpers.ts` exports `withUserScope(userId)`. All queries against `activities`, `territories`, `landmarks`, `email_sends`, `weekly_recaps`, `misclassification_feedback`, `sync_jobs` use this helper. Grep for direct table access without `user_id =` clause.
 - **Why it matters:** Drizzle bypasses RLS; forgotten user_id filter is a cross-user data leak.
-- **Status:** `[ ]`
+- **Status:** `[x] introduced in Phase 1; lib/db/queries/_helpers.ts`
 
-### 9. Unsubscribe token version claim
+### 9. Unsubscribe token version claim [x]
 - **Reference:** ADR-45, ADR-48
 - **Verify:** `lib/email/unsubscribe-token.ts` includes `version` claim in JWT payload. Server verifies against `UNSUBSCRIBE_TOKEN_VERSION` env var. Mismatch returns the expired-link page (M4.2).
 - **Why it matters:** Permanent tokens without revocation mechanism are a single point of failure if signing secret leaks.
-- **Status:** `[ ]`
+- **Status:** `[x] Phase 2 lib/email/unsubscribe-token.ts`
 
-### 10. Misclassification feedback rate limit
+### 10. Misclassification feedback rate limit [x]
 - **Reference:** ADR-40
 - **Verify:** `features/feedback/misclassification.ts` Server Action checks the user's 24h feedback count before INSERT. Limit: 5 per `user_id` per 24h. Inline UI error on limit hit.
 - **Why it matters:** Without rate limit, a user (or bot) can DB-spam misclassification rows.
-- **Status:** `[ ]`
+- **Status:** `[x] Phase 4 features/feedback/misclassification.ts`
 
 ## High priority (before broader launch)
 

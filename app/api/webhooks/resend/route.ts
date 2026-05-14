@@ -1,23 +1,29 @@
+import { Webhook } from 'svix'
 import { NextResponse } from 'next/server'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { emailSends } from '@/lib/db/schema/email-sends'
 import { users } from '@/lib/db/schema/users'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: Request): Promise<Response> {
   const secret = process.env.RESEND_WEBHOOK_SECRET
-  if (secret) {
-    const signature = req.headers.get('svix-signature') ?? req.headers.get('x-resend-signature')
-    if (!signature || signature !== secret) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  if (!secret) return NextResponse.json({ ok: false, reason: 'no_secret' }, { status: 500 })
+
+  const rawBody = await req.text()
+  const svixHeaders = {
+    'svix-id': req.headers.get('svix-id') ?? '',
+    'svix-timestamp': req.headers.get('svix-timestamp') ?? '',
+    'svix-signature': req.headers.get('svix-signature') ?? '',
   }
 
   let body: Record<string, unknown>
   try {
-    body = await req.json()
+    const wh = new Webhook(secret)
+    body = wh.verify(rawBody, svixHeaders) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ ok: false, reason: 'invalid_signature' }, { status: 401 })
   }
 
   if (body.type !== 'email.bounced') {

@@ -78,7 +78,9 @@
     {
       "phase": 10,
       "name": "security-hardening",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-15T08:32:11+0900",
+      "completed_at": "2026-05-15T08:40:00+0900"
     },
     {
       "phase": 11,

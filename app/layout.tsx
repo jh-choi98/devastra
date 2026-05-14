@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { Toaster } from 'sonner'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <Toaster theme="dark" position="bottom-right" />
         </Suspense>
+        <SpeedInsights />
       </body>
     </html>
   )

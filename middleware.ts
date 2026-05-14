@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { updateSession } from '@/lib/auth/middleware'
 
-const CSP = [
+const CSP_PARTS = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.posthog.com https://browser.sentry-cdn.com",
+  // 'unsafe-inline' kept for Next.js inline script bootstrap; nonce-based CSP is a post-launch upgrade.
+  // 'unsafe-eval' is required by Next.js in dev mode for HMR but NOT in production.
+  process.env.NODE_ENV === 'production'
+    ? "script-src 'self' 'unsafe-inline' https://*.posthog.com https://browser.sentry-cdn.com"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.posthog.com https://browser.sentry-cdn.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' https://avatars.githubusercontent.com data: blob:",
   "font-src 'self' data:",
@@ -12,7 +16,8 @@ const CSP = [
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-].join('; ')
+]
+const CSP = CSP_PARTS.join('; ')
 
 // Known social crawlers — allowed through rate limiting on OG routes
 const CRAWLER_UA = /Twitterbot|LinkedInBot|Discordbot|facebookexternalhit|Slackbot/i

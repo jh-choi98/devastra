@@ -29,6 +29,7 @@
     "@supabase/ssr": "^0",
     "@supabase/supabase-js": "^2",
     "@vercel/og": "^0",
+    "@vercel/speed-insights": "^2.0.0",
     "clsx": "^2",
     "drizzle-orm": "^0",
     "framer-motion": "^11",
@@ -44,6 +45,7 @@
     "server-only": "^0",
     "simplex-noise": "^4",
     "sonner": "^1",
+    "svix": "^1.93.0",
     "tailwind-merge": "^2",
     "zod": "^3"
   },
