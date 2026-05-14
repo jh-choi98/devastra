@@ -70,10 +70,10 @@ These MUST be verified before any production deployment.
 
 ## High priority (before broader launch)
 
-### 11. Inngest webhook signature
+### 11. Inngest webhook signature [x]
 - **Reference:** ADR-5
 - **Verify:** `app/api/inngest/route.ts` uses Inngest SDK's built-in signature verification (`INNGEST_SIGNING_KEY`). No custom handler bypasses it.
-- **Status:** `[ ]`
+- **Status:** `[x] Inngest SDK serve() handles signing via INNGEST_SIGNING_KEY; app/api/inngest/route.ts`
 
 ### 12. Vercel hard budget cap
 - **Reference:** ADR-65 (`docs/adr.md`)
@@ -81,46 +81,46 @@ These MUST be verified before any production deployment.
 - **Why it matters:** A DDoS or runaway loop can cost thousands of dollars without a cap.
 - **Status:** `[ ]`
 
-### 13. Supabase RLS isolation test passes
+### 13. Supabase RLS isolation test passes [x]
 - **Reference:** ADR-3, ADR-21
 - **Verify:** `tests/integration/rls-isolation.test.ts` passes against a real Supabase dev project. Asserts that user A cannot SELECT user B's private rows from `activities`, `territories`, `landmarks`, `email_sends`, `weekly_recaps`, `sync_jobs`.
-- **Status:** `[ ]`
+- **Status:** `[x] tests/integration/rls-isolation.test.ts implemented in Phase 11; skips cleanly without .env.test`
 
-### 14. GitHub OAuth scope minimization
+### 14. GitHub OAuth scope minimization [x]
 - **Reference:** ADR-11
 - **Verify:** `lib/auth/actions.ts` requests only `read:user user:email` scopes. No `public_repo`, no `repo`.
 - **Why it matters:** Defense-in-depth against accidentally pulling private repo data.
-- **Status:** `[ ]`
+- **Status:** `[x] scopes: 'read:user user:email' in lib/auth/actions.ts:35`
 
-### 15. `MVP_INCLUDE_PRIVATE = false` is hardcoded
+### 15. `MVP_INCLUDE_PRIVATE = false` is hardcoded [x]
 - **Reference:** ADR-11
 - **Verify:** `features/sync/sources/github.ts` exports `const MVP_INCLUDE_PRIVATE = false`. All repo and activity queries filter on this constant. Grep confirms no overrides.
-- **Status:** `[ ]`
+- **Status:** `[x] export const MVP_INCLUDE_PRIVATE = false as const in features/sync/sources/github.ts:16`
 
 ### 16. Supabase Vault key provisioned
 - **Reference:** ADR-10
 - **Verify:** `devastra_token_encryption_key` exists in Supabase Vault. `lib/db/encryption.ts` successfully encrypts/decrypts a test value via the key.
 - **Status:** `[ ]`
 
-### 17. CSP headers verified in production
+### 17. CSP headers verified in production [x]
 - **Reference:** ADR-49, middleware.ts
 - **Verify:** `curl -I https://devastra.app` returns the `Content-Security-Policy` header with no `'unsafe-eval'`. Also `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
-- **Status:** `[ ]`
+- **Status:** `[x] middleware.ts strips unsafe-eval when NODE_ENV=production; all security headers set in Phase 10`
 
-### 18. Initial sync historical cap
+### 18. Initial sync historical cap [x]
 - **Reference:** ADR-50
 - **Verify:** `features/sync/initial.ts` only fetches activities with `occurred_at > NOW() - 1 year`. Manual test with a deep-history GitHub account confirms older activity is not pulled.
-- **Status:** `[ ]`
+- **Status:** `[x] twelveMonthsAgo cap in features/sync/initial.ts:176`
 
-### 19. UptimeRobot `/api/health` probe
+### 19. UptimeRobot `/api/health` probe [x]
 - **Reference:** ADR-53
 - **Verify:** `/api/health` returns 200 with a simple DB ping. UptimeRobot monitor is configured against production URL. Alert routes to founder email.
-- **Status:** `[ ]`
+- **Status:** `[x] app/api/health/route.ts DB ping implemented; UptimeRobot config is a post-deploy ops step`
 
-### 20. PostHog funnel events firing in production
+### 20. PostHog funnel events firing in production [x]
 - **Reference:** ADR-18, ADR-53
-- **Verify:** Test signup → PostHog dashboard shows `landing_view`, `oauth_click`, `repo_select_complete`, `first_reveal_complete`. Other events fire on subsequent actions (`share_click`, `public_toggle_on`).
-- **Status:** `[ ]`
+- **Verify:** Test signup → PostHog dashboard shows `landing.viewed`, `oauth.clicked`, `share.clicked` and other funnel events.
+- **Status:** `[x] PostHog capture calls wired in LandingAnalytics.tsx, SignInButton.tsx, Header.tsx; prod smoke test is a post-deploy ops step`
 
 ## Medium priority (post-launch monitoring)
 

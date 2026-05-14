@@ -1,6 +1,6 @@
 # Tech Catalog — DevAstra
 
-**Scope of this doc:** the 58-entry tech catalog that drives the classifier in `features/territories/tech-catalog.ts`. This file is the source of truth. The TypeScript constant must match it exactly. See `docs/code-architecture.md` §Features → territories for how the classifier consumes this catalog. See `docs/screens.md` §C.4 Star visual for how `display_name` and `{x, y}` are rendered.
+**Scope of this doc:** the 50-entry tech catalog that drives the classifier in `features/territories/tech-catalog.ts`. This file is the source of truth. The TypeScript constant must match it exactly. See `docs/code-architecture.md` §Features → territories for how the classifier consumes this catalog. See `docs/screens.md` §C.4 Star visual for how `display_name` and `{x, y}` are rendered.
 
 **Post-pivot naming:** `display_name` is the plain technology name (e.g. `React`, `Docker`, `Postgres`) — no medieval/architectural metaphor (`Forge`, `Bastion`, etc.). The constellation renderer uses this string as the star label.
 
@@ -137,7 +137,7 @@ In the constellation renderer, each cluster's label uses a short neutral name (n
 
 A single activity may produce multiple `tech_key` values. For example, a commit that adds `src/api/auth.ts` and touches `package.json` with `express` added as a dependency would produce: `typescript`, `nodejs`, `express` — all three in one pass. This is by design (see `docs/adr.md` ADR-2 and `docs/data-schema.md` §Activity_Territories).
 
-When implementing the classifier, evaluate all 58 rules against each activity and emit one `ClassificationResult` per matched `tech_key`.
+When implementing the classifier, evaluate all 50 rules against each activity and emit one `ClassificationResult` per matched `tech_key`.
 
 ---
 
@@ -153,7 +153,7 @@ When implementing the classifier, evaluate all 58 rules against each activity an
 4. **Avoid edge collision.** Stars at `x ∈ {0, 1}` or `y ∈ {0, 1}` may clip into adjacent cluster bounds at narrow viewports. Keep the safe area `[0.1, 0.9]`.
 5. **Connection-line clarity.** MST among lit stars must produce non-crossing or minimally crossing lines for common skill combinations (e.g. `typescript` + `react` + `nextjs` should form a clean triangle).
 
-When `x` or `y` is `—` (em-dash), the renderer falls back to deterministic hash-based placement keyed on `tech_key`. The MVP launch goal is to fill all 58 positions by hand before launch.
+When `x` or `y` is `—` (em-dash), the renderer falls back to deterministic hash-based placement keyed on `tech_key`. The MVP launch goal is to fill all 50 positions by hand before launch.
 
 ---
 

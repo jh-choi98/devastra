@@ -6,7 +6,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'DevAstra',
-  description: 'Your GitHub activity as a living world map.',
+  description: 'A developer skill constellation that lights up as you code.',
 }
 
 export default function RootLayout({

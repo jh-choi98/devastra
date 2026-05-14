@@ -62,7 +62,7 @@ describe('change-username — mock DB tests', () => {
 
     const { changeUsername } = await import('@/app/(authenticated)/settings/_actions')
 
-    await expect(changeUsername({ username: 'admin' })).rejects.toThrow('This name is reserved.')
+    await expect(changeUsername('admin')).rejects.toThrow('This name is reserved.')
   })
 
   it('allows user whose github_login is "admin" to claim "admin"', async () => {
@@ -93,10 +93,10 @@ describe('change-username — mock DB tests', () => {
     const { changeUsername } = await import('@/app/(authenticated)/settings/_actions')
 
     // Should not throw (user with github_login === 'admin' can use 'admin')
-    await expect(changeUsername({ username: 'admin' })).resolves.toBeUndefined()
+    await expect(changeUsername('admin')).resolves.toBeUndefined()
   })
 
-  it('throws "This name is taken." on unique constraint violation', async () => {
+  it('throws "This name is taken." when another user already has the username', async () => {
     const mockUser = {
       id: 'user-c',
       githubLogin: 'charlie',
@@ -108,15 +108,14 @@ describe('change-username — mock DB tests', () => {
       requireUser: vi.fn().mockResolvedValue(mockUser),
     }))
 
-    const uniqueError = new Error('duplicate key value violates unique constraint (23505)')
-    const mockUpdateDb = vi.fn().mockReturnValue({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockRejectedValue(uniqueError),
-      }),
-    })
+    const mockSelectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([{ id: 'other-user-id' }]),
+    }
 
     vi.doMock('@/lib/db/client', () => ({
-      db: { update: mockUpdateDb },
+      db: { select: vi.fn().mockReturnValue(mockSelectChain) },
     }))
     vi.doMock('@/lib/db/queries/users', () => ({
       updateUserField: vi.fn(),
@@ -124,7 +123,7 @@ describe('change-username — mock DB tests', () => {
 
     const { changeUsername } = await import('@/app/(authenticated)/settings/_actions')
 
-    await expect(changeUsername({ username: 'taken-name' })).rejects.toThrow('This name is taken.')
+    await expect(changeUsername('taken-name')).rejects.toThrow('This name is taken.')
   })
 })
 

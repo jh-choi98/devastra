@@ -92,7 +92,9 @@
     {
       "phase": 12,
       "name": "final-polish",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-15T08:48:05+0900",
+      "completed_at": "2026-05-15T08:58:00+0900"
     }
   ]
 }

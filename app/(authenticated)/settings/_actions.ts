@@ -97,9 +97,10 @@ export async function changeUsername(newUsername: string): Promise<void> {
   const user = await requireUser()
   const lower = newUsername.toLowerCase()
   const result = await checkUsernameAvailable(lower)
-  if (result.kind !== 'available') {
-    throw new Error(`Username change rejected: ${result.kind}`)
-  }
+  if (result.kind === 'taken') throw new Error('This name is taken.')
+  if (result.kind === 'reserved') throw new Error('This name is reserved.')
+  if (result.kind === 'invalid') throw new Error('Username is invalid.')
+  if (result.kind !== 'available') throw new Error('Username unavailable.')
   if (lower === user.displayUsername) return
 
   // Atomic: insert old username into history, then update users

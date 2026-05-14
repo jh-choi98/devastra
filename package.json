@@ -1,7 +1,8 @@
 {
-  "name": "devatlas",
+  "name": "devastra",
   "version": "0.1.0",
   "private": true,
+  "description": "A developer skill constellation that lights up as you code.",
   "engines": {
     "node": ">=20"
   },

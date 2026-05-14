@@ -8,7 +8,7 @@ vi.mock('@/lib/db/queries/users', () => ({
   getUserById: vi.fn(),
 }))
 
-import { GET } from '@/app/api/auth/callback/route'
+import { GET } from '@/app/auth/callback/route'
 import { createServerClient } from '@/lib/auth/supabase-server'
 import { getUserById } from '@/lib/db/queries/users'
 
