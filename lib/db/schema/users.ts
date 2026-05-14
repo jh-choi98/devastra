@@ -22,5 +22,12 @@ export const users = pgTable('users', {
   lastEventId: text('last_event_id'),
   lastIncrementalSyncAt: timestamp('last_incremental_sync_at', { withTimezone: true }),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  // NEW — onboarding hints (ADR-41)
+  clusterClickHintSeen: boolean('cluster_click_hint_seen').notNull().default(false),
+  shareHintSeen: boolean('share_hint_seen').notNull().default(false),
+  recapDiffHintSeen: boolean('recap_diff_hint_seen').notNull().default(false),
+  // NEW — first-ever star cinematic (ADR-38)
+  firstStarCinematicSeen: boolean('first_star_cinematic_seen').notNull().default(false),
+  firstStarCinematicPending: boolean('first_star_cinematic_pending').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
