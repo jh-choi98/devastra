@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Terms of Service — DevAtlas',
+  title: 'Terms of Service — DevAstra',
 }
 
 export default function TermsPage() {
@@ -11,8 +11,8 @@ export default function TermsPage() {
 
         <h2>Service description</h2>
         <p>
-          DevAtlas is a developer portfolio tool that visualizes your public GitHub activity as an
-          interactive world map. By signing in with GitHub, you authorize DevAtlas to read your
+          DevAstra is a developer portfolio tool that visualizes your public GitHub activity as an
+          interactive world map. By signing in with GitHub, you authorize DevAstra to read your
           public repository metadata, commit counts, and pull request and issue counts, which we
           use to generate and display your map.
         </p>
@@ -20,15 +20,15 @@ export default function TermsPage() {
         <h2>GitHub data usage</h2>
         <p>
           We access GitHub data only as authorized by your OAuth grant. We use this data solely
-          to provide the DevAtlas service to you. We do not resell GitHub data, share it with
+          to provide the DevAstra service to you. We do not resell GitHub data, share it with
           third parties for commercial purposes, or perform bulk exports of user data outside the
           service. Data access is limited to public repositories.
         </p>
 
         <h2>Acceptable use</h2>
-        <p>By using DevAtlas you agree not to:</p>
+        <p>By using DevAstra you agree not to:</p>
         <ul>
-          <li>Attempt to scrape, crawl, or bulk-download DevAtlas data or user profiles</li>
+          <li>Attempt to scrape, crawl, or bulk-download DevAstra data or user profiles</li>
           <li>Impersonate another user or claim a username that belongs to someone else</li>
           <li>Interfere with or disrupt the service or its infrastructure</li>
           <li>Use the service for any unlawful purpose or in violation of GitHub&apos;s terms</li>
@@ -44,14 +44,14 @@ export default function TermsPage() {
 
         <h2>Disclaimer of warranties</h2>
         <p>
-          DevAtlas is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo; without warranty of any kind, express
+          DevAstra is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo; without warranty of any kind, express
           or implied. We do not warrant that the service will be uninterrupted, error-free, or
           that any defects will be corrected. Your use of the service is at your sole risk.
         </p>
 
         <h2>Limitation of liability</h2>
         <p>
-          To the fullest extent permitted by law, DevAtlas and its operators shall not be liable
+          To the fullest extent permitted by law, DevAstra and its operators shall not be liable
           for any indirect, incidental, special, or consequential damages arising from your use
           of the service, even if we have been advised of the possibility of such damages.
         </p>
@@ -64,7 +64,7 @@ export default function TermsPage() {
 
         <h2>Changes to these terms</h2>
         <p>
-          We may update these terms from time to time. Continued use of DevAtlas after changes
+          We may update these terms from time to time. Continued use of DevAstra after changes
           are posted constitutes acceptance of the revised terms.
         </p>
 

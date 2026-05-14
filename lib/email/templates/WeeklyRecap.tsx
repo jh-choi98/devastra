@@ -26,13 +26,13 @@ export function WeeklyRecap({ recapId, username, highlights }: Props) {
   return (
     <Html lang="en">
       <Head />
-      <Preview>Your DevAtlas — this week</Preview>
+      <Preview>Your DevAstra — this week</Preview>
       <Body style={body}>
         <Container style={container}>
           <Img
             src={`https://devatlas.app/api/og/recap/${recapId}`}
             width="600"
-            alt={`@${username}'s weekly DevAtlas recap`}
+            alt={`@${username}'s weekly DevAstra recap`}
             style={{ width: '100%', borderRadius: '8px', display: 'block' }}
           />
 
@@ -58,7 +58,7 @@ export function WeeklyRecap({ recapId, username, highlights }: Props) {
                 Unsubscribe
               </Link>
               {' · '}
-              Sent by DevAtlas
+              Sent by DevAstra
             </Text>
           </Section>
         </Container>

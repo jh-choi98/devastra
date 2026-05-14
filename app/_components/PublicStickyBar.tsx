@@ -11,7 +11,7 @@ export function PublicStickyBar() {
           href="/"
           className="px-4 py-1.5 bg-white text-indigo-700 rounded-full font-semibold text-sm hover:bg-indigo-50 transition-colors shrink-0"
         >
-          Get your own DevAtlas →
+          Get your own DevAstra →
         </Link>
       </div>
     </div>

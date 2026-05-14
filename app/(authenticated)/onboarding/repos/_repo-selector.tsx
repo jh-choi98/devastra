@@ -53,7 +53,7 @@ export function RepoSelector({ repos }: RepoSelectorProps) {
       <div className="max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-white mb-2">Select your repositories</h1>
         <p className="text-zinc-400 text-sm mb-6">
-          Choose which repositories count toward your DevAtlas. All are included by default.
+          Choose which repositories count toward your DevAstra. All are included by default.
         </p>
 
         {repos.length > 20 && (

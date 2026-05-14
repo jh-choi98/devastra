@@ -46,7 +46,7 @@ export function DeleteAccountSection() {
       <ConfirmModal
         isOpen={isOpen}
         title="Delete your account?"
-        description="This will permanently delete your DevAtlas account and all your data. This cannot be undone."
+        description="This will permanently delete your DevAstra account and all your data. This cannot be undone."
         confirmLabel="Delete account"
         cancelLabel="Keep account"
         danger

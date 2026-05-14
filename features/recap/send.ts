@@ -38,7 +38,7 @@ export async function sendRecapEmail(opts: {
   if (!recap) return
 
   const emailType = hasActivity ? 'weekly_recap_active' : 'weekly_recap_empty'
-  const subject = 'Your DevAtlas — this week'
+  const subject = 'Your DevAstra — this week'
 
   let html: string
   if (hasActivity) {

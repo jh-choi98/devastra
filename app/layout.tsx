@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'DevAtlas',
+  title: 'DevAstra',
   description: 'Your GitHub activity as a living world map.',
 }
 

@@ -25,13 +25,13 @@ export function WeeklyRecapEmpty({ recapId, username }: Props) {
   return (
     <Html lang="en">
       <Head />
-      <Preview>Your DevAtlas — this week</Preview>
+      <Preview>Your DevAstra — this week</Preview>
       <Body style={body}>
         <Container style={container}>
           <Img
             src={heroSrc}
             width="600"
-            alt={`@${username}'s DevAtlas world`}
+            alt={`@${username}'s DevAstra world`}
             style={{ width: '100%', borderRadius: '8px', display: 'block' }}
           />
 
@@ -53,7 +53,7 @@ export function WeeklyRecapEmpty({ recapId, username }: Props) {
                 Unsubscribe
               </Link>
               {' · '}
-              Sent by DevAtlas
+              Sent by DevAstra
             </Text>
           </Section>
         </Container>

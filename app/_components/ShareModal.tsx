@@ -23,7 +23,7 @@ export function ShareModal({
 
   const profileUrl = `https://devatlas.app/${username}`
   const tweetText = encodeURIComponent(
-    `I'm building my developer world on DevAtlas. See my map →`,
+    `I'm building my developer world on DevAstra. See my map →`,
   )
 
   async function handleToggle() {
@@ -64,7 +64,7 @@ export function ShareModal({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between p-5 border-b border-slate-700">
-            <h2 className="text-lg font-semibold text-slate-100">Share your DevAtlas</h2>
+            <h2 className="text-lg font-semibold text-slate-100">Share your DevAstra</h2>
             <button
               onClick={onClose}
               className="p-1.5 rounded hover:bg-slate-700 transition-colors text-slate-400"
@@ -78,14 +78,14 @@ export function ShareModal({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`/api/og/profile/${username}?preview=1`}
-              alt="Your DevAtlas preview"
+              alt="Your DevAstra preview"
               className="w-full rounded-lg border border-slate-700 aspect-[1200/630] object-cover bg-slate-800"
             />
 
             {!publicState && (
               <div className="flex items-center justify-between bg-slate-800 rounded-lg p-4 border border-slate-600">
                 <div>
-                  <p className="text-slate-200 text-sm font-medium">Your DevAtlas is private</p>
+                  <p className="text-slate-200 text-sm font-medium">Your DevAstra is private</p>
                   <p className="text-slate-400 text-xs mt-0.5">Make it public to share with others</p>
                 </div>
                 <button

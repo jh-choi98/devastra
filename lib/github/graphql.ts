@@ -1,7 +1,7 @@
 import 'server-only'
 
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
-export const GITHUB_USER_AGENT = 'DevAtlas/0.1 (+https://devatlas.app)'
+export const GITHUB_USER_AGENT = 'DevAstra/0.1 (+https://devastra.app)'
 
 export class GitHubAuthError extends Error {
   constructor(message: string) {

@@ -1,23 +1,40 @@
-# CLAUDE.md — DevAtlas
+# CLAUDE.md — DevAstra
 
 Rules for any AI coding session in this repo. Read `/docs/` first, then treat this file as a
 compliance checklist. Not a tutorial.
 
 ## Before any non-trivial task
 
-Read all five docs in order:
-1. `/docs/prd.md` — what we build and why
-2. `/docs/flow.md` — user journeys and state transitions
-3. `/docs/data-schema.md` — entities, fields, constraints
-4. `/docs/code-architecture.md` — directory layout, layers, conventions, env vars
-5. `/docs/adr.md` — non-obvious decisions that constrain implementation
+Read all six docs in order:
+1. `/docs/prd.md` — what we build and why; the four value pillars
+2. `/docs/flow.md` — user journeys, state transitions, and sub-flows (A–K)
+3. `/docs/screens.md` — every screen and overlay with field/action specs
+4. `/docs/data-schema.md` — entities, fields, constraints, RLS
+5. `/docs/code-architecture.md` — directory layout, layers, conventions, env vars
+6. `/docs/adr.md` — non-obvious decisions that constrain implementation
 
-Also read `/docs/tech-catalog.md` before touching `features/territories/tech-catalog.ts`.
+Before touching `features/territories/tech-catalog.ts`, read `/docs/tech-catalog.md`.
+Before touching anything legal, read `/docs/legal/privacy.md` and `/docs/legal/terms.md`.
+Before launch, verify `/docs/security-checklist.md` items.
 
 ## Language policy
 
-All code, comments, identifiers, commit messages, and any new documentation must be in English.
+All code, comments, identifiers, commit messages, and documentation must be in English.
 Korean is acceptable only in conversational responses to the user — never in files committed to the repo.
+
+## Constellation UI vs internal DB naming
+
+The DB and feature code retain pre-pivot names: `territory`, `landmark`, `territory_type`. The product UI surface uses constellation language: cluster, star, brightness, expanded. **Do not rename DB columns.** When writing UI copy or component names, use constellation terms. When writing schema, queries, or domain code, use the existing names. The mapping (see `docs/screens.md` §C and §D):
+
+| DB / code | UI surface |
+|---|---|
+| `territories` table, `territory_type` | cluster, cluster domain |
+| `landmarks` table, `tech_key` | star, tech name |
+| `landmarks.weight` | brightness |
+| `landmarks.first_unlocked_at` | first lit |
+| `territories.stage` (1–5) | "expanded" verb; "Stage N" as secondary disclosure only |
+| `territories.growth_30d` | recent growth |
+| `territories.stage_changed_at` | recent expansion |
 
 ## Server-only discipline
 
@@ -29,16 +46,52 @@ Every file under the following paths MUST begin with `import 'server-only'` as i
 - `lib/og/` (all files)
 - `features/sync/` (all files)
 - `features/recap/` (all files)
+- `features/feedback/` (all files)
 - `features/territories/rules.ts`
+- `features/territories/scoring.ts`
+- `features/territories/classifier.ts`
+- `features/territories/star-positions.ts`
+- `features/territories/global-stats.ts`
 
 Client components under `app/_components/` MUST NOT import from any of these paths. The
 `server-only` package causes a build error on accidental client-side imports — do not remove it.
+
+## SPDX license headers (ADR-27, ADR-55)
+
+The following modules MUST begin with `// SPDX-License-Identifier: MIT` as the first line (above `server-only` if both apply):
+
+- `features/territories/classifier.ts`
+- `features/territories/tech-catalog.ts`
+- `features/territories/rules.ts`
+- `features/territories/scoring.ts`
+- `features/territories/registry.ts`
+- `features/territories/star-positions.ts`
+- `app/_components/Constellation/star-positions.ts`
+- Other `app/_components/Constellation/*` renderer files (per-file decision)
+
+All other code is proprietary (covered by `LICENSE-PROPRIETARY`). When in doubt about a new file, default to no SPDX header — it is proprietary.
+
+## RLS bypass and the user_id guard rail (ADR-46)
+
+`lib/db/client.ts` connects with `DATABASE_URL` (postgres role). **This bypasses RLS.** The application layer is the sole filter.
+
+All reads against per-user tables (`activities`, `territories`, `landmarks`, `email_sends`, `weekly_recaps`, `misclassification_feedback`, `sync_jobs`) MUST use `lib/db/queries/_helpers.ts` `withUserScope(userId)`. The helper enforces `WHERE user_id = $userId`. Direct table access without this scope is a security bug.
+
+Public-facing reads use the `users_public_view` (RLS-enforced).
 
 ## Schema as source of truth
 
 Drizzle schemas in `lib/db/schema/` are authoritative. `docs/data-schema.md` describes intent.
 If the two disagree, update the doc to match the code (not the other way around), then note the
 discrepancy in the PR description.
+
+## Migrations are add-only (ADR-51)
+
+New columns must have safe defaults; new tables are independent. No drops, no column renames, no type changes without an explicit user instruction and a dedicated PR. Rollback procedure is **code revert only** (ADR-56) — schema rollback requires a separate cleanup PR.
+
+`drizzle-kit migrate` runs manually against prod **before** code merge (ADR-57). Confirm `migration: applied` in the PR description before merging.
+
+`DATABASE_URL` = transaction-mode pooler (port 6543). `DIRECT_URL` = direct (port 5432), used only by `drizzle-kit`. The `postgres-js` driver requires `prepare: false` because transaction-mode pooler does not support session-bound prepared statements.
 
 ## Source-agnostic columns
 
@@ -51,28 +104,19 @@ discrepancy in the PR description.
 
 `activities.raw` must contain ONLY: `file_paths`, `additions`, `deletions`, `github_url`.
 
-Never write commit messages, diffs, PR titles, PR bodies, or any other prose into `raw`. PR titles
-for the territory drawer are fetched on-demand from the GitHub API at view time — they are never
-stored locally. Violating this silently grows the breach surface and is hard to undo.
+Never write commit messages, diffs, PR titles, PR bodies, or any other prose into `raw`. PR titles for the cluster drawer are fetched on-demand from the GitHub API at view time — they are never stored locally. Violating this silently grows the breach surface and is hard to undo.
 
 ## Private repo guard (ADR-11)
 
-`MVP_INCLUDE_PRIVATE = false` is hardcoded in `features/sync/sources/github.ts`. Never remove or
-flip this constant without an explicit user instruction and a dedicated PR that audits every
-affected code path. The OAuth flow intentionally requests only `read:user` + `user:email` — do not
-expand scopes without the same deliberate review.
+`MVP_INCLUDE_PRIVATE = false` is hardcoded in `features/sync/sources/github.ts`. Never remove or flip this constant without an explicit user instruction and a dedicated PR that audits every affected code path. The OAuth flow intentionally requests only `read:user` + `user:email` — do not expand scopes without the same deliberate review.
 
 ## Time zone discipline (ADR-14)
 
-All DB columns store UTC. All aggregation windows (`growth_30d`, `week_start`) are computed in UTC.
-Time zone conversion happens at the display layer only. Do not add per-user tz awareness to queries
-or Inngest cron triggers.
+All DB columns store UTC. All aggregation windows (`growth_30d`, `week_start`) are computed in UTC. Time zone conversion happens at the display layer only. Do not add per-user tz awareness to queries or Inngest cron triggers.
 
 ## Idempotency (ADR-5)
 
-Every Inngest step must be safe to re-run. Use UPSERT (`onConflictDoUpdate`) on all writes to
-`activities`, `repositories`, `territories`, `landmarks`, `weekly_recaps`. Unique constraints in
-`docs/data-schema.md` define the idempotency keys — do not bypass them with INSERT-then-ignore.
+Every Inngest step must be safe to re-run. Use UPSERT (`onConflictDoUpdate`) on all writes to `activities`, `repositories`, `territories`, `landmarks`, `weekly_recaps`. Unique constraints in `docs/data-schema.md` define the idempotency keys — do not bypass them with INSERT-then-ignore.
 
 ## Dependency direction
 
@@ -80,49 +124,81 @@ Every Inngest step must be safe to re-run. Use UPSERT (`onConflictDoUpdate`) on 
 app/  →  features/  →  lib/  →  (external services)
 ```
 
-`app/` may import `lib/` and `features/`. `features/` may import `lib/`. Nothing imports from
-`app/`. Client components (`app/_components/`) may only import `lib/` modules that are not
-`server-only`. They never import from `features/`.
+`app/` may import `lib/` and `features/`. `features/` may import `lib/`. Nothing imports from `app/`. Client components (`app/_components/`) may only import `lib/` modules that are not `server-only`. They never import from `features/`.
+
+## Test/mock route guards (ADR-47)
+
+Every file under `app/api/test/*` (and any other dev-only routes) MUST begin with:
+
+```ts
+import { notFound } from 'next/navigation'
+if (process.env.NODE_ENV === 'production') notFound()
+```
+
+This is a security control, not a style preference. A leaked mock-OAuth route in production allows arbitrary user impersonation.
 
 ## Cross-doc consistency
 
-When you add or change a field, event name, file path, or invariant described in one doc, search
-the other four docs for references and update them in the same PR. Stale cross-references in docs
-are a primary source of future implementation bugs.
+When you add or change a field, event name, file path, or invariant described in one doc, search the other six docs for references and update them in the same PR. Stale cross-references in docs are a primary source of future implementation bugs.
+
+## Compass principles (`memory/project_devastra_compass.md`)
+
+Every UI / copy decision is checked against the four value pillars:
+
+1. **Growth feeling** — "what brightened", not "how many commits"
+2. **Portfolio value** — shareable identity
+3. **Motivation through collection** — without rankings
+4. **Self-understanding** — users see their actual habits
+
+Forbidden:
+
+- "Level up!", "+XP", "Achievement unlocked!" copy
+- Toasts for star unlocks (use strip + pulse instead)
+- "You are top N%" framing (rare star labels describe the *star*, not the person)
+- Decorative stars that don't map to a `tech_key`
+- Ambient animations not tied to data change
+- LLM-generated narrative in core flow
+- Modal alerts that block the constellation
+- Banners that hide the cached constellation when sync fails
 
 ## Naming conventions (summary)
 
-- Files: kebab-case (`weekly-recap.ts`); React components PascalCase (`LivingMap.tsx`)
+- Files: kebab-case (`weekly-recap.ts`); React components PascalCase (`Constellation.tsx`)
 - DB identifiers: `snake_case` for columns and tables
 - Inngest events: `<domain>/<action>.<variant>` (e.g. `sync/initial.requested`)
 - Env vars: `SCREAMING_SNAKE_CASE`; never imported in client components
 
 ## Tech catalog
 
-`features/territories/tech-catalog.ts` MUST match `/docs/tech-catalog.md` exactly. If you add or
-change a `tech_key`, update both files in the same commit. The doc is the source of truth for
-naming and detection logic; the TypeScript file is the implementation.
+`features/territories/tech-catalog.ts` MUST match `/docs/tech-catalog.md` exactly. If you add or change a `tech_key`, update both files in the same commit. The doc is the source of truth for naming, detection logic, and `{x, y}` star position.
 
 ## Territory types
 
 The six valid `territory_type` values are:
 `frontend_land` | `backend_fortress` | `data_pipeline_zone` | `testing_lab` | `devops_harbor` | `docs_library`
 
-These appear in `activity_territories`, `territories`, and `landmarks`. Never introduce a seventh
-without updating schema, catalog, map renderer, and this file.
+These appear in `activity_territories`, `territories`, and `landmarks`. Never introduce a seventh without updating schema, catalog, constellation renderer, and this file.
 
-## Stage thresholds
+UI labels for these are short and neutral: Frontend / Backend / Data / Testing / DevOps / Docs.
 
-`[0, 50, 200, 500, 1500]` on `territories.total_weight` → stages 1–5. Defined in
-`features/territories/rules.ts`. Never duplicate these literals elsewhere; import from that file.
+## Stage thresholds (ADR-2, ADR-37)
+
+`[0, 50, 200, 500, 1500]` on `territories.total_weight` → stages 1–5. Defined in `features/territories/rules.ts`. Never duplicate these literals elsewhere; import from that file. UI surfaces stage transitions as "cluster expanded" (verb), not "Stage N up".
 
 ## Landmark unlock threshold
 
-Weight ≥ 5 per `tech_key` unlocks a landmark (`landmarks.first_unlocked_at` set once). This is
-also defined in `features/territories/rules.ts`.
+Weight ≥ 5 per `tech_key` unlocks a landmark / lights a star (`landmarks.first_unlocked_at` set once). Defined in `features/territories/rules.ts`.
+
+## First-ever star cinematic detection (ADR-38)
+
+Detection happens in `features/sync/cinematic-detection.ts` during sync. Sets `users.first_star_cinematic_pending = true` when `lit_star_count` transitions 0 → ≥1. Client checks the flag on `/` page load; cinematic plays once; flag transitions to `pending = false, seen = true`. **Do not infer cinematic eligibility from current state** — only the pending flag triggers it.
+
+## Long-absence threshold (ADR-39)
+
+`NOW() - users.last_login_at > 28 days` triggers the welcome-back overlay on the next authenticated `/` page render. `last_login_at` is updated on every authenticated `/` page render (`/` page only, not any authenticated page).
 
 ## Open questions
 
-- Resend bounce webhook: exact route path and secret-header verification not yet decided.
-- Supabase Vault key rotation procedure: documented as manual for MVP; automation deferred.
-- Reserved username list: lives in `lib/utils/reserved-usernames.ts` (to be created in Phase 3).
+- Reserved username list: lives in `lib/utils/reserved-usernames.ts`.
+- Visual design pass: tech catalog `{x, y}` coordinates + cluster center positions per viewport + spark/ripple/aura motion keyframes.
+- Initial implementation PR order: see plan tracked in session memory.

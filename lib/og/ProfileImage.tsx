@@ -40,7 +40,7 @@ export function renderProfileImage(data: ProfileImageData): ImageResponse {
             marginBottom: '40px',
           }}
         >
-          <span style={{ color: '#64748b', fontSize: '22px', fontWeight: 600 }}>DevAtlas</span>
+          <span style={{ color: '#64748b', fontSize: '22px', fontWeight: 600 }}>DevAstra</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {avatarUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -160,8 +160,8 @@ export function renderPrivatePlaceholder(): ImageResponse {
           gap: '16px',
         }}
       >
-        <span style={{ color: '#64748b', fontSize: '32px', fontWeight: 600 }}>DevAtlas</span>
-        <span style={{ color: '#475569', fontSize: '20px' }}>This DevAtlas is private</span>
+        <span style={{ color: '#64748b', fontSize: '32px', fontWeight: 600 }}>DevAstra</span>
+        <span style={{ color: '#475569', fontSize: '20px' }}>This DevAstra is private</span>
       </div>
     ),
     { width: 1200, height: 630 },

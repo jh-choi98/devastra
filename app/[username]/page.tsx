@@ -15,17 +15,17 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
   const ogImageUrl = `/api/og/profile/${username}`
 
   return {
-    title: `@${username} — DevAtlas`,
-    description: `See ${username}'s developer world map on DevAtlas`,
+    title: `@${username} — DevAstra`,
+    description: `See ${username}'s developer world map on DevAstra`,
     openGraph: {
-      title: `@${username} — DevAtlas`,
-      description: `See ${username}'s developer world map on DevAtlas`,
+      title: `@${username} — DevAstra`,
+      description: `See ${username}'s developer world map on DevAstra`,
       images: [{ url: ogImageUrl, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `@${username} — DevAtlas`,
-      description: `See ${username}'s developer world map on DevAtlas`,
+      title: `@${username} — DevAstra`,
+      description: `See ${username}'s developer world map on DevAstra`,
       images: [ogImageUrl],
     },
   }

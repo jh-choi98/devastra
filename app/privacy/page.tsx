@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Privacy Policy — DevAtlas',
+  title: 'Privacy Policy — DevAstra',
 }
 
 export default function PrivacyPage() {
@@ -28,14 +28,14 @@ export default function PrivacyPage() {
 
         <h2>How we use your data</h2>
         <p>
-          Your GitHub activity metadata is used exclusively to build and display your DevAtlas
+          Your GitHub activity metadata is used exclusively to build and display your DevAstra
           map, generate your weekly recap email (if enabled), and produce shareable social preview
           images. We do not use your data for advertising, profiling beyond product analytics, or
-          any purpose outside the DevAtlas service.
+          any purpose outside the DevAstra service.
         </p>
 
         <h2>Sub-processors</h2>
-        <p>We rely on the following third-party services to operate DevAtlas:</p>
+        <p>We rely on the following third-party services to operate DevAstra:</p>
         <ul>
           <li><strong>Supabase</strong> — database, authentication, and real-time subscriptions</li>
           <li><strong>Vercel</strong> — hosting and serverless compute</li>

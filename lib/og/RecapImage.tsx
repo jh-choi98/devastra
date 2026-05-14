@@ -34,7 +34,7 @@ export function renderPrivatePlaceholder(): ImageResponse {
           gap: '16px',
         }}
       >
-        <span style={{ color: '#64748b', fontSize: '32px', fontWeight: 600 }}>DevAtlas</span>
+        <span style={{ color: '#64748b', fontSize: '32px', fontWeight: 600 }}>DevAstra</span>
         <span style={{ color: '#475569', fontSize: '20px' }}>Weekly Recap</span>
       </div>
     ),
@@ -81,7 +81,7 @@ export function renderRecapImage(data: RecapImageData): ImageResponse {
           }}
         >
           <span style={{ color: '#64748b', fontSize: '22px', fontWeight: 600 }}>
-            DevAtlas Weekly Recap
+            DevAstra Weekly Recap
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {avatarUrl && (

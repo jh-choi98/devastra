@@ -29,7 +29,7 @@ export function Header({
     <>
       <header className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-700 shrink-0">
         <Link href="/" className="text-slate-100 font-bold text-lg hover:text-white transition-colors">
-          DevAtlas
+          DevAstra
         </Link>
 
         <div className="flex items-center gap-3">

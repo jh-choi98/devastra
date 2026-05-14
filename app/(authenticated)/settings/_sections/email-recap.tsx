@@ -32,7 +32,7 @@ export function EmailRecapSection({ initial }: EmailRecapSectionProps) {
         <div>
           <h2 className="text-base font-semibold text-white">Weekly recap email</h2>
           <p className="text-sm text-zinc-400 mt-1">
-            Receive a weekly summary of your DevAtlas activity every Sunday.
+            Receive a weekly summary of your DevAstra activity every Sunday.
           </p>
         </div>
         <button

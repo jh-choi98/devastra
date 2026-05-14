@@ -1,13 +1,13 @@
 #!/usr/bin/env tsx
 /**
- * Verification spike: exercises the GitHub API paths used by DevAtlas.
+ * Verification spike: exercises the GitHub API paths used by DevAstra.
  * Run with a real PAT to confirm rate limits, response shapes, and auth.
  *
  * IMPORTANT: Raw response bodies are never printed (ADR-9 compliance — they may
  * contain commit messages or other prose that must not be persisted or logged).
  */
 
-const USER_AGENT = 'DevAtlas/0.1 (+https://devatlas.app)'
+const USER_AGENT = 'DevAstra/0.1 (+https://devatlas.app)'
 
 if (process.argv.includes('--help') || !process.env.GITHUB_TEST_TOKEN) {
   console.log('Usage: GITHUB_TEST_TOKEN=<token> npx tsx scripts/spike-github-api.ts')
@@ -58,7 +58,7 @@ async function graphqlQuery<T>(query: string, variables?: Record<string, unknown
 }
 
 async function main() {
-  console.log('=== DevAtlas GitHub API Spike ===\n')
+  console.log('=== DevAstra GitHub API Spike ===\n')
 
   // Step 1: GET /user
   console.log('1. GET /user')

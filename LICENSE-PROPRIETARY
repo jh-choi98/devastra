@@ -1,0 +1,57 @@
+DevAstra Proprietary License
+
+Copyright (c) 2026 DevAstra. All rights reserved.
+
+This license applies to all files in this repository that do NOT begin with
+the SPDX-License-Identifier: MIT header on their first line. Files carrying
+that header are governed by LICENSE-MIT.
+
+1. License grant
+
+   Subject to the terms below, the copyright holder grants you a limited,
+   non-exclusive, non-transferable, revocable license to view this source
+   code for the sole purposes of (a) security review, (b) academic study,
+   and (c) personal evaluation.
+
+2. Restrictions
+
+   You may NOT:
+   - copy, modify, distribute, sublicense, or sell this code or any
+     derivative work;
+   - host, operate, or offer this code (in original or modified form) as
+     a hosted service to third parties;
+   - remove, alter, or obscure any copyright, license, or attribution
+     notices;
+   - use this code to train machine-learning models or as input to
+     code-generation systems;
+   - use the DevAstra name, logo, or any associated brand mark, except
+     when accurately citing this repository for the purposes above.
+
+3. Reservation of rights
+
+   All rights not expressly granted above are reserved. No implied license
+   is granted by estoppel or otherwise.
+
+4. No warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+5. Termination
+
+   This license terminates automatically upon any breach. Upon termination,
+   you must cease all use and destroy any copies of the code in your
+   possession.
+
+6. Future relicensing
+
+   The copyright holder reserves the right to relicense any portion of this
+   code under a different license at any time, without notice.
+
+For inquiries regarding commercial licensing or other use beyond the scope
+of this license, contact: hello@devastra.app
