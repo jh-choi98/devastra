@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Constellation } from '@/app/_components/Constellation/Constellation'
 import { ClusterDrawer } from '@/app/_components/ClusterDrawer/ClusterDrawer'
+import { PublicStickyBar } from '@/app/_components/PublicStickyBar'
 import { getPublicTech } from '@/features/territories/tech-catalog-public'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { ClusterDrawerData } from '@/app/_components/ClusterDrawer/ClusterDrawer'
@@ -24,7 +25,6 @@ function buildVisitorDrawerData(
       weight: lm.weight,
       firstUnlockedAt: lm.firstUnlockedAt,
       topContributingRepo: null,
-      // Visitor: no detection rule details or repo breakdown exposed
       matchedRuleKinds: [] as string[],
       contributingRepos: [] as Array<{ owner: string; name: string; repoId: string; matchCount: number }>,
       activity: { commits: 0, prs: 0, issues: 0 },
@@ -42,23 +42,38 @@ function buildVisitorDrawerData(
 export function PublicProfileMap({
   mapData,
   ownerUsername,
+  drawerVariant,
+  showStickyBar,
 }: {
   mapData: ConstellationData
   ownerUsername?: string
+  drawerVariant: 'owner' | 'visitor'
+  showStickyBar: boolean
 }) {
   const [drawer, setDrawer] = useState<{
     cluster: TerritoryType
     focusedTechKey?: string
     drawerData: ClusterDrawerData | null
   } | null>(null)
+  const [pulse, setPulse] = useState(false)
+  const [hasOpenedDrawer, setHasOpenedDrawer] = useState(false)
+
+  const triggerPulse = useCallback(() => {
+    if (!hasOpenedDrawer && showStickyBar) {
+      setHasOpenedDrawer(true)
+      setPulse(true)
+      setTimeout(() => setPulse(false), 1000)
+    }
+  }, [hasOpenedDrawer, showStickyBar])
 
   const handleClusterClick = useCallback(
     (type: TerritoryType) => {
       const drawerData = buildVisitorDrawerData(mapData, type)
       if (!drawerData) return
       setDrawer({ cluster: type, drawerData })
+      triggerPulse()
     },
-    [mapData],
+    [mapData, triggerPulse],
   )
 
   const handleStarClick = useCallback(
@@ -66,8 +81,9 @@ export function PublicProfileMap({
       const drawerData = buildVisitorDrawerData(mapData, type)
       if (!drawerData) return
       setDrawer({ cluster: type, focusedTechKey: tech_key, drawerData })
+      triggerPulse()
     },
-    [mapData],
+    [mapData, triggerPulse],
   )
 
   const handleClose = useCallback(() => setDrawer(null), [])
@@ -84,10 +100,13 @@ export function PublicProfileMap({
           data={drawer.drawerData}
           userId={mapData.userId}
           focusedTechKey={drawer.focusedTechKey}
-          variant="visitor"
+          variant={drawerVariant}
           ownerUsername={ownerUsername}
           onClose={handleClose}
         />
+      )}
+      {showStickyBar && ownerUsername && (
+        <PublicStickyBar inviterUsername={ownerUsername} pulse={pulse} />
       )}
     </div>
   )

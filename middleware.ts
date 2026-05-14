@@ -71,6 +71,7 @@ export async function middleware(req: NextRequest) {
     !pathname.startsWith('/dev') &&
     !pathname.startsWith('/privacy') &&
     !pathname.startsWith('/terms') &&
+    !pathname.startsWith('/rate-limited') &&
     pathname !== '/' &&
     pathname.split('/').length === 2 &&
     pathname.split('/')[1] !== ''
@@ -78,10 +79,7 @@ export async function middleware(req: NextRequest) {
   if (isProfileRoute && !isCrawler) {
     const ip = getClientIp(req)
     if (isRateLimited(ip, 60, 60_000)) {
-      return new NextResponse('Too Many Requests', {
-        status: 429,
-        headers: { 'Retry-After': '60' },
-      })
+      return NextResponse.redirect(new URL('/rate-limited', req.url), 303)
     }
   }
 

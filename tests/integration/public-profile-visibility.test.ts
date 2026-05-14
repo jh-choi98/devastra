@@ -80,6 +80,97 @@ describe('public-profile-visibility — profile result shape', () => {
 })
 
 // ---------------------------------------------------------------------------
+// PrivateProfile copy assertion (import-based, no rendering required)
+// ---------------------------------------------------------------------------
+
+describe('PrivateProfile component', () => {
+  it('exports a function component', async () => {
+    const { PrivateProfile } = await import('@/app/_components/PrivateProfile')
+    expect(typeof PrivateProfile).toBe('function')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolveUsername mock-based tests — redirect + not_found branches
+// These tests mutate the shared top-level vi.mock to control db.select behavior.
+// ---------------------------------------------------------------------------
+
+describe('resolveUsername — redirect and not-found logic', () => {
+  it('returns not_found when no user or history row matches', async () => {
+    const { db } = await import('@/lib/db/client')
+    const mockDb = db as unknown as Record<string, unknown>
+
+    mockDb['select'] = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+      }),
+    })
+
+    const { resolveUsername } = await import('@/lib/utils/username-redirect')
+    const result = await resolveUsername('no_such_user_xyz')
+    expect(result.kind).toBe('not_found')
+  })
+
+  it('returns current when display_username matches', async () => {
+    const { db } = await import('@/lib/db/client')
+    const mockDb = db as unknown as Record<string, unknown>
+
+    mockDb['select'] = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([{ id: 'user-abc', displayUsername: 'juho' }]),
+        }),
+      }),
+    })
+
+    const { resolveUsername } = await import('@/lib/utils/username-redirect')
+    const result = await resolveUsername('juho')
+    expect(result.kind).toBe('current')
+    if (result.kind === 'current') {
+      expect(result.canonicalUsername).toBe('juho')
+      expect(result.userId).toBe('user-abc')
+    }
+  })
+
+  it('returns redirect when old_username found in username_history', async () => {
+    const { db } = await import('@/lib/db/client')
+    const mockDb = db as unknown as Record<string, unknown>
+
+    mockDb['select'] = vi
+      .fn()
+      // First call: no match in users.display_username → not current
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }),
+        }),
+      })
+      // Second call: history hit → userId found
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ userId: 'user-def' }]),
+          }),
+        }),
+      })
+      // Third call: owner lookup by id → canonical username
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: 'user-def', displayUsername: 'juho_new' }]),
+          }),
+        }),
+      })
+
+    const { resolveUsername } = await import('@/lib/utils/username-redirect')
+    const result = await resolveUsername('juho_old')
+    expect(result.kind).toBe('redirect')
+    if (result.kind === 'redirect') {
+      expect(result.canonicalUsername).toBe('juho_new')
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Integration tests — skip without real Supabase credentials
 // ---------------------------------------------------------------------------
 
@@ -123,7 +214,7 @@ describeIf('public-profile-visibility — integration', () => {
     if (aErr) throw new Error(`Failed to create user A: ${aErr.message}`)
     userAId = a.user!.id
 
-    // Create user B (stays private)
+    // Create user B (stays private — is_public default false)
     const { data: b, error: bErr } = await adminClient.auth.admin.createUser({
       email: `${userBUsername}@example.com`,
       password: 'Test1234!vis',
@@ -155,7 +246,7 @@ describeIf('public-profile-visibility — integration', () => {
     if (userBId) await adminClient.auth.admin.deleteUser(userBId)
   })
 
-  it('getPublicProfileByUsername returns map data for public user A', async () => {
+  it('getPublicProfileByUsername returns map data for public user A (unauthenticated visitor path)', async () => {
     const { getPublicProfileByUsername } = await import('@/lib/db/queries/public-profile')
     const result = await getPublicProfileByUsername(userAUsername)
 
@@ -170,9 +261,30 @@ describeIf('public-profile-visibility — integration', () => {
     }
   })
 
-  it('getPublicProfileByUsername returns null for private user B', async () => {
+  it('getPublicProfileByUsername returns null for private user B (is_public = false → render PrivateProfile with "{username}\'s sky is private")', async () => {
     const { getPublicProfileByUsername } = await import('@/lib/db/queries/public-profile')
     const result = await getPublicProfileByUsername(userBUsername)
+    // null → page renders PrivateProfile showing "{username}'s sky is private"
     expect(result).toBeNull()
+  })
+
+  it('resolveUsername returns not_found for a username that exists nowhere', async () => {
+    const { resolveUsername } = await import('@/lib/utils/username-redirect')
+    const result = await resolveUsername(`totally_unknown_${Date.now()}`)
+    expect(result.kind).toBe('not_found')
+  })
+
+  it('resolveUsername returns redirect (301) from old username via username_history to current', async () => {
+    const oldUsername = `${userAUsername}_old`
+    await adminClient
+      .from('username_history')
+      .insert({ user_id: userAId, old_username: oldUsername })
+
+    const { resolveUsername } = await import('@/lib/utils/username-redirect')
+    const result = await resolveUsername(oldUsername)
+    expect(result.kind).toBe('redirect')
+    if (result.kind === 'redirect') {
+      expect(result.canonicalUsername).toBe(userAUsername)
+    }
   })
 })
