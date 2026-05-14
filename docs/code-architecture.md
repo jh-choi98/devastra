@@ -1,97 +1,176 @@
-# Code Architecture — DevAtlas
+# Code Architecture — DevAstra
 
-**Scope of this doc:** directory layout, layer responsibilities, dependency rules, naming conventions, external dependencies. For *why* the stack, see `docs/adr.md`. For *what* the entities are, see `docs/data-schema.md`.
+**Scope of this doc:** directory layout, layer responsibilities, dependency rules, naming conventions, external dependencies. For *why* the stack, see `docs/adr.md`. For *what* the entities are, see `docs/data-schema.md`. For *what* each screen does, see `docs/screens.md`.
 
 ## Directory tree
 
 ```
 /
-├── app/                            # Next.js 14 App Router routes
+├── app/                                # Next.js 14 App Router
 │   ├── (authenticated)/
-│   │   ├── page.tsx                # Main map (/) for logged-in users
+│   │   ├── page.tsx                    # Main constellation (/) for logged-in users
 │   │   ├── settings/page.tsx
 │   │   └── onboarding/repos/page.tsx
-│   ├── [username]/page.tsx         # Public profile (ISR 1h + on-demand revalidate)
+│   ├── [username]/page.tsx             # Public profile (ISR 1h + on-demand revalidate)
+│   ├── account-deleted/page.tsx        # Post-delete transitional page
+│   ├── unsubscribe/page.tsx            # Email unsubscribe landing (token-based)
+│   ├── auth/
+│   │   └── callback/page.tsx           # OAuth handshake bridge
+│   ├── privacy/page.tsx                # Renders docs/legal/privacy.md
+│   ├── terms/page.tsx                  # Renders docs/legal/terms.md
+│   ├── error.tsx                       # Generic 500 fallback
+│   ├── not-found.tsx                   # 404 page
+│   ├── sitemap.ts                      # Dynamic sitemap; daily cache
+│   ├── robots.ts                       # robots.txt generator
 │   ├── api/
-│   │   ├── auth/[...nextauth]/route.ts   # Supabase Auth callback handlers
-│   │   ├── inngest/route.ts              # Inngest webhook (signature verified)
+│   │   ├── auth/callback/route.ts
+│   │   ├── health/route.ts             # Uptime probe (DB ping + 200 OK)
+│   │   ├── inngest/route.ts            # Inngest webhook (signature verified)
 │   │   ├── og/
 │   │   │   ├── profile/[username]/route.tsx
 │   │   │   └── recap/[recap_id]/route.tsx
-│   │   └── refresh/route.ts              # Manual refresh trigger
-│   ├── _components/
-│   │   ├── Map/
-│   │   │   ├── LivingMap.tsx       # Root SVG canvas
-│   │   │   ├── Island.tsx          # One territory island
-│   │   │   ├── Landmark.tsx        # Building/icon on island
-│   │   │   └── RevealAnimator.tsx  # Framer Motion orchestration
-│   │   ├── TerritoryDrawer.tsx
-│   │   ├── ShareModal.tsx
-│   │   └── Header.tsx              # Refresh / Share / Avatar dropdown
-│   ├── layout.tsx
-│   ├── not-found.tsx
-│   └── globals.css
+│   │   ├── refresh/route.ts            # Manual refresh trigger (migrating to Server Action)
+│   │   ├── unsubscribe/route.ts        # POST endpoint, idempotent unsubscribe action
+│   │   └── webhooks/
+│   │       └── resend/route.ts         # Bounce webhook (signature verified)
+│   └── _components/
+│       ├── Constellation/              # Renderer (replaces Map/)
+│       │   ├── Constellation.tsx       # Root SVG canvas
+│       │   ├── Cluster.tsx             # One cluster (replaces Island)
+│       │   ├── Star.tsx                # One star (replaces Landmark)
+│       │   ├── ClusterAura.tsx         # Per-cluster radial gradient + ripple
+│       │   ├── Connections.tsx         # MST connection lines per cluster
+│       │   ├── SparkAnimation.tsx      # Per-star spark choreography
+│       │   ├── StarTooltip.tsx         # Desktop hover tooltip
+│       │   └── star-positions.ts       # Reads {x, y} from tech-catalog (SPDX-License-Identifier: MIT)
+│       ├── ClusterDrawer/              # Drawer (replaces TerritoryDrawer)
+│       │   ├── ClusterDrawer.tsx
+│       │   ├── StarRow.tsx
+│       │   ├── WhyExpansion.tsx        # "Why is this lit?" per-star detail
+│       │   ├── MisclassificationModal.tsx
+│       │   └── RecentPRs.tsx           # GitHub on-demand fetch
+│       ├── StateBanners/
+│       │   ├── SyncFailedBanner.tsx
+│       │   ├── SystemStatusBanner.tsx
+│       │   ├── GitHubDisconnectedBanner.tsx
+│       │   ├── WelcomeBackStrip.tsx
+│       │   ├── ThisWeekStrip.tsx
+│       │   └── HintTooltip.tsx
+│       ├── SpecialMoments/
+│       │   ├── FirstTimeReveal.tsx
+│       │   ├── FirstEverStarCinematic.tsx
+│       │   └── StageUpMoment.tsx
+│       ├── ConfirmModal.tsx
+│       ├── Header.tsx                  # Refresh / Share / Avatar dropdown
+│       ├── LandingDemo.tsx
+│       ├── PosthogIdentifier.tsx
+│       ├── PrivateProfile.tsx
+│       ├── PublicStickyBar.tsx
+│       ├── RefreshButton.tsx
+│       ├── SignInButton.tsx
+│       └── ShareModal.tsx
 │
-├── lib/                            # Shared utilities; server-only marked where applicable
+├── lib/                                # Shared utilities; server-only marked where applicable
 │   ├── db/
-│   │   ├── client.ts               # Drizzle client (server-only)
-│   │   ├── schema/
-│   │   │   ├── users.ts
-│   │   │   ├── repositories.ts
-│   │   │   ├── activities.ts
-│   │   │   ├── territories.ts
-│   │   │   ├── landmarks.ts
-│   │   │   ├── sync-jobs.ts
-│   │   │   ├── weekly-recaps.ts
-│   │   │   └── email-sends.ts
-│   │   └── queries/                # Composed query functions per entity
+│   │   ├── client.ts                   # Drizzle client (server-only); prepare: false for pooler
+│   │   ├── encryption.ts               # pgcrypto via Vault key (server-only)
+│   │   ├── schema/                     # one file per entity
+│   │   └── queries/
+│   │       ├── _helpers.ts             # withUserScope() RLS-bypass guard rail (ADR-46)
+│   │       └── *.ts                    # composed query functions per entity
 │   ├── github/
-│   │   ├── graphql.ts              # GraphQL client + queries (server-only)
-│   │   ├── rest.ts                 # REST client (server-only)
-│   │   └── token.ts                # JIT refresh logic
+│   │   ├── graphql.ts                  # GraphQL client + queries (server-only)
+│   │   ├── rest.ts                     # REST client (server-only)
+│   │   └── token.ts                    # JIT refresh logic
 │   ├── email/
-│   │   ├── client.ts               # Resend client (server-only)
-│   │   └── templates/              # React Email components
-│   │       ├── WeeklyRecap.tsx
-│   │       └── WeeklyRecapEmpty.tsx
+│   │   ├── client.ts                   # Resend client (server-only)
+│   │   ├── unsubscribe-token.ts        # Signed JWT with version claim
+│   │   └── templates/                  # React Email components
+│   │       ├── WeeklyRecapActive.tsx
+│   │       ├── WeeklyRecapEmpty.tsx
+│   │       └── WeeklyRecapFirstWeek.tsx
 │   ├── og/
-│   │   ├── ProfileImage.tsx        # @vercel/og component
-│   │   └── RecapImage.tsx
+│   │   ├── ConstellationImage.tsx      # @vercel/og component (layered-circles glow)
+│   │   ├── ProfileImage.tsx            # Wraps ConstellationImage for profile share
+│   │   ├── RecapImage.tsx              # Wraps ConstellationImage with weekly diff overlay
+│   │   ├── shared.tsx                  # Edge-safe palette + types
+│   │   └── version.ts                  # OG_RENDER_VERSION constant (ADR-52)
 │   ├── auth/
-│   │   └── supabase.ts             # Supabase client (server + browser variants)
-│   ├── posthog.ts                  # Analytics client (server-side ingest)
-│   ├── sentry.config.ts
-│   └── utils/                      # tz, formatters, zod common schemas
+│   │   ├── supabase-server.ts          # Server client (cookies)
+│   │   ├── supabase-browser.ts         # Browser client
+│   │   ├── middleware.ts               # Session refresh in middleware.ts
+│   │   ├── session.ts                  # requireUser() / getOptionalUser()
+│   │   └── actions.ts                  # signIn(), signOut() Server Actions
+│   ├── posthog.ts                      # Analytics client; cookieless mode (ADR-60)
+│   ├── sentry.config.ts                # beforeSend scrub (ADR-49)
+│   └── utils/
+│       ├── reserved-usernames.ts       # System paths + protected names list
+│       ├── username-redirect.ts        # users → username_history resolution
+│       └── time/                       # tz, formatters, common helpers
 │
-├── features/                       # Domain logic; server-only
+├── features/                           # Domain logic; server-only
 │   ├── sync/
-│   │   ├── runner.ts               # Inngest function definitions
-│   │   ├── initial.ts              # Initial sync orchestration
-│   │   ├── incremental.ts          # Daily/manual incremental sync
-│   │   ├── backfill.ts             # Reclassify existing activities
+│   │   ├── runner.ts                   # Inngest function definitions
+│   │   ├── initial.ts                  # Initial sync (capped at 1 year, ADR-50)
+│   │   ├── incremental.ts              # Daily / manual incremental sync
+│   │   ├── manual.ts                   # Manual refresh trigger
+│   │   ├── backfill.ts                 # Re-classify existing activities (Settings repo toggle)
+│   │   ├── denorm.ts                   # Rebuild territories + landmarks from activities
+│   │   ├── cinematic-detection.ts      # Detect lit_star_count 0→≥1 (ADR-38)
+│   │   ├── cleanup.ts                  # Stuck-job cron + housekeeping
+│   │   ├── events.ts                   # Inngest event type definitions
 │   │   └── sources/
-│   │       ├── interface.ts        # SourceClient interface
-│   │       └── github.ts           # GitHubSourceClient impl
-│   ├── territories/
-│   │   ├── classifier.ts           # Classifier interface + GitHubClassifier
-│   │   ├── scoring.ts              # weight = commit*1 + pr*5 + issue*2
-│   │   ├── rules.ts                # Stage thresholds, unlock thresholds (server-only)
-│   │   ├── registry.ts             # Territory metadata (name, color, seed) — shared
-│   │   └── tech-catalog.ts         # 50-tech matching rules
-│   └── recap/
-│       ├── generate.ts             # Weekly recap data assembly
-│       ├── send.ts                 # Resend dispatch + fan-out
-│       └── diff.ts                 # Week-over-week comparison
+│   │       ├── interface.ts            # SourceClient interface
+│   │       └── github.ts               # GitHubSourceClient impl (MVP_INCLUDE_PRIVATE = false)
+│   ├── territories/                    # MIT-licensed extractable modules
+│   │   ├── classifier.ts               # SPDX-License-Identifier: MIT
+│   │   ├── tech-catalog.ts             # SPDX-License-Identifier: MIT
+│   │   ├── rules.ts                    # SPDX-License-Identifier: MIT
+│   │   ├── scoring.ts                  # SPDX-License-Identifier: MIT
+│   │   ├── registry.ts                 # SPDX-License-Identifier: MIT
+│   │   ├── star-positions.ts           # SPDX-License-Identifier: MIT (cluster + {x,y})
+│   │   ├── tech-catalog-public.ts      # Client-safe catalog re-export
+│   │   └── global-stats.ts             # Daily batch job for tech_global_stats (post-MVP UI gate)
+│   ├── recap/
+│   │   ├── generate.ts                 # Builds weekly_recaps row
+│   │   ├── slot-builder.ts             # Composes 3-slot highlights JSONB shape
+│   │   ├── subject-line.ts             # Dynamic subject (stage_up > new_star > brightest)
+│   │   ├── diff.ts                     # Week-over-week + since-last-visit diffs
+│   │   ├── send.ts                     # Resend dispatch + fan-out
+│   │   └── time.ts                     # UTC week boundaries (ADR-14)
+│   └── feedback/
+│       └── misclassification.ts        # Rate-limited Server Action insert (ADR-40)
 │
-├── middleware.ts                   # CSP, rate limits, locale
+├── docs/
+│   ├── prd.md
+│   ├── flow.md
+│   ├── screens.md
+│   ├── data-schema.md
+│   ├── code-architecture.md            # this file
+│   ├── tech-catalog.md
+│   ├── adr.md
+│   ├── security-checklist.md
+│   ├── dev-setup.md
+│   └── legal/
+│       ├── privacy.md
+│       └── terms.md
+│
+├── drizzle/migrations/                 # SQL migrations + RLS + triggers
+├── middleware.ts                       # CSP, rate limits, session refresh
 ├── drizzle.config.ts
-├── inngest.config.ts
+├── inngest.config.ts                   # (if used; otherwise inline in features/sync/runner.ts)
 ├── next.config.ts
 ├── package.json
+├── CLAUDE.md                           # AI-agent compliance checklist
+├── README.md
+├── LICENSE-MIT                         # For files marked SPDX-License-Identifier: MIT
+├── LICENSE-PROPRIETARY                 # Default for everything else
+├── SECURITY.md
+├── CONTRIBUTING.md
 └── tests/
-    ├── unit/                       # Vitest; classifier, scoring, parser
-    ├── integration/                # Vitest; sync e2e w/ mocked GitHub, RLS, visibility
-    └── e2e/                        # Playwright; single signup-to-reveal smoke
+    ├── unit/                           # Vitest; classifier, scoring, parser, username-redirect, unsubscribe-token
+    ├── integration/                    # Vitest; sync e2e w/ mocked GitHub, RLS isolation, public visibility, email templates (snapshots)
+    └── e2e/                            # Playwright; signup-to-reveal smoke + constellation render snapshot
 ```
 
 ## Layers and dependency direction
@@ -101,33 +180,62 @@ app/  ──┐
         ▼
        features/ ──┐
                    ▼
-                  lib/ ──► (Supabase, GitHub, Resend, Inngest, Vercel OG)
+                  lib/ ──► (Supabase, GitHub, Resend, Inngest, Vercel OG, PostHog, Sentry)
 ```
 
 Rules:
+
 - `app/` may import from `lib/` and `features/`. Never the reverse.
 - `features/` may import from `lib/`. Never the reverse.
 - `lib/` is leaf-level; modules within `lib/` may import each other only when there is no circular path.
 - Client components (under `app/_components/`) may only import from `lib/` modules that are *not* `server-only`. They never import from `features/`.
 
-The `server-only` package is imported at the top of every file under `lib/db/`, `lib/github/`, `lib/email/`, `features/sync/`, `features/territories/rules.ts`, `features/recap/`. This causes a build error if anything in `app/_components/` accidentally imports them.
+The `server-only` package is imported at the top of every file under `lib/db/`, `lib/github/`, `lib/email/`, `lib/og/`, `features/sync/`, `features/recap/`, `features/feedback/`, `features/territories/rules.ts`, `features/territories/scoring.ts`, `features/territories/classifier.ts`, `features/territories/star-positions.ts`, `features/territories/global-stats.ts`. This causes a build error if anything in `app/_components/` accidentally imports them.
+
+## RLS bypass policy (CRITICAL)
+
+`lib/db/client.ts` connects with `DATABASE_URL` (postgres role) → **bypasses RLS**. The application layer is the sole filter.
+
+**Mitigation:** all reads against per-user tables (`activities`, `territories`, `landmarks`, `email_sends`, `weekly_recaps`, `misclassification_feedback`, `sync_jobs`) MUST flow through `lib/db/queries/_helpers.ts` `withUserScope(userId)`. The helper enforces a `WHERE user_id = $userId` clause and exists specifically as a guard rail. Direct table access without this scope is a security bug, not a style issue (see `docs/adr.md` ADR-46).
+
+Public-facing reads use the `users_public_view` (defined in `0001_rls_and_triggers.sql`) which filters `is_public = true`.
+
+## Open-source module boundaries
+
+The following modules carry an `SPDX-License-Identifier: MIT` header as the first line (ADR-27, ADR-55):
+
+```
+features/territories/classifier.ts
+features/territories/tech-catalog.ts
+features/territories/rules.ts
+features/territories/scoring.ts
+features/territories/registry.ts
+features/territories/star-positions.ts
+app/_components/Constellation/star-positions.ts
+app/_components/Constellation/*  (renderer modules — to be decided per file)
+```
+
+All other code is proprietary (covered by `LICENSE-PROPRIETARY`). MVP does NOT publish these as npm packages; boundaries are designed for future extraction. See `docs/adr.md` ADR-55.
 
 ## Naming conventions
 
 | Concern | Convention |
 |---|---|
-| Files | kebab-case (`weekly-recap.ts`); React components PascalCase (`LivingMap.tsx`) |
-| Drizzle schema modules | one file per entity, plural noun (`users.ts`, `activities.ts`) |
+| Files | kebab-case (`weekly-recap.ts`); React components PascalCase (`Constellation.tsx`) |
+| Drizzle schema modules | one file per entity, plural noun (`users.ts`, `landmarks.ts`) |
 | Inngest events | `<domain>/<action>.<variant>` e.g. `sync/initial.requested`, `recap/email.send` |
 | Server Actions | Verb-first function name; co-located in same file as the consuming component when scoped, else under `features/<domain>/actions.ts` |
-| Database identifiers | `snake_case` for columns and tables; matches data-schema.md |
+| Database identifiers | `snake_case` for columns and tables; matches `docs/data-schema.md` |
 | Environment vars | `SCREAMING_SNAKE_CASE`; never imported in client components |
+| Internal vs UI naming | DB/code names are pre-pivot (territory, landmark). UI surface and copy use constellation language (cluster, star). Don't rename DB fields. |
 
 ## Testing conventions
 
 - Co-locate unit tests next to source files using `.test.ts` suffix where the test is small and pure.
-- Integration tests under `tests/integration/`, named after the flow under test (`initial-sync.test.ts`, `rls-isolation.test.ts`, `public-profile-visibility.test.ts`).
-- The single E2E in `tests/e2e/signup-to-reveal.spec.ts` runs against a Playwright instance pointed at a Vercel preview deploy of a feature branch.
+- Integration tests under `tests/integration/`, named after the flow under test (`initial-sync.test.ts`, `rls-isolation.test.ts`, `public-profile-visibility.test.ts`, `email-templates.test.ts`).
+- Email template snapshot tests render React Email to HTML and diff against a committed snapshot.
+- One Playwright E2E in `tests/e2e/signup-to-reveal.spec.ts` runs against a Vercel preview deploy of a feature branch.
+- A separate constellation render snapshot test takes a Playwright screenshot of the steady-state main page and diffs it against a baseline image.
 - Vitest config uses `vitest --pool=forks` for integration tests that need a real Supabase dev project. The dev project's `.env.test` is git-ignored.
 
 ## External dependencies (justification per dep)
@@ -138,18 +246,20 @@ The `server-only` package is imported at the top of every file under `lib/db/`, 
 | `react`, `react-dom` | Required by Next.js |
 | `@supabase/supabase-js`, `@supabase/ssr` | Auth + DB + Realtime; ADR-3 |
 | `drizzle-orm`, `drizzle-kit` | TypeScript-native ORM with fast cold-start on serverless; ADR-4 |
+| `postgres` (postgres-js) | Drizzle driver; `prepare: false` for transaction-mode pooler (ADR-51) |
 | `inngest` | Step-based background jobs with at-least-once guarantees, built-in observability, free tier sufficient until Pro at 1k users; ADR-5 |
 | `resend`, `@react-email/components` | Transactional email with React templates; cheap free tier; ADR-6 |
-| `@vercel/og` | Edge-rendered OG images sharing the same SVG generation code as the live map; ADR-7 |
-| `framer-motion` | Reveal animation, drawer slide, badge glow |
-| `simplex-noise` | Procedural island shape generation |
+| `@vercel/og` | Edge-rendered OG images sharing the same SVG generation code as the live constellation; ADR-7 |
+| `framer-motion` | Reveal spark / glow / drawer slide / ripple animations |
 | `zod` | Runtime input validation on all Server Actions and route handlers |
-| `posthog-js`, `posthog-node` | Funnel analytics; ADR-18 |
-| `@sentry/nextjs` | Error monitoring with PII scrubbing |
+| `posthog-js`, `posthog-node` | Funnel analytics; cookieless mode (ADR-60); core 6 events |
+| `@sentry/nextjs` | Error monitoring with `beforeSend` token/header scrub (ADR-49) |
 | `tailwindcss` | Styling |
-| `sonner` (or similar) | Toast notifications for in-app events (landmark unlocked, settings saved) |
+| `sonner` (or similar) | Toast notifications for in-app events |
+| `jose` | JWT generation + verification for unsubscribe tokens (ADR-48) |
 | `server-only` | Build-time enforcement that server code is never bundled to client |
 | `vitest`, `@playwright/test` | Test runners; ADR-21 |
+| `@vercel/speed-insights` | Web Vitals capture in production (ADR-58) |
 
 ## Configuration & secrets
 
@@ -159,20 +269,47 @@ All secrets live in Vercel environment variables. Local development uses `.env.l
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY              # server-only
-DATABASE_URL                            # Drizzle direct connection
+DATABASE_URL                            # Drizzle runtime — transaction-mode pooler (:6543)
+DIRECT_URL                              # Drizzle Kit migrations only — direct (:5432)
 GITHUB_OAUTH_CLIENT_ID
 GITHUB_OAUTH_CLIENT_SECRET             # server-only
 INNGEST_EVENT_KEY
 INNGEST_SIGNING_KEY                    # server-only
 RESEND_API_KEY                          # server-only
+RESEND_WEBHOOK_SECRET                   # server-only; verifies bounce webhook
+UNSUBSCRIBE_TOKEN_SECRET                # server-only; signs unsubscribe JWTs
+UNSUBSCRIBE_TOKEN_VERSION               # increment to revoke all outstanding tokens
 SENTRY_DSN
 NEXT_PUBLIC_POSTHOG_KEY
 NEXT_PUBLIC_POSTHOG_HOST
+OG_RENDER_VERSION                       # cache-busting token; bump on any global render change
+APP_HOSTNAME_ALLOWLIST                  # comma-separated; used by OAuth origin check (ADR-47)
 ```
 
 ## Build & deploy
 
 - **Branching:** PRs against `main`; Vercel preview deploys per PR.
-- **Migrations:** `drizzle-kit migrate` run manually against prod Supabase before each `main` deploy. Migration files are committed; deploy step waits on confirmation in PR description.
+- **CI gate (on PR):** type check + lint + format check + unit tests + integration tests. E2E runs manually before main merge.
+- **Migrations:** `drizzle-kit migrate` run manually against prod Supabase **before** code merge (ADR-57). Migration files are committed; the PR description must include a `migration: yes/no` line and confirmation that prod has been migrated.
+- **Add-only rule:** pivot and feature migrations are add-only (new columns with defaults, new tables). Drops require a dedicated PR and explicit user instruction (ADR-51).
 - **Environments:** Two Supabase projects (dev, prod). One Inngest project with branch-routed environments.
-- **Deploy gate:** Vercel cap `$200/month` set as hard ceiling.
+- **Deploy gate:** Vercel cap `$200/month` set as hard ceiling; alerts at `$100` / `$150`.
+- **Test routes:** `app/api/test/*` are NODE_ENV-guarded at the top of each route. Production deploys must verify a `notFound()` is returned (ADR-47).
+
+## Observability
+
+- **Funnel + product analytics:** PostHog cloud; 6 core events; cookieless mode; URL masking on `/{username}` paths.
+- **Performance:** Vercel Speed Insights (auto-captured LCP, CLS, INP). Targets: LCP <2.5s, CLS <0.1, INP <200ms.
+- **Error monitoring:** Sentry with `beforeSend` automatic scrub of `authorization`, `cookie`, token-pattern strings (ADR-49).
+- **Uptime:** UptimeRobot pings `/api/health` (HEAD or GET) every 5 min.
+- **Cost:** manual monthly review of Vercel + Supabase + Inngest + Resend dashboards; Vercel hard cap as backstop.
+
+## Migration & deploy procedure
+
+1. Author migration in `drizzle/migrations/`. Schema is split by feature in `lib/db/schema/*.ts`; add new tables in their own file.
+2. Test against dev Supabase: `DATABASE_URL=<dev_pooler> drizzle-kit migrate`.
+3. Open PR. CI runs full check suite.
+4. Before merge: run `DATABASE_URL=<prod_pooler> drizzle-kit migrate` against prod (ADR-57).
+5. Confirm in PR description: `migration: applied`.
+6. Merge → Vercel deploys.
+7. Rollback path: add-only migrations are forward-compatible; if a feature is broken, code revert is the rollback (no schema rollback required — ADR-56).
