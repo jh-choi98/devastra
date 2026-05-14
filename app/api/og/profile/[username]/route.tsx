@@ -10,9 +10,6 @@ export async function GET(
 ) {
   const { username } = params
 
-  // TODO: Phase 12 wires real rate limiting via Vercel KV (60 req/min/IP)
-  // Referrer/UA check is handled in middleware.ts for the /api/og/* routes
-
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

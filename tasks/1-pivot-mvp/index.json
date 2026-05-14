@@ -71,7 +71,9 @@
     {
       "phase": 9,
       "name": "og-landing-legal",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-15T08:23:56+0900",
+      "completed_at": "2026-05-15T10:32:00+0900"
     },
     {
       "phase": 10,

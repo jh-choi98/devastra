@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
-import { renderRecapImage, renderPrivatePlaceholder } from '@/lib/og/RecapImage'
+import { renderRecapImage, renderPrivatePlaceholder, buildStatStripText } from '@/lib/og/RecapImage'
 import type { RecapHighlights } from '@/lib/og/RecapImage'
+import type { TerritoryType } from '@/features/territories/registry'
 
 export const runtime = 'edge'
 
@@ -28,7 +29,7 @@ export async function GET(
 
   const { data: user } = await supabase
     .from('users_public_view')
-    .select('display_username, avatar_url')
+    .select('id, display_username, avatar_url')
     .eq('id', recap.user_id)
     .maybeSingle()
 
@@ -36,11 +37,41 @@ export async function GET(
     return renderPrivatePlaceholder()
   }
 
+  // Fetch current territories + landmarks for the constellation render
+  const [{ data: territoriesData }, { data: landmarksData }] = await Promise.all([
+    supabase
+      .from('territories')
+      .select('type, stage, total_weight, growth_30d, stage_changed_at')
+      .eq('user_id', recap.user_id),
+    supabase
+      .from('landmarks')
+      .select('tech_key, territory_type, weight, first_unlocked_at')
+      .eq('user_id', recap.user_id),
+  ])
+
+  const map = {
+    territories: (territoriesData ?? []).map((t: Record<string, unknown>) => ({
+      type: String(t['type']) as TerritoryType,
+      stage: Number(t['stage']),
+      totalWeight: Number(t['total_weight']),
+      growth30d: Number(t['growth_30d']),
+      stageChangedAt: t['stage_changed_at'] ? String(t['stage_changed_at']) : null,
+    })),
+    landmarks: (landmarksData ?? []).map((l: Record<string, unknown>) => ({
+      tech_key: String(l['tech_key']),
+      territory: String(l['territory_type']) as TerritoryType,
+      weight: Number(l['weight']),
+      firstUnlockedAt: l['first_unlocked_at'] ? String(l['first_unlocked_at']) : null,
+    })),
+  }
+
+  const highlights = recap.highlights as RecapHighlights
+  const statStripText = buildStatStripText(highlights)
+
   const imageResponse = renderRecapImage({
-    displayUsername: user.display_username,
-    avatarUrl: user.avatar_url,
-    weekStart: recap.week_start,
-    highlights: recap.highlights as RecapHighlights,
+    map,
+    weekStart: new Date(recap.week_start),
+    statStripText,
   })
 
   // Recap IDs are immutable — cache indefinitely
