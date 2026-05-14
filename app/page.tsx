@@ -2,12 +2,27 @@ import { getOptionalUser } from '@/lib/auth/session'
 import { getMapDataForUser } from '@/lib/db/queries/map'
 import { updateLastLoginAt } from '@/lib/db/queries/users'
 import { getLatestSyncJobForUser } from '@/lib/db/queries/sync-jobs'
+import { getSinceLastVisitDiff } from '@/lib/db/queries/since-last-visit-diff'
+import { getActiveSystemMessage } from '@/lib/db/queries/system-messages'
 import { Header } from '@/app/_components/Header'
 import { LivingMapContainer } from './(authenticated)/_map-container'
 import { LandingDemo } from '@/app/_components/LandingDemo'
 import { SignInButton } from '@/app/_components/SignInButton'
 import { PosthogIdentifier } from '@/app/_components/PosthogIdentifier'
 import LandingAnalytics from '@/app/_components/LandingAnalytics'
+import type { BannerState } from '@/app/_components/StateBanners/BannerStack'
+import type { TerritoryType } from '@/features/territories/registry'
+
+const TERRITORY_UI_LABELS: Record<string, string> = {
+  frontend_land: 'Frontend',
+  backend_fortress: 'Backend',
+  data_pipeline_zone: 'Data',
+  testing_lab: 'Testing',
+  devops_harbor: 'DevOps',
+  docs_library: 'Docs',
+}
+
+const TWENTY_EIGHT_DAYS_MS = 28 * 24 * 60 * 60 * 1000
 
 export default async function RootPage() {
   const user = await getOptionalUser()
@@ -46,13 +61,61 @@ export default async function RootPage() {
     )
   }
 
-  const isFirstReveal = !user.lastLoginAt
+  // Capture previous lastLoginAt BEFORE updating it — welcome-back diff uses this value.
+  const prevLastLoginAt = user.lastLoginAt
+  const isFirstReveal = !prevLastLoginAt
 
-  const [initialData, , latestSyncJob] = await Promise.all([
-    getMapDataForUser(user.id, user.lastLoginAt),
-    updateLastLoginAt(user.id),
-    getLatestSyncJobForUser(user.id),
-  ])
+  const now = Date.now()
+  const welcomeBackTrigger =
+    prevLastLoginAt != null &&
+    now - prevLastLoginAt.getTime() > TWENTY_EIGHT_DAYS_MS
+
+  // Determine GitHub connection status
+  let githubDisconnected: BannerState['githubDisconnected'] | undefined
+  if (!user.githubAccessTokenEnc) {
+    githubDisconnected = { variant: 'disconnected' }
+  } else if (user.githubTokenExpiresAt && user.githubTokenExpiresAt.getTime() < now) {
+    githubDisconnected = { variant: 'token_expired' }
+  }
+
+  // Fetch data in parallel; updateLastLoginAt runs concurrently.
+  const [initialData, , latestSyncJob, sinceLastVisitDiff, activeSystemMessage] =
+    await Promise.all([
+      getMapDataForUser(user.id, prevLastLoginAt),
+      updateLastLoginAt(user.id),
+      getLatestSyncJobForUser(user.id),
+      welcomeBackTrigger
+        ? getSinceLastVisitDiff({ userId: user.id, lastLoginAt: prevLastLoginAt })
+        : Promise.resolve(null),
+      getActiveSystemMessage(),
+    ])
+
+  // Build banner state
+  const bannerState: BannerState = {}
+
+  if (githubDisconnected) {
+    bannerState.githubDisconnected = githubDisconnected
+  }
+
+  if (activeSystemMessage) {
+    bannerState.systemStatus = {
+      id: activeSystemMessage.id,
+      message: activeSystemMessage.message,
+      severity: activeSystemMessage.severity as 'info' | 'warning' | 'error',
+    }
+  }
+
+  if (welcomeBackTrigger && sinceLastVisitDiff && prevLastLoginAt) {
+    bannerState.welcomeBack = {
+      diffSummary: {
+        new_stars_count: sinceLastVisitDiff.new_stars_count,
+        expanded_clusters: sinceLastVisitDiff.expanded_clusters.map(
+          (t) => TERRITORY_UI_LABELS[t] ?? t,
+        ),
+      },
+      lastLoginIso: prevLastLoginAt.toISOString(),
+    }
+  }
 
   return (
     <div className="flex flex-col h-screen bg-slate-900">
@@ -67,7 +130,19 @@ export default async function RootPage() {
         lastSyncStartedAt={latestSyncJob?.startedAt ?? null}
       />
       <div className="flex-1 overflow-hidden">
-        <LivingMapContainer userId={user.id} initial={initialData} firstReveal={isFirstReveal} />
+        <LivingMapContainer
+          userId={user.id}
+          initial={initialData}
+          firstReveal={isFirstReveal}
+          bannerState={bannerState}
+          firstStarCinematicPending={user.firstStarCinematicPending}
+          firstStarCinematicSeen={user.firstStarCinematicSeen}
+          hintFlags={{
+            clusterClickHintSeen: user.clusterClickHintSeen,
+            shareHintSeen: user.shareHintSeen,
+            recapDiffHintSeen: user.recapDiffHintSeen,
+          }}
+        />
       </div>
     </div>
   )

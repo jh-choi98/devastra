@@ -3,23 +3,45 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Constellation } from '@/app/_components/Constellation/Constellation'
 import { ClusterDrawer } from '@/app/_components/ClusterDrawer/ClusterDrawer'
+import { BannerStack } from '@/app/_components/StateBanners/BannerStack'
+import { FirstEverStarCinematic } from '@/app/_components/SpecialMoments/FirstEverStarCinematic'
 import { useRealtimeMapData, type SyncJobUpdate } from '@/lib/realtime/use-realtime-map-data'
 import { useRevealSequence } from './_use-reveal-sequence'
 import { getDrawerData } from './_actions'
+import { markFirstStarCinematicCompleted } from '@/features/feedback/hints.actions'
 import { posthog, initPosthog } from '@/lib/posthog'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { ClusterDrawerData } from '@/app/_components/ClusterDrawer/ClusterDrawer'
 import type { TerritoryType } from '@/features/territories/registry'
+import type { BannerState } from '@/app/_components/StateBanners/BannerStack'
 
 interface Props {
   userId: string
   initial: ConstellationData
   firstReveal: boolean
+  bannerState: BannerState
+  firstStarCinematicPending: boolean
+  firstStarCinematicSeen: boolean
+  hintFlags: {
+    clusterClickHintSeen: boolean
+    shareHintSeen: boolean
+    recapDiffHintSeen: boolean
+  }
 }
 
-export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
+export function LivingMapContainer({
+  userId,
+  initial,
+  firstReveal,
+  bannerState,
+  firstStarCinematicPending,
+  firstStarCinematicSeen,
+}: Props) {
   const [syncJobUpdate, setSyncJobUpdate] = useState<SyncJobUpdate | null>(null)
+  const [syncFailedDismissed, setSyncFailedDismissed] = useState(false)
+  const [showCinematic, setShowCinematic] = useState(false)
   const revealFiredRef = useRef(false)
+  const cinematicCheckedRef = useRef(false)
 
   const data = useRealtimeMapData(userId, initial, (update) => {
     setSyncJobUpdate(update)
@@ -34,6 +56,25 @@ export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
       posthog.capture('first_reveal.completed')
     }
   }, [firstReveal, revealComplete])
+
+  // First-ever star cinematic check: client-side on mount (ADR-38).
+  // FirstEverStarCinematic supersedes first-time reveal (per spec Notes).
+  useEffect(() => {
+    if (cinematicCheckedRef.current) return
+    cinematicCheckedRef.current = true
+    if (firstStarCinematicPending && !firstStarCinematicSeen) {
+      setShowCinematic(true)
+    }
+  }, [firstStarCinematicPending, firstStarCinematicSeen])
+
+  const handleCinematicComplete = useCallback(async () => {
+    setShowCinematic(false)
+    try {
+      await markFirstStarCinematicCompleted()
+    } catch {
+      // silent — flag will retry on next visit
+    }
+  }, [])
 
   const [drawer, setDrawer] = useState<{
     cluster: TerritoryType
@@ -81,6 +122,23 @@ export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
   const showProgress =
     syncProgressText !== null && syncJobUpdate?.status === 'running'
 
+  const syncFailed =
+    syncJobUpdate?.status === 'failed' && !syncFailedDismissed
+
+  const activeBannerState: BannerState = {
+    ...bannerState,
+    syncFailed,
+  }
+
+  // Newly lit stars from the current data — used if cinematic fires
+  const newStars = data.landmarks
+    .filter((l) => l.firstUnlockedAt != null)
+    .map((l) => ({
+      tech_key: l.tech_key,
+      displayName: l.tech_key,
+      territory: l.territory,
+    }))
+
   return (
     <div className="relative w-full h-full">
       <Constellation
@@ -88,6 +146,20 @@ export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
         onClusterClick={handleClusterClick}
         onStarClick={handleStarClick}
       />
+
+      <BannerStack
+        state={activeBannerState}
+        onRetry={() => setSyncFailedDismissed(false)}
+      />
+
+      {showCinematic && (
+        <FirstEverStarCinematic
+          newStars={newStars}
+          data={data}
+          onComplete={handleCinematicComplete}
+        />
+      )}
+
       {drawer && drawer.drawerData && !drawer.loading && (
         <ClusterDrawer
           data={drawer.drawerData}
@@ -97,6 +169,7 @@ export function LivingMapContainer({ userId, initial, firstReveal }: Props) {
           onClose={handleClose}
         />
       )}
+
       {showProgress && (
         <div className="fixed bottom-4 left-4 text-xs text-slate-300 opacity-70 pointer-events-none">
           {syncProgressText}

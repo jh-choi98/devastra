@@ -16,6 +16,7 @@ import { LANDMARK_UNLOCK_THRESHOLD } from '@/features/territories/rules'
 import { GitHubSourceClient } from './sources/github'
 import type { ClassificationContext } from '@/features/territories/classifier'
 import { recomputeUserDenorm } from './denorm'
+import { getPreviousLitCount, markFirstStarCinematicIfApplicable } from './cinematic-detection'
 import type { GetStepTools } from 'inngest'
 import type { inngest } from '@/lib/inngest/client'
 
@@ -49,6 +50,10 @@ export async function run(
   try {
     const accessToken = await step.run('fetch-token', () => getUsableAccessToken(userId))
     const github = new GitHubSourceClient(accessToken, userId)
+
+    const previousLitCount = await step.run('get-prev-lit-count', () =>
+      getPreviousLitCount(userId),
+    )
 
     const now = new Date()
     const sinceDate =
@@ -198,6 +203,10 @@ export async function run(
     })
 
     await step.run('recompute-denorm', () => recomputeUserDenorm(userId))
+
+    await step.run('mark-cinematic', () =>
+      markFirstStarCinematicIfApplicable({ userId, previousLitCount }),
+    )
 
     const latestEventId = await github.getLatestEventId(user.githubLogin)
     await updateUserSyncState(userId, {

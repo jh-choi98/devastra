@@ -21,6 +21,7 @@ import {
 } from './sources/parsers'
 import type { ClassificationContext } from '@/features/territories/classifier'
 import { recomputeUserDenorm } from './denorm'
+import { getPreviousLitCount, markFirstStarCinematicIfApplicable } from './cinematic-detection'
 import type { GetStepTools } from 'inngest'
 import type { inngest } from '@/lib/inngest/client'
 
@@ -126,6 +127,10 @@ export async function run(
   try {
     const accessToken = await step.run('fetch-token', () => getUsableAccessToken(userId))
     const github = new GitHubSourceClient(accessToken, userId)
+
+    const previousLitCount = await step.run('get-prev-lit-count', () =>
+      getPreviousLitCount(userId),
+    )
 
     const dbRepos: StepRepo[] = await step.run('fetch-repos', async () => {
       const sourceRepos = await github.listAuthoredRepos()
@@ -360,6 +365,10 @@ export async function run(
     })
 
     await step.run('recompute-denorm', () => recomputeUserDenorm(userId))
+
+    await step.run('mark-cinematic', () =>
+      markFirstStarCinematicIfApplicable({ userId, previousLitCount }),
+    )
 
     await step.run('complete-job', () => completeSyncJob(jobId))
   } catch (err) {

@@ -19,6 +19,7 @@ import { LANDMARK_UNLOCK_THRESHOLD } from '@/features/territories/rules'
 import { GitHubSourceClient } from './sources/github'
 import type { ClassificationContext } from '@/features/territories/classifier'
 import { recomputeUserDenorm } from './denorm'
+import { getPreviousLitCount, markFirstStarCinematicIfApplicable } from './cinematic-detection'
 import type { GetStepTools } from 'inngest'
 import type { inngest } from '@/lib/inngest/client'
 
@@ -30,6 +31,8 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 async function syncUserIncremental(userId: string, github: GitHubSourceClient): Promise<void> {
   const user = await getUserById(userId)
   if (!user) return
+
+  const previousLitCount = await getPreviousLitCount(userId)
 
   const job = await createSyncJob({ userId, kind: 'incremental' })
   await startSyncJob(job.id)
@@ -174,6 +177,7 @@ async function syncUserIncremental(userId: string, github: GitHubSourceClient): 
     })
 
     await recomputeUserDenorm(userId)
+    await markFirstStarCinematicIfApplicable({ userId, previousLitCount })
 
     // Update cursor and sync timestamp
     const latestEventId = await github.getLatestEventId(user.githubLogin)
