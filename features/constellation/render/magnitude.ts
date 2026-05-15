@@ -38,3 +38,12 @@ export function topQuintileThreshold(weightsOfLitStars: number[]): number {
   const idx = Math.floor(sorted.length * 0.8)
   return sorted[Math.min(idx, sorted.length - 1)]
 }
+
+/** Maps a landmark weight to a human-readable brightness descriptor (5-quintile scale). */
+export function brightnessDescriptor(weight: number): string {
+  if (weight >= 200) return 'brightest'
+  if (weight >= 80) return 'bright'
+  if (weight >= 30) return 'mid'
+  if (weight >= 10) return 'dim'
+  return 'very dim'
+}

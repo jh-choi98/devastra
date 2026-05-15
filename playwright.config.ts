@@ -10,5 +10,9 @@ export default defineConfig({
     {
       name: 'chromium',
     },
+    {
+      name: 'a11y',
+      testDir: './tests/a11y',
+    },
   ],
 })
