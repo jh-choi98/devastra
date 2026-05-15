@@ -78,9 +78,13 @@ const MOCK_DATA: ConstellationData = {
 export default function DevMapPage() {
   if (process.env.NODE_ENV === 'production') notFound()
 
+  // Visual-inspection-only page. Server Component → no event handlers (Next.js
+  // App Router forbids passing functions across the Server/Client boundary).
+  // For interactivity, use the authenticated main page (/) or wrap this in a
+  // small client component.
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
-      <Constellation data={MOCK_DATA} onClusterClick={(t) => console.log('clicked', t)} />
+      <Constellation data={MOCK_DATA} />
     </div>
   )
 }
