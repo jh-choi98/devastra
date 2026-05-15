@@ -59,7 +59,7 @@
       "name": "techstars-connections",
       "status": "completed",
       "started_at": "2026-05-15T13:31:04+0900",
-      "completed_at": "2026-05-15T13:45:00+0900",
+      "completed_at": "2026-05-15T13:36:48+0900",
       "ac_notes": "All 8 AC checks pass. TechStars.tsx (113 lines) + Connections.tsx (57 lines) implemented. Airy-disk and diffraction-spike shaders (frag + vert) written with void main. Tech stars use spectralColorFor/spectralHex from palette (no cluster colors). Connections use lineBasicMaterial color=#5a6c80 opacity=0.22. MST per-cluster via mstEdges(). resolveStarViewBoxPosition() added to star-positions.ts reusing existing catalog + hash fallback + jitter. Map.entries() iteration converted to Array.from() for TS target. Scene mounts both layers. Build clean. Screenshot captured (phase6.png). Console errors: 0."
     },
     {
