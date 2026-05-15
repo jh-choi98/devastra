@@ -11,7 +11,8 @@ export function Connections(props: {
   const { stars, radius } = props
 
   const edges = useMemo(() => {
-    const litStars = stars.filter((s) => s.weight > 0)
+    // Match Cluster.tsx — "lit" means crossed the unlock threshold (firstUnlockedAt set).
+    const litStars = stars.filter((s) => s.firstUnlockedAt !== null)
     if (litStars.length < 2) return []
 
     const allPositions = getClientStarPositions()

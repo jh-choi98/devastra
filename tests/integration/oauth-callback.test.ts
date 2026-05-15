@@ -27,7 +27,7 @@ beforeEach(() => {
 
 describe('GET /api/auth/callback', () => {
   it('redirects to /onboarding/repos when last_event_id is null', async () => {
-    mockExchangeCodeForSession.mockResolvedValue({ error: null })
+    mockExchangeCodeForSession.mockResolvedValue({ data: { session: null }, error: null })
     mockGetUser.mockResolvedValue({ data: { user: { id: 'user-uuid' } }, error: null })
     vi.mocked(getUserById).mockResolvedValue({
       id: 'user-uuid',
@@ -45,6 +45,11 @@ describe('GET /api/auth/callback', () => {
       githubTokenExpiresAt: null,
       lastIncrementalSyncAt: null,
       lastLoginAt: null,
+      clusterClickHintSeen: false,
+      shareHintSeen: false,
+      recapDiffHintSeen: false,
+      firstStarCinematicSeen: false,
+      firstStarCinematicPending: false,
       createdAt: new Date(),
     })
 
@@ -56,7 +61,7 @@ describe('GET /api/auth/callback', () => {
   })
 
   it('redirects to / when last_event_id exists', async () => {
-    mockExchangeCodeForSession.mockResolvedValue({ error: null })
+    mockExchangeCodeForSession.mockResolvedValue({ data: { session: null }, error: null })
     mockGetUser.mockResolvedValue({ data: { user: { id: 'user-uuid' } }, error: null })
     vi.mocked(getUserById).mockResolvedValue({
       id: 'user-uuid',
@@ -74,6 +79,11 @@ describe('GET /api/auth/callback', () => {
       githubTokenExpiresAt: null,
       lastIncrementalSyncAt: null,
       lastLoginAt: null,
+      clusterClickHintSeen: false,
+      shareHintSeen: false,
+      recapDiffHintSeen: false,
+      firstStarCinematicSeen: false,
+      firstStarCinematicPending: false,
       createdAt: new Date(),
     })
 

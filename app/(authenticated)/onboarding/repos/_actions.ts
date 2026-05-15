@@ -41,18 +41,21 @@ export async function saveRepoSelectionAndStartSync(input: unknown): Promise<voi
     ),
   )
 
-  const includedRepoIds = upserted
+  // The initial sync filters by externalRepoId (GitHub node_id), NOT by DB UUID.
+  // Sending r.id (UUID) here would silently fail to match anything and trigger the
+  // fallback that syncs every repo. Pass externalRepoId explicitly.
+  const includedExternalRepoIds = upserted
     .filter((r) => includedSet.has(r.externalRepoId))
-    .map((r) => r.id)
+    .map((r) => r.externalRepoId)
 
   await inngest.send({
     name: EVENTS.SYNC_INITIAL_REQUESTED,
-    data: { userId: user.id, includedRepoIds },
+    data: { userId: user.id, includedExternalRepoIds },
   })
 
   await captureServerEvent(user.id, 'repo_selection.completed', {
     repo_count: repos.length,
-    included_count: includedRepoIds.length,
+    included_count: includedExternalRepoIds.length,
   })
 
   redirect('/')

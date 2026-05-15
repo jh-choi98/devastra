@@ -112,10 +112,21 @@ async function buildManifestContext(
 }
 
 export async function run(
-  event: { data: { userId: string; includedRepoIds?: string[] } },
+  event: {
+    data: {
+      userId: string
+      // New name: explicit GitHub node IDs to include. Empty array = none selected.
+      includedExternalRepoIds?: string[]
+      // Legacy alias accepted for backward compat with already-queued events; treated
+      // as identical to includedExternalRepoIds.
+      includedRepoIds?: string[]
+    }
+  },
   step: StepTools,
 ) {
-  const { userId, includedRepoIds } = event.data
+  const { userId } = event.data
+  const includedExternalRepoIds =
+    event.data.includedExternalRepoIds ?? event.data.includedRepoIds
   void MVP_INCLUDE_PRIVATE // referenced to satisfy ADR-11 guard grep
 
   const jobId = await step.run('create-job', async () => {
@@ -134,10 +145,14 @@ export async function run(
 
     const dbRepos: StepRepo[] = await step.run('fetch-repos', async () => {
       const sourceRepos = await github.listAuthoredRepos()
+      // Filter rule:
+      //   undefined → no explicit list provided; sync all repos.
+      //   [] (empty array) → user deselected everything; sync nothing.
+      //   non-empty array → sync only matching externalRepoId.
       const filtered =
-        includedRepoIds && includedRepoIds.length > 0
-          ? sourceRepos.filter((r) => includedRepoIds.includes(r.externalRepoId))
-          : sourceRepos
+        includedExternalRepoIds === undefined
+          ? sourceRepos
+          : sourceRepos.filter((r) => includedExternalRepoIds.includes(r.externalRepoId))
 
       const result: StepRepo[] = []
       for (const repo of filtered) {

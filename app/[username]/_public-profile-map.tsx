@@ -17,7 +17,7 @@ function buildVisitorDrawerData(
   if (!territory) return null
 
   const litStars = mapData.landmarks
-    .filter((l) => l.territory === type && l.weight >= 5)
+    .filter((l) => l.territory === type && l.firstUnlockedAt !== null)
     .sort((a, b) => b.weight - a.weight || a.tech_key.localeCompare(b.tech_key))
     .map((lm) => ({
       tech_key: lm.tech_key,

@@ -60,7 +60,8 @@ export function ConstellationOG(props: {
           const cy = center.cy * height
           const radius = center.r * Math.min(width, height)
           const stars = starsByCluster.get(type) ?? []
-          const litStars = stars.filter((s) => s.weight > 0)
+          // "Lit" = unlock threshold crossed (firstUnlockedAt set). Match the live renderer.
+          const litStars = stars.filter((s) => s.firstUnlockedAt !== null)
           const positions = allPositions.filter((p) => p.territory === type)
 
           const auraColor = TERRITORIES[type].color

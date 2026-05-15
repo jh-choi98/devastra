@@ -18,7 +18,11 @@ export function Cluster(props: {
   const meta = TERRITORIES[type]
   const allPositions = getClientStarPositions()
 
-  const litStars = stars.filter((s) => s.weight > 0)
+  // A star is "lit" when its landmark has crossed the unlock threshold
+  // (LANDMARK_UNLOCK_THRESHOLD, weight >= 5). The canonical signal is
+  // firstUnlockedAt being set — sync writes it once and never clears it.
+  // Using `weight > 0` would render partial-credit pre-threshold stars.
+  const litStars = stars.filter((s) => s.firstUnlockedAt !== null)
   const litCount = litStars.length
   const outlineOpacity = litCount > 0 ? 0.6 : 0.25
 
