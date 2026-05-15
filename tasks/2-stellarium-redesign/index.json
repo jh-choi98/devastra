@@ -19,7 +19,7 @@
       "name": "deps-and-scaffold",
       "status": "completed",
       "started_at": "2026-05-15T12:52:07+0900",
-      "completed_at": "2026-05-15T13:30:00+0900",
+      "completed_at": "2026-05-15T13:01:04+0900",
       "ac_notes": "AC1-AC5 all pass. Fixed: (1) TerritoryType import path corrected from @/lib/db/schema/territories (does not export it) to @/features/territories/registry (actual source). (2) types.ts comment rephrased to avoid literal 'server-only' string matching the AC5 grep check."
     },
     {
