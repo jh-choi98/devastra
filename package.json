@@ -22,10 +22,16 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "email:dev": "email dev --dir lib/email/templates",
-    "inngest:dev": "npx inngest-cli@latest dev"
+    "inngest:dev": "npx inngest-cli@latest dev",
+    "size": "size-limit",
+    "visual:test": "playwright test tests/visual",
+    "axe:test": "playwright test tests/a11y"
   },
   "dependencies": {
     "@react-email/components": "^0",
+    "@react-three/drei": "^9.108",
+    "@react-three/fiber": "^8.16",
+    "@react-three/postprocessing": "^2.16",
     "@sentry/nextjs": "^8",
     "@supabase/ssr": "^0",
     "@supabase/supabase-js": "^2",
@@ -48,10 +54,13 @@
     "sonner": "^1",
     "svix": "^1.93.0",
     "tailwind-merge": "^2",
+    "three": "^0.165",
     "zod": "^3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10",
     "@playwright/test": "^1",
+    "@size-limit/preset-app": "^11",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -64,9 +73,22 @@
     "prettier": "^3",
     "prettier-plugin-tailwindcss": "^0",
     "react-email": "^3",
+    "size-limit": "^11",
     "tailwindcss": "^3",
     "tsx": "^4",
     "typescript": "^5",
     "vitest": "^2"
-  }
+  },
+  "size-limit": [
+    {
+      "name": "/ initial JS (excluding lazy R3F chunk)",
+      "path": ".next/static/chunks/pages/_app-*.js",
+      "limit": "250 KB"
+    },
+    {
+      "name": "Constellation Scene lazy chunk (R3F + drei + postprocessing)",
+      "path": ".next/static/chunks/constellation-*.js",
+      "limit": "180 KB"
+    }
+  ]
 }
