@@ -29,6 +29,7 @@ const TERRITORY_UI_LABELS: Record<string, string> = {
 const TWENTY_EIGHT_DAYS_MS = 28 * 24 * 60 * 60 * 1000
 
 export default async function RootPage() {
+  const renderer = (process.env.CONSTELLATION_RENDERER as 'webgl' | 'svg' | undefined) ?? 'webgl'
   const user = await getOptionalUser()
 
   if (!user) {
@@ -58,7 +59,7 @@ export default async function RootPage() {
         <Suspense fallback={null}>
           <SignedOutToast />
         </Suspense>
-        <LandingHero demoData={demoData} />
+        <LandingHero demoData={demoData} renderer={renderer} />
         <Suspense fallback={null}>
           <SampleProfilesGallery />
         </Suspense>
@@ -144,6 +145,7 @@ export default async function RootPage() {
           initial={initialData}
           firstReveal={isFirstReveal}
           bannerState={bannerState}
+          renderer={renderer}
           firstStarCinematicPending={user.firstStarCinematicPending}
           firstStarCinematicSeen={user.firstStarCinematicSeen}
           hintFlags={{

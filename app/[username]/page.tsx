@@ -35,6 +35,7 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
 }
 
 export default async function PublicProfilePage({ params }: PageParams) {
+  const renderer = (process.env.CONSTELLATION_RENDERER as 'webgl' | 'svg' | undefined) ?? 'webgl'
   const resolved = await resolveUsername(params.username)
 
   if (resolved.kind === 'not_found') {
@@ -143,6 +144,7 @@ export default async function PublicProfilePage({ params }: PageParams) {
           ownerUsername={canonicalUsername}
           drawerVariant={variant === 'owner_self' ? 'owner' : 'visitor'}
           showStickyBar={variant === 'visitor'}
+          renderer={renderer}
         />
       </div>
 

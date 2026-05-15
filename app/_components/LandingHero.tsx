@@ -13,6 +13,7 @@ export type LandingHeroProps = {
     territories: ConstellationData['territories']
     landmarks: ConstellationData['landmarks']
   } | null
+  renderer?: 'webgl' | 'svg'
 }
 
 const EMPTY_DEMO: ConstellationData = {
@@ -21,7 +22,7 @@ const EMPTY_DEMO: ConstellationData = {
   landmarks: [],
 }
 
-export function LandingHero({ demoData }: LandingHeroProps): JSX.Element {
+export function LandingHero({ demoData, renderer = 'webgl' }: LandingHeroProps): JSX.Element {
   const hasUpdatedReveal = useRef(false)
 
   useEffect(() => {
@@ -98,7 +99,7 @@ export function LandingHero({ demoData }: LandingHeroProps): JSX.Element {
             pointerEvents: 'none',
           }}
         />
-        <Constellation data={constellationData} />
+        <Constellation data={constellationData} renderer={renderer} />
       </div>
     </section>
   )

@@ -1,7 +1,25 @@
 'use client'
 
-// TODO: Phase 3 — Context and state for the constellation renderer
+import { createContext, useContext } from 'react'
+import type { TerritoryType } from '@/features/territories/registry'
 
-export function createConstellationContext() {
-  // TODO: Phase 3
+export type CinematicMode = 'idle' | 'reveal' | 'first-ever' | 'stage-up'
+
+export interface ConstellationState {
+  selected: TerritoryType | null
+  hovered: TerritoryType | null
+  cinematic: CinematicMode
+  reducedMotion: boolean
+  setHovered: (t: TerritoryType | null) => void
+  startCinematic: (mode: CinematicMode) => void
 }
+
+const ConstellationContext = createContext<ConstellationState | null>(null)
+
+export function useConstellationState(): ConstellationState {
+  const v = useContext(ConstellationContext)
+  if (!v) throw new Error('useConstellationState outside ConstellationContext.Provider')
+  return v
+}
+
+export { ConstellationContext }

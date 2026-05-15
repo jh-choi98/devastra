@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { Constellation } from '@/app/_components/Constellation/Constellation'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 
-export const dynamic = 'force-static'
+export const dynamic = 'force-dynamic'
 
 const MOCK_DATA: ConstellationData = {
   userId: 'dev-user',
@@ -76,15 +76,11 @@ const MOCK_DATA: ConstellationData = {
 }
 
 export default function DevMapPage() {
-  if (process.env.NODE_ENV === 'production') notFound()
+  if (process.env.ENABLE_DEV_MAP !== '1' && process.env.NODE_ENV !== 'development') notFound()
 
-  // Visual-inspection-only page. Server Component → no event handlers (Next.js
-  // App Router forbids passing functions across the Server/Client boundary).
-  // For interactivity, use the authenticated main page (/) or wrap this in a
-  // small client component.
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
-      <Constellation data={MOCK_DATA} />
-    </div>
+    <main style={{ width: '100vw', height: '100vh' }}>
+      <Constellation data={MOCK_DATA} renderer="webgl" />
+    </main>
   )
 }

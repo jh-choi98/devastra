@@ -44,11 +44,13 @@ export function PublicProfileMap({
   ownerUsername,
   drawerVariant,
   showStickyBar,
+  renderer = 'webgl',
 }: {
   mapData: ConstellationData
   ownerUsername?: string
   drawerVariant: 'owner' | 'visitor'
   showStickyBar: boolean
+  renderer?: 'webgl' | 'svg'
 }) {
   const [drawer, setDrawer] = useState<{
     cluster: TerritoryType
@@ -92,6 +94,7 @@ export function PublicProfileMap({
     <div className="relative w-full h-full flex-1">
       <Constellation
         data={mapData}
+        renderer={renderer}
         onClusterClick={handleClusterClick}
         onStarClick={handleStarClick}
       />

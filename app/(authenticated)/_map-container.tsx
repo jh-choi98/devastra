@@ -20,6 +20,7 @@ interface Props {
   initial: ConstellationData
   firstReveal: boolean
   bannerState: BannerState
+  renderer?: 'webgl' | 'svg'
   firstStarCinematicPending: boolean
   firstStarCinematicSeen: boolean
   hintFlags: {
@@ -34,6 +35,7 @@ export function LivingMapContainer({
   initial,
   firstReveal,
   bannerState,
+  renderer = 'webgl',
   firstStarCinematicPending,
   firstStarCinematicSeen,
 }: Props) {
@@ -149,6 +151,7 @@ export function LivingMapContainer({
       </div>
       <Constellation
         data={data}
+        renderer={renderer}
         onClusterClick={handleClusterClick}
         onStarClick={handleStarClick}
       />
