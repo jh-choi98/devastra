@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { Constellation } from '@/app/_components/Constellation/Constellation'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { LayerOverrides } from '@/app/_components/Constellation/types'
+import type { TerritoryType } from '@/features/territories/registry'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,6 +77,11 @@ const MOCK_DATA: ConstellationData = {
   ],
 }
 
+const ALLOWED_CLUSTERS = new Set<TerritoryType>([
+  'frontend_land', 'backend_fortress', 'data_pipeline_zone',
+  'testing_lab', 'devops_harbor', 'docs_library',
+])
+
 const ALLOWED_LAYERS = new Set([
   'sky', 'milkyway', 'fieldstars', 'boundaries',
   'connections', 'techstars', 'aura', 'labels', 'all',
@@ -107,10 +113,20 @@ export default async function DevMapPage({
   const params = searchParams ? await searchParams : {}
   const layersParam = (params?.layers as string | undefined) ?? 'all'
   const layerOverrides = resolveLayerOverrides(layersParam)
+  const clusterParam = params?.cluster as string | undefined
+  const selectedCluster: TerritoryType | null =
+    clusterParam && ALLOWED_CLUSTERS.has(clusterParam as TerritoryType)
+      ? (clusterParam as TerritoryType)
+      : null
 
   return (
     <main style={{ width: '100vw', height: '100vh' }}>
-      <Constellation data={MOCK_DATA} renderer="webgl" layerOverrides={layerOverrides} />
+      <Constellation
+        data={MOCK_DATA}
+        renderer="webgl"
+        layerOverrides={layerOverrides}
+        selectedCluster={selectedCluster}
+      />
     </main>
   )
 }

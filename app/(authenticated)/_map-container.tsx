@@ -152,6 +152,7 @@ export function LivingMapContainer({
       <Constellation
         data={data}
         renderer={renderer}
+        selectedCluster={drawer?.cluster ?? null}
         onClusterClick={handleClusterClick}
         onStarClick={handleStarClick}
       />

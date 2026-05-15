@@ -35,6 +35,8 @@ export interface ConstellationProps {
   /** Server-side feature flag forwarded from the page. Defaults to 'webgl'. */
   renderer?: 'webgl' | 'svg'
   layerOverrides?: LayerOverrides
+  /** Which cluster's drawer is open — drives cluster aura. */
+  selectedCluster?: TerritoryType | null
   onClusterClick?: (type: TerritoryType) => void
   onStarClick?: (territory: TerritoryType, tech_key: string) => void
 }

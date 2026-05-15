@@ -95,6 +95,7 @@ export function PublicProfileMap({
       <Constellation
         data={mapData}
         renderer={renderer}
+        selectedCluster={drawer?.cluster ?? null}
         onClusterClick={handleClusterClick}
         onStarClick={handleStarClick}
       />
