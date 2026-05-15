@@ -24,6 +24,7 @@ export type ProfileImageData = {
   displayUsername: string
   avatarUrl: string | null
   map: OgMapData
+  baseUrl?: string
 }
 
 export function renderProfileImage(opts: ProfileImageData): ImageResponse {
@@ -46,6 +47,7 @@ export function renderProfileImage(opts: ProfileImageData): ImageResponse {
           territories={opts.map.territories}
           landmarks={opts.map.landmarks}
           showHeroLabels={true}
+          baseUrl={opts.baseUrl}
         />
       </div>
     ),

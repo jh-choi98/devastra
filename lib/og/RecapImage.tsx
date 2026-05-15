@@ -3,6 +3,7 @@ import 'server-only'
 import { ImageResponse } from 'next/og'
 import { ConstellationOG } from './ConstellationImage'
 import type { OgMapData } from './ProfileImage'
+import type { TerritoryType } from '@/features/territories/registry'
 
 export type RecapHighlights = {
   top_growth: { territory: string; pct: number } | null
@@ -87,6 +88,8 @@ export function renderRecapImage(opts: {
   map: OgMapData
   weekStart: Date
   statStripText: string
+  stageUpTerritories?: TerritoryType[]
+  baseUrl?: string
 }): ImageResponse {
   const width = 1200
   const height = 630
@@ -109,6 +112,8 @@ export function renderRecapImage(opts: {
           landmarks={opts.map.landmarks}
           diffSince={opts.weekStart.toISOString()}
           showHeroLabels={false}
+          stageUpTerritories={opts.stageUpTerritories}
+          baseUrl={opts.baseUrl}
         />
         {opts.statStripText && (
           <div

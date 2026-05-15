@@ -8,7 +8,7 @@ import 'server-only'
  * Read from env so prod can rotate without code change; falls back to
  * an embedded default for safety.
  */
-export const OG_RENDER_VERSION = process.env.OG_RENDER_VERSION ?? 'devastra-1'
+export const OG_RENDER_VERSION = process.env.OG_RENDER_VERSION ?? 'devastra-stellarium-v1'
 
 export function ogVersionParam(): string {
   return `v=${encodeURIComponent(OG_RENDER_VERSION)}`

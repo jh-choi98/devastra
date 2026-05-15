@@ -1,0 +1,15 @@
+{
+  "phase": 10,
+  "name": "og-renderer",
+  "milky_way_strategy": "a_with_absolute_url",
+  "milky_way_notes": "Strategy (a) used: HTML <img> element with absolute URL constructed from request origin (url.origin passed as baseUrl prop). SVG <image> element was ruled out — Satori does not support it. Relative paths (e.g. /textures/milky-way-fallback.jpg) also fail in Satori ('Image source must be an absolute URL'). The baseUrl is threaded from the OG route through renderProfileImage/renderRecapImage to ConstellationOG, where it constructs the full URL: `${baseUrl}/textures/milky-way-fallback.jpg`.",
+  "bloom_strategy": "multi_ring_circles",
+  "bloom_notes": "SVG <filter>/<feGaussianBlur> stacks were considered but SVG <text> and filter elements inside transformed <g> groups cause Satori layout errors. Instead, 4 concentric circles per star with decreasing opacity simulate the bloom glow effect (r*5@4%, r*2.5@10%, r*1.5@28%, r@95%). This is reliably rendered by Satori/resvg.",
+  "text_strategy": "html_divs_absolute",
+  "text_notes": "Satori does not support SVG <text> nodes inside <svg> (throws 'not currently supported, please convert to <path>'). All text (cluster labels, star labels, watermark) is rendered as absolutely positioned HTML <div> elements with pixel positions computed from the viewBox-to-pixel mapping: scale = max(width/1000, height/700), px = tx + vx*scale.",
+  "svg_text_not_supported": true,
+  "og_render_version": "devastra-stellarium-v1",
+  "profile_png_bytes": 1136874,
+  "recap_png_bytes": 1127042,
+  "test_mock_support": "?test=1 on both OG routes returns deterministic mock data (15 lit stars across 6 clusters) when NODE_ENV !== 'production'."
+}

@@ -89,7 +89,10 @@
     {
       "phase": 10,
       "name": "og-renderer",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-15T14:15:33+0900",
+      "completed_at": "2026-05-15T14:57:00+0900",
+      "ac_notes": "All 8 AC checks pass. Refactored ConstellationImage.tsx imports anchors/palette/voronoi/magnitude/labels/mst from features/constellation/render/* (viewport='og'). Key Satori incompatibilities discovered and worked around: (1) SVG <image> not supported — HTML <img> used instead with absolute URL threaded via baseUrl prop from route origin. (2) SVG <text> not supported inside SVG context — all text (cluster labels, star labels, watermark) moved to absolutely positioned HTML <div> elements with positions computed from viewBox-to-pixel transform. (3) Multi-ring glow circles used instead of feGaussianBlur filter stacks (filters caused layout errors in transformed <g>). OG_RENDER_VERSION bumped to 'devastra-stellarium-v1'. ?test=1 mock mode added to both OG routes. Profile PNG 1.1MB, recap PNG 1.1MB (both >30KB). Build clean."
     },
     {
       "phase": 11,
