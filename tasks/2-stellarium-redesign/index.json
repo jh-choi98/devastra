@@ -67,7 +67,7 @@
       "name": "aura-postprocessing-parallax",
       "status": "completed",
       "started_at": "2026-05-15T13:36:48+0900",
-      "completed_at": "2026-05-15T13:55:00+0900",
+      "completed_at": "2026-05-15T13:45:44+0900",
       "ac_notes": "All 8 AC checks pass. ClusterAura.tsx (105 lines) — radial-gradient shader, ADR-61 priority order (cinematic>selected>hover), CLUSTER_COLORS defined here. BloomLayer.tsx (21 lines) — PostStack with EffectComposer+Bloom+Vignette, resolutionScale=0.5 on mobile. ParallaxRig.tsx (33 lines) — ±2.5° micro-tilt, disabled under reducedMotion. Scene.tsx updated: ConstellationContext.Provider moved outside Canvas, selectedCluster prop threaded. types.ts: added selectedCluster prop. _map-container.tsx + _public-profile-map.tsx: pass drawer?.cluster. /dev/map: supports ?cluster= param. Build clean. Screenshot captured (phase7.png). Console errors: 0."
     },
     {
