@@ -35,7 +35,7 @@
       "name": "switch-skeleton-rename",
       "status": "completed",
       "started_at": "2026-05-15T13:09:43+0900",
-      "completed_at": "2026-05-15T13:30:00+0900",
+      "completed_at": "2026-05-15T13:20:53+0900",
       "ac_notes": "All 8 AC checks pass. Constellation.tsx renamed to ConstellationSVG.tsx (git mv), new 3-way Constellation.tsx switch created, ConstellationWebGL/Skeleton/Scene/use-webgl-detect/state all implemented. ENABLE_DEV_MAP guard replaces NODE_ENV=production. CONSTELLATION_RENDERER read server-side in app/page.tsx and app/[username]/page.tsx (app/(authenticated)/page.tsx is a redirect — its equivalent server component app/page.tsx has the read). Build passes with both default and CONSTELLATION_RENDERER=svg."
     },
     {
