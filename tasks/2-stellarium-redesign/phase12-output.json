@@ -1,0 +1,72 @@
+{
+  "phase": 12,
+  "name": "tests-and-launch-verify",
+  "exitCode": 0,
+  "ac": {
+    "1_visual_baselines": {
+      "status": "pass",
+      "detail": "5 desktop baselines + 5 mobile baselines; npx playwright test tests/visual --project=visual: 6 passed (14.6s)"
+    },
+    "2_a11y": {
+      "status": "pass",
+      "detail": "npm run axe:test: 1 passed, WCAG AA 0 violations"
+    },
+    "3_bundle_budget": {
+      "status": "pass",
+      "detail": "npm run size: initial JS 33.52KB brotli (<250KB), constellation-scene 6.11KB brotli (<180KB)"
+    },
+    "4_reduced_motion": {
+      "status": "pass",
+      "detail": "tests/visual/reduced-motion.spec.ts: 1 passed; two screenshots 2s apart are identical (Buffer.compare === 0)"
+    },
+    "5_svg_fallback": {
+      "status": "pass",
+      "detail": "tests/e2e/svg-fallback.spec.ts: 1 passed; SVG visible, canvas count 0 with CONSTELLATION_RENDERER=svg"
+    },
+    "6_mobile_emulation": {
+      "status": "pass",
+      "detail": "npx playwright test tests/visual --project=mobile-chrome: 6 passed (Pixel 5, reducedMotion=reduce)"
+    },
+    "7_security_checklist": {
+      "status": "pass",
+      "detail": "grep -cE '^### W[1-9]\\..*\\[x\\]' docs/security-checklist.md → 9; all W1-W9 [x]"
+    },
+    "8_constellation_render_unit_tests": {
+      "status": "pass",
+      "detail": "npm test features/constellation/render: 31 tests across 7 files, all passed"
+    },
+    "9_build": {
+      "status": "pass",
+      "detail": "npm run build: clean, 0 TypeScript errors"
+    },
+    "10_no_console_errors": {
+      "status": "pass",
+      "detail": "Playwright tests run against /dev/map with no console errors captured"
+    }
+  },
+  "files_changed": [
+    "app/dev/map/page.tsx",
+    "playwright.config.ts",
+    "tests/visual/dev-map.spec.ts",
+    "tests/visual/reduced-motion.spec.ts",
+    "tests/e2e/svg-fallback.spec.ts",
+    "tests/visual/__screenshots__/dev-map.spec.ts-snapshots/empty-visual-darwin.png",
+    "tests/visual/__screenshots__/dev-map.spec.ts-snapshots/sparse-visual-darwin.png",
+    "tests/visual/__screenshots__/dev-map.spec.ts-snapshots/dense-visual-darwin.png",
+    "tests/visual/__screenshots__/dev-map.spec.ts-snapshots/stage-up-visual-darwin.png",
+    "tests/visual/__screenshots__/dev-map.spec.ts-snapshots/first-ever-visual-darwin.png",
+    "tests/visual/__screenshots__/mobile/dev-map.spec.ts-snapshots/empty-mobile-chrome-darwin.png",
+    "tests/visual/__screenshots__/mobile/dev-map.spec.ts-snapshots/sparse-mobile-chrome-darwin.png",
+    "tests/visual/__screenshots__/mobile/dev-map.spec.ts-snapshots/dense-mobile-chrome-darwin.png",
+    "tests/visual/__screenshots__/mobile/dev-map.spec.ts-snapshots/stage-up-mobile-chrome-darwin.png",
+    "tests/visual/__screenshots__/mobile/dev-map.spec.ts-snapshots/first-ever-mobile-chrome-darwin.png",
+    "docs/security-checklist.md",
+    "tasks/2-stellarium-redesign/index.json"
+  ],
+  "notes": [
+    "Visual/mobile-chrome playwright projects set reducedMotion='reduce' — makes WebGL snapshots deterministic by disabling field-star twinkle between renders.",
+    "Mobile FPS: not measured precisely; visual tests pass without visible jank on Pixel 5 emulation.",
+    "SVG fallback: locator uses .first() because ConstellationSVG renders two SVG elements (boundary + a11y overlay).",
+    "W1 guard: page.tsx uses 'ENABLE_DEV_MAP !== 1 && NODE_ENV !== development' — production (NODE_ENV=production, ENABLE_DEV_MAP unset) → notFound(). The dual condition allows local development without setting the env var."
+  ]
+}

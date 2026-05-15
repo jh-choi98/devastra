@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -13,6 +13,19 @@ export default defineConfig({
     {
       name: 'a11y',
       testDir: './tests/a11y',
+    },
+    {
+      name: 'visual',
+      testDir: './tests/visual',
+      snapshotDir: './tests/visual/__screenshots__',
+      // reducedMotion disables field-star twinkle, making snapshots deterministic
+      use: { reducedMotion: 'reduce' },
+    },
+    {
+      name: 'mobile-chrome',
+      testDir: './tests/visual',
+      snapshotDir: './tests/visual/__screenshots__/mobile',
+      use: { ...devices['Pixel 5'], reducedMotion: 'reduce' },
     },
   ],
 })
