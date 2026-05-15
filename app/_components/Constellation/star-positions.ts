@@ -2,6 +2,8 @@
 // Client-safe star position lookup — no server-only imports.
 // Mirrors the hash logic in features/territories/star-positions.ts.
 import type { TerritoryType } from '@/features/territories/registry'
+import { anchorFor } from '@/features/constellation/render/anchors'
+import type { Viewport } from '@/features/constellation/render/types'
 
 type StarPositionEntry = { tech_key: string; territory: TerritoryType; x: number; y: number }
 
@@ -120,4 +122,32 @@ export function getClientStarPositions(): StarPositionEntry[] {
 
 export function getClientStarPosition(tech_key: string): StarPositionEntry | undefined {
   return getClientStarPositions().find((p) => p.tech_key === tech_key)
+}
+
+function jitter(tech_key: string): { dx: number; dy: number } {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < tech_key.length; i++) {
+    h ^= tech_key.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  const a = ((h >>> 0) % 1000) / 1000
+  const b = ((h >>> 10) % 1000) / 1000
+  return { dx: (a - 0.5) * 28, dy: (b - 0.5) * 28 }
+}
+
+/** Returns a viewBox-space {x, y} position for a tech star (1000x700 canvas). */
+export function resolveStarViewBoxPosition(
+  tech_key: string,
+  territory: TerritoryType,
+  viewport: Viewport,
+): { x: number; y: number } {
+  const pos = getClientStarPosition(tech_key)
+  const anchor = anchorFor(viewport, territory)
+  const j = jitter(tech_key)
+  const nx = pos?.x ?? 0.5
+  const ny = pos?.y ?? 0.5
+  return {
+    x: anchor.x + (nx - 0.5) * anchor.spread * 2 + j.dx,
+    y: anchor.y + (ny - 0.5) * anchor.spread * 2 + j.dy,
+  }
 }

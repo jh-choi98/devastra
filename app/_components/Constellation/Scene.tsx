@@ -6,6 +6,8 @@ import { SkyBackground } from './layers/SkyBackground'
 import { FieldStars } from './layers/FieldStars'
 import { MilkyWay } from './layers/MilkyWay'
 import { TerritoryBoundaries } from './layers/TerritoryBoundaries'
+import { Connections } from './layers/Connections'
+import { TechStars } from './layers/TechStars'
 import { ConstellationContext } from './state'
 import { useReducedMotion } from './hooks/useReducedMotion'
 import type { ConstellationProps, LayerOverrides } from './types'
@@ -52,7 +54,8 @@ export default function Scene({ data, layerOverrides }: SceneProps) {
           {show('milkyway') && <MilkyWay />}
           {show('fieldstars') && <FieldStars viewport={viewport} />}
           {show('boundaries') && <TerritoryBoundaries viewport={viewport} />}
-          {/* Phase 6+: <TechStars />, <Connections />, ... */}
+          {show('connections') && <Connections data={data} viewport={viewport} />}
+          {show('techstars') && <TechStars data={data} viewport={viewport} />}
         </Suspense>
       </ConstellationContext.Provider>
     </Canvas>
