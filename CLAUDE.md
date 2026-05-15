@@ -56,7 +56,9 @@ Every file under the following paths MUST begin with `import 'server-only'` as i
 Client components under `app/_components/` MUST NOT import from any of these paths. The
 `server-only` package causes a build error on accidental client-side imports — do not remove it.
 
-## SPDX license headers (ADR-27, ADR-55)
+**Documented exception: `features/constellation/render/*`** is isomorphic pure math (palette / Voronoi / labels / MST / magnitude / field-stars / coords). Both the WebGL client renderer and the SVG OG server renderer import from it (ADR-62). Files under this path do NOT carry `server-only`. This is the one place where `features/` crosses into client space; do not generalize the exception.
+
+## SPDX license headers (ADR-27, ADR-55, ADR-62)
 
 The following modules MUST begin with `// SPDX-License-Identifier: MIT` as the first line (above `server-only` if both apply):
 
@@ -66,8 +68,15 @@ The following modules MUST begin with `// SPDX-License-Identifier: MIT` as the f
 - `features/territories/scoring.ts`
 - `features/territories/registry.ts`
 - `features/territories/star-positions.ts`
+- `features/constellation/render/palette.ts`
+- `features/constellation/render/voronoi.ts`
+- `features/constellation/render/labels.ts`
+- `features/constellation/render/mst.ts`
+- `features/constellation/render/magnitude.ts`
+- `features/constellation/render/field-stars.ts`
 - `app/_components/Constellation/star-positions.ts`
-- Other `app/_components/Constellation/*` renderer files (per-file decision)
+
+WebGL renderer files under `app/_components/Constellation/{Scene,layers,post,camera,overlay,cinematics,shaders}.tsx,.ts` are **proprietary** by default. MIT is reserved for shared pure-math modules with extraction value as standalone npm packages; WebGL composition is product-specific.
 
 All other code is proprietary (covered by `LICENSE-PROPRIETARY`). When in doubt about a new file, default to no SPDX header — it is proprietary.
 
@@ -124,11 +133,11 @@ Every Inngest step must be safe to re-run. Use UPSERT (`onConflictDoUpdate`) on 
 app/  →  features/  →  lib/  →  (external services)
 ```
 
-`app/` may import `lib/` and `features/`. `features/` may import `lib/`. Nothing imports from `app/`. Client components (`app/_components/`) may only import `lib/` modules that are not `server-only`. They never import from `features/`.
+`app/` may import `lib/` and `features/`. `features/` may import `lib/`. Nothing imports from `app/`. Client components (`app/_components/`) may only import `lib/` modules that are not `server-only`. They never import from `features/`, **with one documented exception:** `features/constellation/render/*` is isomorphic pure render math, imported by both `app/_components/Constellation/` (client) and `lib/og/ConstellationImage.tsx` (server). See `docs/code-architecture.md` § Layers and dependency direction.
 
-## Test/mock route guards (ADR-47)
+## Test/mock route guards (ADR-47, ADR-63)
 
-Every file under `app/api/test/*` (and any other dev-only routes) MUST begin with:
+Every file under `app/api/test/*` MUST begin with:
 
 ```ts
 import { notFound } from 'next/navigation'
@@ -136,6 +145,15 @@ if (process.env.NODE_ENV === 'production') notFound()
 ```
 
 This is a security control, not a style preference. A leaked mock-OAuth route in production allows arbitrary user impersonation.
+
+**`app/dev/map/page.tsx`** is variant (ADR-63) — it must be reachable from CI / Vercel preview deploys for Playwright visual regression even when production-built. Use:
+
+```ts
+import { notFound } from 'next/navigation'
+if (process.env.ENABLE_DEV_MAP !== '1') notFound()
+```
+
+`ENABLE_DEV_MAP=1` is set in CI and Vercel preview environments only. Production deploys leave it unset → 404. The underlying principle from ADR-47 (dev-only routes must guard against production access) is preserved; only the mechanism differs for this single route.
 
 ## Cross-doc consistency
 
@@ -155,18 +173,38 @@ Forbidden:
 - "Level up!", "+XP", "Achievement unlocked!" copy
 - Toasts for star unlocks (use strip + pulse instead)
 - "You are top N%" framing (rare star labels describe the *star*, not the person)
-- Decorative stars that don't map to a `tech_key`
-- Ambient animations not tied to data change
 - LLM-generated narrative in core flow
 - Modal alerts that block the constellation
 - Banners that hide the cached constellation when sync fails
+- Persistent cluster-color aura washes in the steady-state canvas (cluster color appears only on `cinematic/stage-up > drawer-selected > hover` — see `docs/adr.md` ADR-61)
+- Tech-star colors driven by cluster (tech stars use the spectral palette in `features/constellation/render/palette.ts`)
+- All-caps, letter-spaced, cluster-colored labels (labels are small blue-white sans-serif — `docs/screens.md` §C)
+- Unbounded ambient motion (twinkle is OK on field stars only at ±10% amplitude; tech stars do not twinkle; all ambient motion is disabled under `prefers-reduced-motion: reduce`)
+
+Permitted (amended 2026-05-14 by `docs/adr.md` ADR-61):
+
+- **Field stars** (background, decorative, ~2000 desktop / ~1000 mobile) — they are "sky background," NOT "decorative tech stars." No labels, no hover, no click, deterministic seed.
+- **Bounded ambient motion** — field-star twinkle, mouse-driven parallax micro-tilt, Milky Way opacity breathing. All decoupled from per-star semantic identity. All respect `prefers-reduced-motion`.
+- **Milky Way nebulosity** — warm sepia/ochre baked texture + procedural noise warp, positioned to pass through cluster anchors (data-coupled, not pure decoration).
+
+## Constellation visual language (ADR-61)
+
+Stellarium atmosphere-OFF mode is the primary visual reference. Cluster identity is conveyed by **spatial grouping + Voronoi boundary lines + connection lines + small map-style labels** — never by persistent color. The default canvas reads as an observational star atlas, not a colorful skill dashboard. See `docs/screens.md` §C and `docs/adr.md` ADR-61 / ADR-62 / ADR-63 for the full spec.
+
+## Constellation renderer feature flag (ADR-62)
+
+`CONSTELLATION_RENDERER` is a **server-side** env var (NOT `NEXT_PUBLIC_*`). Read in server components and passed as a prop into the client tree. Default `'webgl'`. Set to `'svg'` in the Vercel dashboard to roll back without redeploy. After stable rollout, the env-var read and the `ConstellationSVG.tsx` legacy renderer will be removed in a dedicated follow-up PR.
+
+## /dev/map env-var guard (ADR-63)
+
+`/dev/map` is gated by `process.env.ENABLE_DEV_MAP !== '1'` (NOT `NODE_ENV`), so production-build Playwright visual regression can access it on CI / Vercel preview. Production deploys leave the env var unset → 404. ADR-47's principle (dev-only routes guard against production access) is preserved; only the mechanism is variant for this one route.
 
 ## Naming conventions (summary)
 
 - Files: kebab-case (`weekly-recap.ts`); React components PascalCase (`Constellation.tsx`)
 - DB identifiers: `snake_case` for columns and tables
 - Inngest events: `<domain>/<action>.<variant>` (e.g. `sync/initial.requested`)
-- Env vars: `SCREAMING_SNAKE_CASE`; never imported in client components
+- Env vars: `SCREAMING_SNAKE_CASE`; never imported in client components (note: `CONSTELLATION_RENDERER` and `ENABLE_DEV_MAP` are server-side reads, never bundled)
 
 ## Tech catalog
 

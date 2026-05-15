@@ -34,13 +34,20 @@
 │   │   └── webhooks/
 │   │       └── resend/route.ts         # Bounce webhook (signature verified)
 │   └── _components/
-│       ├── Constellation/              # Renderer (replaces Map/)
-│       │   ├── Constellation.tsx       # Root SVG canvas
-│       │   ├── Cluster.tsx             # One cluster (replaces Island)
-│       │   ├── Star.tsx                # One star (replaces Landmark)
-│       │   ├── ClusterAura.tsx         # Per-cluster radial gradient + ripple
-│       │   ├── Connections.tsx         # MST connection lines per cluster
-│       │   ├── SparkAnimation.tsx      # Per-star spark choreography
+│       ├── Constellation/              # Renderer — WebGL primary + SVG fallback (ADR-61, ADR-62)
+│       │   ├── Constellation.tsx       # 3-way switch by `renderer` prop (server-fed env)
+│       │   ├── ConstellationSVG.tsx    # Legacy SVG renderer (kept during rollout; retired in follow-up PR)
+│       │   ├── ConstellationWebGL.tsx  # WebGL wrapper: feature-detect → Skeleton + Scene OR Skeleton + banner
+│       │   ├── Skeleton.tsx            # HTML/SVG, SSR-safe: background + boundary lines + cluster labels
+│       │   ├── Scene.tsx               # R3F <Canvas> root; dynamic({ ssr: false })
+│       │   ├── state.ts                # ConstellationContext (selected/hover/cinematic/reducedMotion)
+│       │   ├── layers/                 # SkyBackground / MilkyWay / FieldStars / TerritoryBoundaries
+│       │   │                           # / Connections / TechStars / ClusterAura / Labels
+│       │   ├── post/                   # BloomLayer / VignetteLayer (postprocessing)
+│       │   ├── camera/                 # ParallaxRig (mouse micro-tilt)
+│       │   ├── overlay/                # A11yOverlay (DOM invisible buttons) / TooltipHost
+│       │   ├── cinematics/             # FirstEverCinematic / RevealSequence / SparkSequence / StageUpRipple
+│       │   ├── shaders/                # TS string literals (.frag.ts, .vert.ts); no .glsl loader
 │       │   ├── StarTooltip.tsx         # Desktop hover tooltip
 │       │   └── star-positions.ts       # Reads {x, y} from tech-catalog (SPDX-License-Identifier: MIT)
 │       ├── ClusterDrawer/              # Drawer (replaces TerritoryDrawer)
@@ -108,7 +115,18 @@
 │       ├── username-redirect.ts        # users → username_history resolution
 │       └── time/                       # tz, formatters, common helpers
 │
-├── features/                           # Domain logic; server-only
+├── features/                           # Domain logic; server-only EXCEPT constellation/render (isomorphic)
+│   ├── constellation/
+│   │   └── render/                     # Pure isomorphic render math; shared by WebGL + SVG OG renderers (ADR-62, ADR-63)
+│   │       ├── anchors.ts              # Cluster anchor positions per viewport
+│   │       ├── palette.ts              # SPDX-License-Identifier: MIT — tech_key → spectral color (deterministic)
+│   │       ├── voronoi.ts              # SPDX-License-Identifier: MIT — 6-cell boundary polygons from anchors
+│   │       ├── labels.ts               # SPDX-License-Identifier: MIT — label visibility selection rule
+│   │       ├── mst.ts                  # SPDX-License-Identifier: MIT — MST edges per cluster
+│   │       ├── magnitude.ts            # SPDX-License-Identifier: MIT — weight → render size/intensity curve
+│   │       ├── field-stars.ts          # SPDX-License-Identifier: MIT — deterministic background star generation
+│   │       ├── coords.ts               # svg-px ↔ world-coord conversion
+│   │       └── types.ts                # WorldCoord, AnchorMap, SpectralColor
 │   ├── sync/
 │   │   ├── runner.ts                   # Inngest function definitions
 │   │   ├── initial.ts                  # Initial sync (capped at 1 year, ADR-50)
@@ -155,6 +173,12 @@
 │       ├── privacy.md
 │       └── terms.md
 │
+├── public/
+│   └── textures/                       # Static assets (ADR-62)
+│       ├── milky-way.webp              # 4K baked Milky Way panorama (NASA Gaia / ESO crop)
+│       ├── milky-way@2x.webp           # high-DPR variant
+│       └── milky-way-fallback.jpg      # OG renderer (edge runtime fetch)
+│
 ├── drizzle/migrations/                 # SQL migrations + RLS + triggers
 ├── middleware.ts                       # CSP, rate limits, session refresh
 ├── drizzle.config.ts
@@ -188,9 +212,9 @@ Rules:
 - `app/` may import from `lib/` and `features/`. Never the reverse.
 - `features/` may import from `lib/`. Never the reverse.
 - `lib/` is leaf-level; modules within `lib/` may import each other only when there is no circular path.
-- Client components (under `app/_components/`) may only import from `lib/` modules that are *not* `server-only`. They never import from `features/`.
+- Client components (under `app/_components/`) may only import from `lib/` modules that are *not* `server-only`. They never import from `features/`, **with one exception:** `features/constellation/render/*` is isomorphic pure math and may be imported by both client (`app/_components/Constellation/`) and server (`lib/og/ConstellationImage.tsx`). This is the only path crossing the `features/` boundary into client space. Files under `features/constellation/render/` do NOT carry `server-only` for this reason.
 
-The `server-only` package is imported at the top of every file under `lib/db/`, `lib/github/`, `lib/email/`, `lib/og/`, `features/sync/`, `features/recap/`, `features/feedback/`, `features/territories/rules.ts`, `features/territories/scoring.ts`, `features/territories/classifier.ts`, `features/territories/star-positions.ts`, `features/territories/global-stats.ts`. This causes a build error if anything in `app/_components/` accidentally imports them.
+The `server-only` package is imported at the top of every file under `lib/db/`, `lib/github/`, `lib/email/`, `lib/og/`, `features/sync/`, `features/recap/`, `features/feedback/`, `features/territories/rules.ts`, `features/territories/scoring.ts`, `features/territories/classifier.ts`, `features/territories/star-positions.ts`, `features/territories/global-stats.ts`. This causes a build error if anything in `app/_components/` accidentally imports them. **`features/constellation/render/*` is the documented exception** and intentionally does NOT carry `server-only`.
 
 ## RLS bypass policy (CRITICAL)
 
@@ -202,7 +226,7 @@ Public-facing reads use the `users_public_view` (defined in `0001_rls_and_trigge
 
 ## Open-source module boundaries
 
-The following modules carry an `SPDX-License-Identifier: MIT` header as the first line (ADR-27, ADR-55):
+The following modules carry an `SPDX-License-Identifier: MIT` header as the first line (ADR-27, ADR-55, ADR-62):
 
 ```
 features/territories/classifier.ts
@@ -211,9 +235,16 @@ features/territories/rules.ts
 features/territories/scoring.ts
 features/territories/registry.ts
 features/territories/star-positions.ts
+features/constellation/render/palette.ts          # added with ADR-62
+features/constellation/render/voronoi.ts          # added with ADR-63
+features/constellation/render/labels.ts           # added with ADR-63
+features/constellation/render/mst.ts              # added with ADR-62
+features/constellation/render/magnitude.ts        # added with ADR-62
+features/constellation/render/field-stars.ts      # added with ADR-62
 app/_components/Constellation/star-positions.ts
-app/_components/Constellation/*  (renderer modules — to be decided per file)
 ```
+
+WebGL renderer modules under `app/_components/Constellation/{Scene,layers,post,camera,overlay,cinematics,shaders}.tsx,.ts` are **proprietary** by default (CLAUDE.md L73). MIT is reserved for shared pure-math modules that have extraction value as standalone npm packages; WebGL composition is product-specific.
 
 All other code is proprietary (covered by `LICENSE-PROPRIETARY`). MVP does NOT publish these as npm packages; boundaries are designed for future extraction. See `docs/adr.md` ADR-55.
 
@@ -235,7 +266,9 @@ All other code is proprietary (covered by `LICENSE-PROPRIETARY`). MVP does NOT p
 - Integration tests under `tests/integration/`, named after the flow under test (`initial-sync.test.ts`, `rls-isolation.test.ts`, `public-profile-visibility.test.ts`, `email-templates.test.ts`).
 - Email template snapshot tests render React Email to HTML and diff against a committed snapshot.
 - One Playwright E2E in `tests/e2e/signup-to-reveal.spec.ts` runs against a Vercel preview deploy of a feature branch.
-- A separate constellation render snapshot test takes a Playwright screenshot of the steady-state main page and diffs it against a baseline image.
+- **Visual regression for the constellation:** Playwright screenshots against `/dev/map` mock scenarios (empty / sparse / dense / stage-up / first-ever), diffed at 3% threshold against committed baselines in `tests/visual/baseline/`. Requires `ENABLE_DEV_MAP=1` on the test environment.
+- **A11y for the constellation:** `@axe-core/playwright` runs against `/dev/map` and verifies the DOM overlay buttons (cluster cells + hero lit stars) are keyboard-focusable and have ARIA labels — see `docs/adr.md` ADR-63.
+- **Pure render math tests:** every module under `features/constellation/render/*` has co-located unit tests verifying determinism (`palette.test.ts`, `voronoi.test.ts`, `labels.test.ts`, `mst.test.ts`, `magnitude.test.ts`, `field-stars.test.ts`).
 - Vitest config uses `vitest --pool=forks` for integration tests that need a real Supabase dev project. The dev project's `.env.test` is git-ignored.
 
 ## External dependencies (justification per dep)
@@ -250,7 +283,15 @@ All other code is proprietary (covered by `LICENSE-PROPRIETARY`). MVP does NOT p
 | `inngest` | Step-based background jobs with at-least-once guarantees, built-in observability, free tier sufficient until Pro at 1k users; ADR-5 |
 | `resend`, `@react-email/components` | Transactional email with React templates; cheap free tier; ADR-6 |
 | `@vercel/og` | Edge-rendered OG images sharing the same SVG generation code as the live constellation; ADR-7 |
-| `framer-motion` | Reveal spark / glow / drawer slide / ripple animations |
+| `framer-motion` | Drawer slide / banner animations / SVG-renderer reveal (legacy path) |
+| `three` | WebGL 3D math + GL context for constellation Scene (ADR-62) |
+| `@react-three/fiber` | React reconciler for three.js; lifecycle + hooks integration (ADR-62) |
+| `@react-three/drei` | R3F helpers — `<Html>` overlay for labels, useTexture, perf helpers (ADR-62) |
+| `@react-three/postprocessing` | UnrealBloom + Vignette passes; HDR composer (ADR-62) |
+| `simplex-noise` | Procedural noise for Milky Way warp + Voronoi jitter (already installed) |
+| `d3-voronoi` | Optional; 6-cell boundary polygon computation (may be replaced by ~50 lines hand-rolled — see ADR-63) |
+| `@axe-core/playwright` | a11y automated tests against `/dev/map` and main constellation (ADR-63) |
+| `size-limit` (or `@next/bundle-analyzer`) | CI gate on `/` page JS chunk ≤ 350KB gz (ADR-62 budget) |
 | `zod` | Runtime input validation on all Server Actions and route handlers |
 | `posthog-js`, `posthog-node` | Funnel analytics; cookieless mode (ADR-60); core 6 events |
 | `@sentry/nextjs` | Error monitoring with `beforeSend` token/header scrub (ADR-49) |
@@ -284,6 +325,8 @@ NEXT_PUBLIC_POSTHOG_KEY
 NEXT_PUBLIC_POSTHOG_HOST
 OG_RENDER_VERSION                       # cache-busting token; bump on any global render change
 APP_HOSTNAME_ALLOWLIST                  # comma-separated; used by OAuth origin check (ADR-47)
+CONSTELLATION_RENDERER                  # 'webgl' (default if unset) | 'svg'; server-side read, instant rollback (ADR-62)
+ENABLE_DEV_MAP                          # '1' enables /dev/map in non-dev environments; used by CI / Vercel preview for visual regression (ADR-63)
 ```
 
 ## Build & deploy
@@ -300,7 +343,11 @@ APP_HOSTNAME_ALLOWLIST                  # comma-separated; used by OAuth origin 
 
 - **Funnel + product analytics:** PostHog cloud; 6 core events; cookieless mode; URL masking on `/{username}` paths.
 - **Performance:** Vercel Speed Insights (auto-captured LCP, CLS, INP). Targets: LCP <2.5s, CLS <0.1, INP <200ms.
-- **Error monitoring:** Sentry with `beforeSend` automatic scrub of `authorization`, `cookie`, token-pattern strings (ADR-49).
+- **Error monitoring:** Sentry with `beforeSend` automatic scrub of `authorization`, `cookie`, token-pattern strings (ADR-49). Constellation WebGL renderer reports three custom events to support rollout (ADR-62):
+  - `constellation.webgl.init_success` — boolean, fired once per Scene mount
+  - `constellation.webgl.init_failure` — fired with `reason` tag (`unsupported` | `error`); triggers Skeleton + banner fallback
+  - `constellation.webgl.context_lost` — counter; mobile background-tab recovery signal
+  Scene is wrapped in a React Error Boundary that catches runtime crashes and reports to Sentry with `constellation.webgl.scene_crash`; the boundary falls back to Skeleton + retry banner.
 - **Uptime:** UptimeRobot pings `/api/health` (HEAD or GET) every 5 min.
 - **Cost:** manual monthly review of Vercel + Supabase + Inngest + Resend dashboards; Vercel hard cap as backstop.
 

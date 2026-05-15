@@ -146,13 +146,33 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 
 ### Canvas (constellation)
 
-- Background: subtle vertical gradient (top: `#0b1020`, bottom: `#020617`); no decorative particle dots (no ambient noise).
-- Six cluster outlines always visible (dim if no stars; brighter if any star is lit).
-- Cluster aura: weak radial gradient using cluster color at low opacity. Intensifies on stage-up (with one ripple wave).
-- Cluster label: below the cluster, fixed position. Sans-serif, 14–16px, dim white; lit cluster's label is slightly brighter.
-- Stars: positioned per `tech-catalog.md` (deterministic per-`tech_key` `{x, y}` within cluster). Color = cluster color. Size and glow scale with weight via layered concentric circles. Hover on desktop: glow + scale 1.1× + tooltip.
-- Connection lines: MST among lit stars per cluster. Color: neutral gray `#475569`. Low opacity. Thin. Computed at render time.
-- Empty/sparse: clusters with zero lit stars still show the outline (sense of "stars will land here").
+Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster identity is conveyed by spatial grouping + boundary lines + connections + labels — never by persistent color. Default canvas reads as an observational star atlas, not a colorful skill dashboard.
+
+**Renderer stack:** WebGL via React Three Fiber + drei + postprocessing on the web. SVG-only fallback for OG image generation and for browsers that cannot run WebGL. The shared math (anchors, palette, Voronoi cells, magnitude curve, label-selection rule, MST) lives in `features/constellation/render/*` and is consumed by both. See `docs/adr.md` ADR-62.
+
+**Layers (back to front):**
+
+- **Sky background.** Pure near-black (`#020207` zenith → `#050307` edges). No vertical gradient toward a warm horizon; the only warm element on the canvas is the Milky Way layer.
+- **Milky Way nebulosity.** Hybrid: a baked panorama-derived texture (NASA Gaia or ESO public-domain crop, warm sepia / ochre / cream palette with dark dust lanes) + a thin procedural noise warp + slow opacity breathing (~30–60s, ±5%) + subtle grain + subtle vignette. The texture is masked / positioned to pass through cluster anchor centers so its placement is data-coupled.
+- **Field stars** (~2000 desktop / ~1000 mobile). Deterministic seed; density biased toward the Milky Way band. Spectral palette weighted 70% white / 20% blue-white / 7% yellow-white / 3% orange-red. Sizes: 80% 1px / 15% 2px / 5% with visible halo. Per-star bounded twinkle (±10% intensity, 4–8s phases). No labels, no hover, no click.
+- **Territory boundary lines.** Six Voronoi cells computed at render time from the cluster anchors (see `docs/adr.md` ADR-63). Always visible. Thin (~10% opacity) muted blue-gray polygonal strokes. Fixed regardless of which stars are lit. This is the persistent "map layer" that establishes cluster regions without color.
+- **Connection lines.** MST among lit stars per cluster. Muted blue-gray (not cluster color), opacity `0.15–0.25`, glow minimized. Map-ink feel, not a game-UI overlay.
+- **Tech stars.** 50 positions from `tech-catalog.md` (deterministic per-`tech_key` `{x, y}` within cluster anchor + jitter). Spectral colors from the same palette as field stars (deterministic mapping by tech_key — see `features/constellation/render/palette.ts`). Airy disk core + soft Gaussian halo. Visible 4-spike diffraction cross (vertical + horizontal, length ≈ 4–6× core diameter). Brightness scales with `landmarks.weight` via the magnitude curve in `features/constellation/render/magnitude.ts`. Tech stars have NO ambient motion — identity is preserved.
+- **Cluster aura (event-only).** Steady state: OFF. Cluster color appears only on these triggers, in priority order: `cinematic/stage-up > drawer-selected > hover > none`. Only one aura is active at a time. Hover region is the boundary polygon interior; star hover and label hover also count as cluster hover. While the drawer is open with cluster X selected, X's aura stays on; hovering another cluster Y highlights Y's boundary line but does NOT activate Y's aura. Fade in/out ~200ms; additive blend; feeds the bloom postprocessing.
+- **Labels.** Small blue-white sans-serif, Stellarium typography. NOT cluster color, NOT caps, NOT letter-spaced.
+  - Cluster labels: always visible, one per cluster (e.g. `Backend`). The inline `· STAGE N` suffix is removed; stage information lives in the drawer / strip instead.
+  - Tech star labels (persistent rule):
+    - top 1 lit star per active cluster (active = stage ≥ 2 OR has any lit stars)
+    - PLUS globally brightest lit stars filling up to a global cap of 8–12
+    - if total lit stars ≤ 6, label ALL lit stars (sparse-state override)
+    - dedupe: a star already labeled via cluster-top is not double-counted
+  - All other lit stars: tooltip on hover only. Unlit stars: no label, no hover.
+
+**Postprocessing:** UnrealBloom (threshold ≈ 0.75, intensity ≈ 0.5, radius ≈ 1.0 — tuned in `/dev/map` iteration). Vignette (subtle edge darkening ~20%).
+
+**Camera / parallax:** Static camera. Mouse-driven micro-tilt of ±2–3° (parallax rig) provides depth without changing the visible scene. Disabled when `prefers-reduced-motion: reduce`.
+
+**SSR / first paint:** server-rendered Skeleton (HTML/SVG: background + boundary lines + cluster labels, ≈3KB) ships in the initial HTML payload. The WebGL Scene mounts post-hydration via dynamic import and fades in over 300–500ms. Skeleton stays underneath the canvas (which has alpha) for a seamless blend.
 
 **Viewport:** full viewport below the header. No scroll. Pan/zoom disabled (the constellation is identity, not a map).
 
@@ -163,6 +183,13 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 - Star tap targets: invisible 24px (minimum) hit area, ideally 44px.
 - Pull-to-refresh enabled on main constellation only.
 - Safe-area-insets respected (notch / nav bar).
+- **Adaptive quality:** Bloom render target 0.5×, field stars 1000 (vs 2000 desktop), DPR cap `Math.min(devicePixelRatio, 2)`.
+
+**Reduced motion (`prefers-reduced-motion: reduce`):** twinkle off (field stars settle at average brightness), parallax off, Milky Way breathing off, spark / ripple / aura fade replaced by instant final-state swap. Bloom remains (it is not motion, it is composition).
+
+**Accessibility:** WebGL canvas is purely visual. A DOM overlay layer with invisible buttons is absolutely positioned over (a) each Voronoi cluster cell, (b) each cluster label, (c) each persistently-labeled (hero) lit star. Keyboard tab + ARIA + screen-reader summary all flow through this overlay. Field stars and non-labeled lit stars are NOT accessible targets — accessibility unit is "cluster + hero lit stars" (`docs/adr.md` ADR-63).
+
+**Browser without WebGL:** Skeleton stays mounted (boundary + labels + dim sky), with a small banner: `Your browser doesn't support advanced graphics; using simplified view.` See `docs/adr.md` ADR-62.
 
 ### Star tooltip (desktop hover)
 
@@ -414,7 +441,7 @@ After cinematic: only the clusters containing first stars retain permanent activ
 
 ### I.3 — Stage-up moment
 
-See `docs/flow.md` Sub-flow A. Cluster aura radius expansion 10–20% + intensity increase + one ripple wave (1.5s). Multiple cluster stage-ups: 0.3s stagger.
+See `docs/flow.md` Sub-flow A. Stage-up is the moment cluster color **becomes visible** on the canvas (steady state has no colored aura — see §C and `docs/adr.md` ADR-61). Sequence: aura fades in at the cluster center → radius expands 10–20% over 1.5s → one ripple wave at full radius → aura settles back to the "event-active" steady level (still cluster color, not dim) → fades out unless a follow-on trigger (drawer-selected or hover) keeps it active. Multiple cluster stage-ups: 0.3s stagger.
 
 **Reduced-motion preference (`prefers-reduced-motion: reduce`):** all cinematics (I.1, I.2, I.3) skip animation and snap to final state instantly. Spark/ripple/pulse/aura-expansion are disabled.
 

@@ -785,3 +785,69 @@ Tracked via Vercel Speed Insights. Initial JS bundle budget: < 250KB gzipped (Ne
 - In-app data export UI — rejected: over-engineering at MVP; manual is fine until request frequency rises.
 - Lawyer-reviewed legal docs — rejected: cost; ADR-25 retains self-write posture.
 **Consequences:** Privacy Policy must accurately describe the above. Data export script lives in `scripts/`. PostHog config tightened (initialization with `disable_cookie: true` or equivalent).
+
+---
+
+## ADR-61: Stellarium visual language for the constellation canvas
+**Date:** 2026-05-14
+**Status:** accepted
+**Context:** The initial SVG constellation renderer rendered stars as large radial-gradient blobs with persistent cluster-color aura washes. User feedback: the canvas reads as a "colorful skill dashboard," not an identity surface. The four-pillar test (`docs/prd.md`) requires the canvas to feel like a credible artifact, not a UI overlay. Reference: Stellarium (the planetarium application), specifically atmosphere-off mode showing the Milky Way against deep black sky.
+**Decision:** Adopt Stellarium as the primary visual language. Cluster identity is expressed through **spatial grouping + boundary lines + connection lines + quiet map-style labels** — never through persistent color. Specifically:
+- Tech stars use a **spectral palette** (white, blue-white, pale yellow, soft orange) — not cluster colors.
+- The default canvas has **no persistent colored aura wash**. Cluster color appears only on `cinematic/stage-up > drawer-selected > hover` interaction moments (single active aura at a time).
+- A persistent **territory boundary line layer** (Voronoi cells from cluster anchors) marks where each cluster lives. Always visible; subtle blue-gray; never moves with lit/unlit state.
+- Sky background is near-black; the only warm/colored element is the **Milky Way nebulosity** (warm sepia/ochre band).
+- A deterministic background **field star** layer (~2000 desktop / ~1000 mobile) sits behind the tech stars, with bounded twinkle (±10%, 4–8s per-star phases). Field stars carry no semantics, no labels, no hover.
+- Labels are small blue-white sans-serif — never cluster color, never letter-spaced caps. Persistent label rule: top 1 lit star per active cluster + globally brightest lit stars up to a cap of 8–12 (or all lit stars when ≤6 are lit).
+**Alternatives:**
+- Keep cluster-color stars + cluster aura wash — rejected: reads as dashboard, not identity surface.
+- Hybrid (low-saturation cluster colors) — rejected: muddles the Stellarium reference without committing to it.
+- Constellation lines as hand-drawn figure overlays (Stellarium "cultural sky") — rejected: too literal; product clusters are not myths.
+**Consequences:** This ADR amends the compass forbidden list (`CLAUDE.md` L153–162). Field stars are no longer "decorative stars that don't map to tech_key"; they are reframed as "sky background." Bounded ambient motion (twinkle, parallax) is now permitted when (a) it is decoupled from per-star semantic identity and (b) it respects `prefers-reduced-motion`. Persistent cluster-color aura is forbidden in steady state. Implementation specifics live in `docs/screens.md` §C and ADR-62 / ADR-63.
+
+---
+
+## ADR-62: WebGL primary renderer (R3F) + SVG OG divergence + server-side feature flag
+**Date:** 2026-05-14
+**Status:** accepted
+**Context:** ADR-61's Stellarium fidelity (Airy disk stars, diffraction spikes, additive bloom, twinkle, parallax, baked Milky Way texture with procedural noise) is impractical in SVG at the quality bar set by reference image 3. The OG image generator (`@vercel/og`) cannot execute WebGL.
+**Decision:**
+- **Web stack:** React Three Fiber + `@react-three/drei` + `@react-three/postprocessing` (UnrealBloom + Vignette). Three.js as transitive peer. WebGL canvas mounts client-side only via `dynamic(() => import('./Scene'), { ssr: false })`.
+- **OG renderer remains SVG-only** (`lib/og/ConstellationImage.tsx`). Defined as a "Stellarium-inspired static poster" at ≈80% visual fidelity to the web renderer — not a pixel-accurate screenshot. Polish: improved Gaussian-blur bloom approximation + baked Milky Way embed + Voronoi boundary paths. Both web and OG renderers import shared math from `features/constellation/render/*` so palette / anchors / Voronoi / magnitude / label-selection stay in lockstep.
+- **Feature flag:** server-side env var `CONSTELLATION_RENDERER=webgl|svg` (default `webgl`). Read in server components, passed as prop. NOT `NEXT_PUBLIC_*` — that would inline at build time and require redeploy for rollback. Server-side read gives instant rollback via Vercel env-var change.
+- **SSR strategy:** the wrapper component renders a lightweight HTML/SVG **Skeleton** (background + boundary lines + cluster labels, ≈3KB inline) during SSR. The WebGL `Scene` mounts post-hydration with a 300–500ms opacity fade-in over the still-mounted Skeleton.
+- **Fallback when WebGL is unavailable** (old browsers, in-app browsers, organization disables): Skeleton stays mounted, no Scene is created, a small banner reads "Your browser doesn't support advanced graphics; using simplified view."
+- **Adaptive quality for mobile:** Bloom render target 0.5×; field stars 1000 (vs 2000 desktop); DPR cap 2; reduced-motion path disables twinkle/parallax/spark.
+- **Rollout retire:** after ~2 weeks of stable rollout, a separate PR removes `ConstellationSVG.tsx`, the env-var read, and the renderer prop. Web becomes WebGL-only; OG remains divergent SVG.
+**Alternatives:**
+- `NEXT_PUBLIC_CONSTELLATION_RENDERER` — rejected: build-time inline forces rebuild on rollback.
+- Puppeteer headless screenshot for OG — rejected: Vercel function cost + timeout risk + cache invalidation complexity.
+- `node-canvas-webgl` for OG — rejected: GPU driver / native dep fragility on serverless.
+- Hard switch (no feature flag) — rejected: regression risk during rollout window.
+- Pure procedural Milky Way (no baked texture) — rejected: noise-based approaches cannot reach reference-image-3 quality without large shader investment.
+**Consequences:** New dependencies (`three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`, optionally `d3-voronoi`). Bundle +120KB gz (dynamic-imported chunk, NOT on `/` initial paint). New env var `CONSTELLATION_RENDERER`. `lib/og/ConstellationImage.tsx` and the new WebGL renderer must consume the same `features/constellation/render/*` math — drift between them becomes a real risk and is covered by unit tests on the shared module. `ConstellationSVG.tsx` must remain operational throughout rollout; its removal is a follow-up PR.
+
+---
+
+## ADR-63: Territory boundary algorithm (Voronoi) + label visibility rule + DOM accessibility overlay
+**Date:** 2026-05-14
+**Status:** accepted
+**Context:** ADR-61 reassigns cluster identity from color to map grammar (boundary + labels + connections). This requires three concrete decisions: (1) how the cluster regions are geometrically defined, (2) which star labels persist on screen, (3) how WebGL — which is opaque to assistive technology — provides keyboard and screen-reader access.
+**Decision:**
+- **Boundary algorithm: Voronoi cells.** Computed at render time from the six cluster anchor points already defined per viewport (`features/territories/star-positions.ts`). Cells are always visible, fixed regardless of which stars are lit, drawn as thin (~10% opacity) muted blue-gray polygonal strokes. Algorithm: `d3-voronoi` or a small hand-rolled implementation (6 points is trivial). Rejected alternatives: convex hull of lit stars (geometry shifts when stars light up — unstable); hand-defined polygons per viewport (3× manual maintenance burden).
+- **Persistent label rule:**
+  ```
+  - top 1 lit star per active cluster (active = stage ≥ 2 OR has any lit stars)
+  - PLUS globally brightest lit stars filling up to a global cap of 8–12
+  - dedupe: a star already labeled via cluster-top is not double-counted
+  - if total lit stars ≤ 6, label ALL lit stars (sparse-state override)
+  ```
+  Cluster names ("Backend", "Frontend") are always labeled, one per cluster. All other lit stars: tooltip on hover only. Unlit stars: no label, no hover.
+- **Accessibility overlay:** WebGL canvas is purely visual. A DOM overlay layer with **invisible buttons** is absolutely-positioned over (a) each cluster boundary polygon, (b) each cluster label, (c) each hero lit star (the persistent-labeled set). Keyboard tab order + ARIA labels match current cluster nav semantics (`docs/adr.md` ADR-54). Field stars and unlabeled lit stars are NOT accessible targets — the accessibility unit is "cluster + hero lit stars," not "every star."
+- **`/dev/map` env-var change:** the existing `process.env.NODE_ENV === 'production'` guard is replaced by `process.env.ENABLE_DEV_MAP !== '1'`. This allows production-build Playwright visual regression runs in CI / Vercel preview deploys to access `/dev/map` while keeping production hidden. ADR-47's principle ("dev-only routes guard against production access") is preserved; only the mechanism is variant. Other test routes under `app/api/test/*` retain the `NODE_ENV` guard.
+**Alternatives:**
+- Boundary: convex hull (rejected — instability); hand-defined polygons (rejected — maintenance).
+- Labels: all lit stars labeled (rejected — clutters dense clusters); only top-N global (rejected — empty clusters lose identity); cluster-top only (rejected — fails to highlight hero stars across clusters).
+- A11y: render every star as a DOM element parallel to canvas (rejected — 50× DOM nodes for marginal benefit; field stars carry no semantic value); SVG-only fallback as the a11y path (rejected — defeats WebGL adoption).
+- `/dev/map` access: trust `NODE_ENV` only (rejected — blocks production-build visual regression); always public (rejected — exposes internals).
+**Consequences:** New module `features/constellation/render/voronoi.ts` (pure). New module `features/constellation/render/labels.ts` (pure). DOM overlay component `app/_components/Constellation/overlay/A11yOverlay.tsx` mounts in parallel with the WebGL Scene; their position math is driven by the same world-coord helpers — drift between visual and a11y hit-targets is a real bug class and must be covered by Playwright a11y tests. New env var `ENABLE_DEV_MAP=1` (CI / Vercel preview only). `docs/security-checklist.md` adds an item for the `/dev/map` env-var guard.

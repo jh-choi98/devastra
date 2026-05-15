@@ -66,6 +66,13 @@ Populate `.env.local` with the values below. All secrets are server-side unless 
 |---|---|
 | `OG_RENDER_VERSION` | String tag, e.g. `devastra-1`. Bump on any global renderer / product-language change to invalidate cached OG images (`docs/adr.md` ADR-52). |
 
+### Constellation renderer (ADR-62, ADR-63)
+
+| Variable | Where to get it |
+|---|---|
+| `CONSTELLATION_RENDERER` | Optional. `webgl` (default if unset) or `svg`. **Server-side only** — never `NEXT_PUBLIC_*`. Local dev typically leaves unset. Set to `svg` in Vercel dashboard for instant production rollback to the legacy renderer without redeploy. Read by server components, passed as prop. |
+| `ENABLE_DEV_MAP` | Optional. Set to `1` to expose `/dev/map` in non-dev environments (CI / Vercel preview only). Production deploys leave it unset → 404 (`docs/adr.md` ADR-63). |
+
 ### Observability
 
 | Variable | Where to get it |

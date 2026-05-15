@@ -174,6 +174,64 @@ These MUST be verified before any production deployment.
 - **Verify:** Bump `OG_RENDER_VERSION` constant. Redeploy. New profile/recap OG URLs include the new version. Old version URLs continue serving cached (acceptable) until natural expiry.
 - **Status:** `[x] lib/og/version.ts OG_RENDER_VERSION constant; ogVersionParam() appended to all OG URLs`
 
+## Constellation WebGL renderer launch (ADR-61 / ADR-62 / ADR-63)
+
+These items apply when the WebGL constellation renderer ships. Treated as launch blockers for that feature's rollout (NOT for general MVP launch — they are added here for verification when this work merges to main).
+
+### W1. `/dev/map` is 404 in production [ ]
+- **Reference:** ADR-63, ADR-47
+- **Verify:** `app/dev/map/page.tsx` begins with `if (process.env.ENABLE_DEV_MAP !== '1') notFound()`. Production deploys leave `ENABLE_DEV_MAP` unset → curl returns 404. CI and Vercel preview have `ENABLE_DEV_MAP=1` set so Playwright visual regression can reach it.
+- **Why it matters:** Same risk class as ADR-47 — a dev surface leaking to production exposes internal mocks.
+- **Status:** `[ ]`
+
+### W2. `CONSTELLATION_RENDERER` env var is server-side [ ]
+- **Reference:** ADR-62
+- **Verify:** Code reads `process.env.CONSTELLATION_RENDERER` ONLY in server components (page.tsx files). No `NEXT_PUBLIC_CONSTELLATION_RENDERER` anywhere in the codebase. Grep confirms zero `NEXT_PUBLIC_CONSTELLATION_RENDERER` occurrences. Flag is passed via prop into client components.
+- **Why it matters:** Build-time inlining (NEXT_PUBLIC_) prevents instant rollback; the operational rollback story depends on server-side reads.
+- **Status:** `[ ]`
+
+### W3. WebGL feature detect + fallback banner [ ]
+- **Reference:** ADR-62
+- **Verify:** In a browser with WebGL disabled (or simulated unsupported), the constellation renders the Skeleton (background + boundary + labels) and shows the banner `Your browser doesn't support advanced graphics; using simplified view.` No console errors. No blank page.
+- **Why it matters:** The accessibility unit and the share surface must survive on browsers that cannot run WebGL (in-app browsers, organizational restrictions, old devices).
+- **Status:** `[ ]`
+
+### W4. R3F chunk size budget [ ]
+- **Reference:** ADR-62
+- **Verify:** `next build` analyzer report shows the R3F chunk (containing `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`) ≤ 120KB gz. Total initial JS for `/` page stays ≤ 350KB gz (R3F chunk is lazy-loaded and does NOT count). CI gate fails the PR if budget exceeded.
+- **Why it matters:** Bundle bloat directly hurts LCP on mobile, which is the conversion-critical metric.
+- **Status:** `[ ]`
+
+### W5. Reduced-motion path disables all WebGL motion [ ]
+- **Reference:** ADR-54 (amended by ADR-61)
+- **Verify:** Browser with `prefers-reduced-motion: reduce`: field-star twinkle off, Milky Way breathing off, parallax off, spark/ripple/aura-fade snap to final state. Bloom remains (composition, not motion).
+- **Why it matters:** Vestibular safety and accessibility compliance.
+- **Status:** `[ ]`
+
+### W6. DOM overlay accessibility (cluster + hero stars) [ ]
+- **Reference:** ADR-63
+- **Verify:** Tab key cycles through 6 cluster cells + persistently-labeled hero stars. Enter opens drawer with the correct cluster/star focused. Screen reader announces cluster summaries and hero star details. `@axe-core/playwright` test passes WCAG AA against `/dev/map`.
+- **Why it matters:** WebGL canvas is opaque to assistive tech; DOM overlay is the entire a11y story.
+- **Status:** `[ ]`
+
+### W7. Sentry events for WebGL init / fallback / context-lost [ ]
+- **Reference:** ADR-62
+- **Verify:** Sentry receives `constellation.webgl.init_success` on Scene mount in a WebGL-capable browser. In a non-WebGL browser, `constellation.webgl.init_failure` fires with `reason='unsupported'`. After a forced context-lost (DevTools), `constellation.webgl.context_lost` fires. Scene crash triggers `constellation.webgl.scene_crash` via the Error Boundary.
+- **Why it matters:** Rollout observability — without these, we cannot quantify how many users hit the fallback.
+- **Status:** `[ ]`
+
+### W8. Milky Way texture license attribution [ ]
+- **Reference:** ADR-61, ADR-62
+- **Verify:** `public/textures/milky-way.webp` (and high-DPR variant) ship with `public/textures/LICENSE.md` documenting source URL, license terms (NASA public domain or ESO CC BY 4.0), and the post-processing applied. Source-code comment in the layer file references that license file.
+- **Why it matters:** ESO CC BY 4.0 requires attribution; NASA public domain is permissive but still benefits from provenance documentation.
+- **Status:** `[ ]`
+
+### W9. Visual regression baselines committed [ ]
+- **Reference:** ADR-62, ADR-63
+- **Verify:** `tests/visual/baseline/` contains baseline screenshots for at least 5 `/dev/map` scenarios (empty / sparse / dense / stage-up / first-ever). Playwright visual regression test diffs at 3% threshold and passes in CI.
+- **Why it matters:** Catches unintended visual regressions in shader, color, or layer-order changes.
+- **Status:** `[ ]`
+
 ## Backlog
 
 ### 31. Distributed rate limiting via Vercel KV
