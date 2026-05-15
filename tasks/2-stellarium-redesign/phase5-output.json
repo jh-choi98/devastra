@@ -1,0 +1,33 @@
+{
+  "source": "public/textures/source/milky-way-pexels-29746501.jpg",
+  "sourceDimensions": {
+    "width": 7008,
+    "height": 4672
+  },
+  "crop": {
+    "left": 334,
+    "top": 0,
+    "width": 6674,
+    "height": 4672
+  },
+  "outputs": [
+    {
+      "file": "public/textures/milky-way.webp",
+      "width": 4096,
+      "height": 2867,
+      "quality": 85
+    },
+    {
+      "file": "public/textures/milky-way@2x.webp",
+      "width": 8192,
+      "height": 5734,
+      "quality": 80
+    },
+    {
+      "file": "public/textures/milky-way-fallback.jpg",
+      "width": 1200,
+      "height": 840,
+      "quality": 80
+    }
+  ]
+}

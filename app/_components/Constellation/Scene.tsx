@@ -4,6 +4,8 @@ import { Canvas } from '@react-three/fiber'
 import { Suspense, useState } from 'react'
 import { SkyBackground } from './layers/SkyBackground'
 import { FieldStars } from './layers/FieldStars'
+import { MilkyWay } from './layers/MilkyWay'
+import { TerritoryBoundaries } from './layers/TerritoryBoundaries'
 import { ConstellationContext } from './state'
 import { useReducedMotion } from './hooks/useReducedMotion'
 import type { ConstellationProps, LayerOverrides } from './types'
@@ -47,8 +49,10 @@ export default function Scene({ data, layerOverrides }: SceneProps) {
       >
         <Suspense fallback={null}>
           {show('sky') && <SkyBackground />}
+          {show('milkyway') && <MilkyWay />}
           {show('fieldstars') && <FieldStars viewport={viewport} />}
-          {/* Phase 5+: <MilkyWay />, <TerritoryBoundaries />, ... */}
+          {show('boundaries') && <TerritoryBoundaries viewport={viewport} />}
+          {/* Phase 6+: <TechStars />, <Connections />, ... */}
         </Suspense>
       </ConstellationContext.Provider>
     </Canvas>
