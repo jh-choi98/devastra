@@ -39,4 +39,6 @@ export interface ConstellationProps {
   selectedCluster?: TerritoryType | null
   onClusterClick?: (type: TerritoryType) => void
   onStarClick?: (territory: TerritoryType, tech_key: string) => void
+  /** Called once the WebGL canvas has mounted and begun rendering. */
+  onMount?: () => void
 }

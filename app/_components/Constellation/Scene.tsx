@@ -1,5 +1,6 @@
 'use client'
 
+import * as Sentry from '@sentry/nextjs'
 import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import { SkyBackground } from './layers/SkyBackground'
@@ -19,7 +20,7 @@ import type { ConstellationProps, LayerOverrides } from './types'
 
 interface SceneProps extends Omit<ConstellationProps, 'renderer'> {}
 
-export default function Scene({ data, layerOverrides }: SceneProps) {
+export default function Scene({ data, layerOverrides, onMount }: SceneProps) {
   const viewport = data.viewport ?? 'desktop'
   const isMobile = viewport === 'mobile'
 
@@ -39,6 +40,19 @@ export default function Scene({ data, layerOverrides }: SceneProps) {
         requestAnimationFrame(() => {
           gl.domElement.style.opacity = '1'
         })
+        onMount?.()
+
+        const canvas = gl.domElement
+        const handleLost = (e: Event) => {
+          e.preventDefault()
+          Sentry.captureMessage('constellation.webgl.context_lost', {
+            level: 'warning',
+            tags: { feature: 'constellation', event_name: 'constellation.webgl.context_lost' },
+          })
+        }
+        canvas.addEventListener('webglcontextlost', handleLost, false)
+        // R3F re-creates resources on restore; uniforms reset by useFrame
+        canvas.addEventListener('webglcontextrestored', () => {}, false)
       }}
     >
       <Suspense fallback={null}>

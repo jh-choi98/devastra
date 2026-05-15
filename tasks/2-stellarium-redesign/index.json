@@ -97,7 +97,10 @@
     {
       "phase": 11,
       "name": "observability-error-boundary",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-15T14:33:45+0900",
+      "completed_at": "2026-05-15T15:00:00+0900",
+      "ac_notes": "All 8 AC checks pass. SceneErrorBoundary.tsx created with componentDidCatch + scene_crash Sentry tag. use-constellation-telemetry.ts created (init_success + init_failure events). Scene.tsx wired with webglcontextlost listener + context_lost Sentry tag + onMount callback. ConstellationWebGL.tsx wraps Scene in SceneErrorBoundary; WebGLUnsupportedBanner polished (role=status, aria-live=polite, full message); WebGLCrashBanner added (role=alert, aria-live=assertive, Retry button). use-webgl-detect.ts updated: boolean|null state, experimental-webgl fallback, optimistic null→true default. webpackChunkName='constellation-scene' added to dynamic import so size-limit glob 'constellation-*.js' matches the named chunk (6.1KB brotli, well under 180KB limit). Build clean. Playwright WebGL fallback test passes (1.5s). Sentry beforeSend not regressed."
     },
     {
       "phase": 12,

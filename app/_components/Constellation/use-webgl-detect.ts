@@ -1,22 +1,25 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 
-/**
- * Returns true if WebGL2 (or WebGL1 fallback) is available.
- * Defaults to true during SSR so Scene mounts optimistically;
- * once client-side, runs the actual capability check.
- */
 export function useWebGLDetect(): boolean {
-  const [supported, setSupported] = useState<boolean>(true)
+  // null = checking (SSR / pre-mount), true/false = result
+  const [supported, setSupported] = useState<boolean | null>(null)
+
   useEffect(() => {
+    let ok = false
     try {
       const canvas = document.createElement('canvas')
-      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
-      setSupported(Boolean(gl))
+      const gl =
+        (canvas.getContext('webgl2') as WebGL2RenderingContext | null) ??
+        (canvas.getContext('webgl') as WebGLRenderingContext | null) ??
+        (canvas.getContext('experimental-webgl') as WebGLRenderingContext | null)
+      ok = Boolean(gl)
     } catch {
-      setSupported(false)
+      ok = false
     }
+    setSupported(ok)
   }, [])
-  return supported
+
+  // Optimistic: while checking (null), assume supported to avoid flash of fallback
+  return supported ?? true
 }
