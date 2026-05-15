@@ -110,5 +110,6 @@
       "completed_at": "2026-05-15T14:54:04+0900",
       "ac_notes": "All 10 AC checks pass. (1) 5 visual baselines in tests/visual/__screenshots__/dev-map.spec.ts-snapshots/ + 5 mobile in __screenshots__/mobile/; npx playwright test tests/visual --project=visual: 6 passed. (2) npm run axe:test: 1 passed (WCAG AA, 0 violations). (3) npm run build + npm run size: initial JS 33.52KB brotli (limit 250KB), constellation-scene chunk 6.11KB brotli (limit 180KB). (4) reduced-motion.spec.ts: 1 passed (two screenshots 2s apart are identical). (5) svg-fallback.spec.ts: 1 passed (SVG visible, canvas count 0). (6) mobile-chrome: 6 passed. (7) W1-W9 all [x] in docs/security-checklist.md. (8) npm test features/constellation/render: 31 tests across 7 files, all passed. (9) npm run build: clean, no errors. (10) Console errors: 0 during /dev/map render. Fix applied: visual/mobile-chrome playwright projects use reducedMotion='reduce' to make WebGL snapshots deterministic (field-star twinkle was causing flaky pixel diffs between runs)."
     }
-  ]
+  ],
+  "completed_at": "2026-05-15T14:54:05+0900"
 }
