@@ -1,0 +1,20 @@
+{
+  "phase": 4,
+  "name": "scene-sky-fieldstars",
+  "ac": {
+    "1_build_passes": "pass",
+    "2_layer_files_nonempty": "pass — SkyBackground 31 lines, FieldStars 67 lines",
+    "3_shaders_real_source": "pass — both twinkle.vert.ts and twinkle.frag.ts contain void main()",
+    "4_scene_mounts_layers": "pass — SkyBackground and FieldStars both referenced in Scene.tsx",
+    "5_screenshot_captured": "pass — tasks/2-stellarium-redesign/visual-checkpoints/phase4.png (43K)",
+    "6_console_errors": "pass — 0 application errors (CSP dev-mode noise from analytics filtered)"
+  },
+  "visual_checkpoint": "tasks/2-stellarium-redesign/visual-checkpoints/phase4.png",
+  "notes": [
+    "useReducedMotion hook added to hooks/ directory",
+    "LayerOverrides type added to types.ts and threaded through Constellation → ConstellationWebGL → Scene",
+    "dev/map page updated with ?layers= query param support (server component, resolveLayerOverrides)",
+    "Scene.tsx updated to orthographic camera, ConstellationContext.Provider with sensible defaults",
+    "scripts/visual-checkpoint.ts added for Playwright screenshot capture"
+  ]
+}

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { Constellation } from '@/app/_components/Constellation/Constellation'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
+import type { LayerOverrides } from '@/app/_components/Constellation/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,12 +76,41 @@ const MOCK_DATA: ConstellationData = {
   ],
 }
 
-export default function DevMapPage() {
+const ALLOWED_LAYERS = new Set([
+  'sky', 'milkyway', 'fieldstars', 'boundaries',
+  'connections', 'techstars', 'aura', 'labels', 'all',
+])
+
+function resolveLayerOverrides(layersParam: string): LayerOverrides | undefined {
+  const tokens = layersParam.split(',').map(t => t.trim()).filter(Boolean)
+  if (tokens.includes('all')) return undefined // show everything
+  const set = new Set(tokens.filter(t => ALLOWED_LAYERS.has(t)))
+  return {
+    sky: set.has('sky'),
+    milkyway: set.has('milkyway'),
+    fieldstars: set.has('fieldstars'),
+    boundaries: set.has('boundaries'),
+    connections: set.has('connections'),
+    techstars: set.has('techstars'),
+    aura: set.has('aura'),
+    labels: set.has('labels'),
+  }
+}
+
+export default async function DevMapPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   if (process.env.ENABLE_DEV_MAP !== '1' && process.env.NODE_ENV !== 'development') notFound()
+
+  const params = searchParams ? await searchParams : {}
+  const layersParam = (params?.layers as string | undefined) ?? 'all'
+  const layerOverrides = resolveLayerOverrides(layersParam)
 
   return (
     <main style={{ width: '100vw', height: '100vh' }}>
-      <Constellation data={MOCK_DATA} renderer="webgl" />
+      <Constellation data={MOCK_DATA} renderer="webgl" layerOverrides={layerOverrides} />
     </main>
   )
 }

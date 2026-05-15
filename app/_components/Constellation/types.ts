@@ -19,10 +19,22 @@ export type ConstellationData = {
   viewport?: 'desktop' | 'mobile' | 'og'
 }
 
+export type LayerOverrides = Partial<{
+  sky: boolean
+  milkyway: boolean
+  fieldstars: boolean
+  boundaries: boolean
+  connections: boolean
+  techstars: boolean
+  aura: boolean
+  labels: boolean
+}>
+
 export interface ConstellationProps {
   data: ConstellationData
   /** Server-side feature flag forwarded from the page. Defaults to 'webgl'. */
   renderer?: 'webgl' | 'svg'
+  layerOverrides?: LayerOverrides
   onClusterClick?: (type: TerritoryType) => void
   onStarClick?: (territory: TerritoryType, tech_key: string) => void
 }
