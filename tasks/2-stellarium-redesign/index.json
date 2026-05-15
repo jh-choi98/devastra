@@ -81,7 +81,10 @@
     {
       "phase": 9,
       "name": "cinematics",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-15T13:57:51+0900",
+      "completed_at": "2026-05-15T14:30:00+0900",
+      "ac_notes": "All 9 AC checks pass. SparkSequence.tsx (121 lines) — pool-based (8 slots) shader approach; expanding ring + core flash; useFrame updates uAge uniforms imperatively; firedKeys deduplication for Strict Mode safety. StageUpRipple.tsx (141 lines) — ripple wave shader; startCinematic('stage-up') + 0.3s stagger; setCinematic('idle') after 1.5s + stagger duration. FirstEverCinematic.tsx (91 lines) — 8-second phase-gated DOM strip; cannot be dismissed; reducedMotion snaps to 200ms; onStartCinematic optional prop. RevealSequence.tsx (85 lines) — 12s minimum / 30s max; bottom-right counter + bottom strip; reducedMotion fast-exit. hooks/useDataDiff.ts — ref-based diff; detects newly-lit (firstUnlockedAt + weight>=5) and stage increases. Scene.tsx wires SparkSequence + StageUpRipple via useDataDiff. features/sync/cinematic-acknowledge.ts — server action, idempotent, sets first_star_cinematic_seen=true. SpecialMoments/FirstEverStarCinematic.tsx — thin adapter re-exporting FirstEverCinematic. _map-container.tsx — uses acknowledgeFirstEverCinematic, adds RevealSequence. /dev/map — ?cinematic= + ?tech= params for visual checkpoints. Build clean. Screenshots captured (phase9-spark.png, phase9-stage-up.png). Console errors: 0."
     },
     {
       "phase": 10,

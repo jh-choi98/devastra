@@ -8,7 +8,8 @@ import { FirstEverStarCinematic } from '@/app/_components/SpecialMoments/FirstEv
 import { useRealtimeMapData, type SyncJobUpdate } from '@/lib/realtime/use-realtime-map-data'
 import { useRevealSequence } from './_use-reveal-sequence'
 import { getDrawerData } from './_actions'
-import { markFirstStarCinematicCompleted } from '@/features/feedback/hints.actions'
+import { acknowledgeFirstEverCinematic } from '@/features/sync/cinematic-acknowledge'
+import { RevealSequence } from '@/app/_components/Constellation/cinematics/RevealSequence'
 import { posthog, initPosthog } from '@/lib/posthog'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { ClusterDrawerData } from '@/app/_components/ClusterDrawer/ClusterDrawer'
@@ -42,6 +43,7 @@ export function LivingMapContainer({
   const [syncJobUpdate, setSyncJobUpdate] = useState<SyncJobUpdate | null>(null)
   const [syncFailedDismissed, setSyncFailedDismissed] = useState(false)
   const [showCinematic, setShowCinematic] = useState(false)
+  const [showReveal, setShowReveal] = useState(firstReveal)
   const revealFiredRef = useRef(false)
   const cinematicCheckedRef = useRef(false)
 
@@ -72,7 +74,7 @@ export function LivingMapContainer({
   const handleCinematicComplete = useCallback(async () => {
     setShowCinematic(false)
     try {
-      await markFirstStarCinematicCompleted()
+      await acknowledgeFirstEverCinematic()
     } catch {
       // silent — flag will retry on next visit
     }
@@ -167,6 +169,13 @@ export function LivingMapContainer({
           newStars={newStars}
           data={data}
           onComplete={handleCinematicComplete}
+        />
+      )}
+
+      {showReveal && !showCinematic && (
+        <RevealSequence
+          litClusters={data.territories.filter(t => t.stage > 1).map(t => t.type)}
+          onComplete={() => setShowReveal(false)}
         />
       )}
 

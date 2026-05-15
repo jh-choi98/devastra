@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { Constellation } from '@/app/_components/Constellation/Constellation'
+import { DevCinematicOverlay, DevCinematicBadge } from './_dev-cinematic-overlay'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { LayerOverrides } from '@/app/_components/Constellation/types'
 import type { TerritoryType } from '@/features/territories/registry'
@@ -118,6 +119,10 @@ export default async function DevMapPage({
     clusterParam && ALLOWED_CLUSTERS.has(clusterParam as TerritoryType)
       ? (clusterParam as TerritoryType)
       : null
+  const cinematicParam = (params?.cinematic as string | undefined) ?? ''
+  const techParam = (params?.tech as string | undefined) ?? ''
+  const techKeys = techParam ? techParam.split(',').map(t => t.trim()).filter(Boolean) : []
+  const litClusters = Array.from(ALLOWED_CLUSTERS) as TerritoryType[]
 
   return (
     <main style={{ width: '100vw', height: '100vh' }}>
@@ -127,6 +132,16 @@ export default async function DevMapPage({
         layerOverrides={layerOverrides}
         selectedCluster={selectedCluster}
       />
+      {cinematicParam && (
+        <>
+          <DevCinematicBadge cinematic={cinematicParam} />
+          <DevCinematicOverlay
+            cinematic={cinematicParam}
+            techKeys={techKeys}
+            litClusters={litClusters}
+          />
+        </>
+      )}
     </main>
   )
 }

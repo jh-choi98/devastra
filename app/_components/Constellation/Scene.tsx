@@ -12,6 +12,9 @@ import { ClusterAura } from './layers/ClusterAura'
 import { Labels } from './layers/Labels'
 import { PostStack } from './post/BloomLayer'
 import { ParallaxRig } from './camera/ParallaxRig'
+import { SparkSequence } from './cinematics/SparkSequence'
+import { StageUpRipple } from './cinematics/StageUpRipple'
+import { useDataDiff } from './hooks/useDataDiff'
 import type { ConstellationProps, LayerOverrides } from './types'
 
 interface SceneProps extends Omit<ConstellationProps, 'renderer'> {}
@@ -21,6 +24,8 @@ export default function Scene({ data, layerOverrides }: SceneProps) {
   const isMobile = viewport === 'mobile'
 
   const show = (key: keyof LayerOverrides) => layerOverrides?.[key] ?? true
+
+  const { newlyLit, stagedUp } = useDataDiff(data)
 
   return (
     <Canvas
@@ -45,6 +50,8 @@ export default function Scene({ data, layerOverrides }: SceneProps) {
         {show('techstars') && <TechStars data={data} viewport={viewport} />}
         {show('aura') && <ClusterAura viewport={viewport} />}
         {show('labels') && <Labels data={data} viewport={viewport} />}
+        <SparkSequence newlyLitLandmarks={newlyLit} viewport={viewport} />
+        <StageUpRipple stagedUpClusters={stagedUp} viewport={viewport} />
       </Suspense>
       <ParallaxRig />
       <PostStack isMobile={isMobile} />
