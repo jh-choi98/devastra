@@ -75,7 +75,7 @@
       "name": "labels-tooltips-a11y",
       "status": "completed",
       "started_at": "2026-05-15T13:45:44+0900",
-      "completed_at": "2026-05-15T14:05:00+0900",
+      "completed_at": "2026-05-15T13:57:51+0900",
       "ac_notes": "All 9 AC checks pass. Labels.tsx (82 lines) — drei Html cluster + persistent tech star labels, neutral blue-white colors, no cluster hex values. TooltipHost.tsx (57 lines) — window CustomEvent bus, brightnessDescriptor + formatShortDate. A11yOverlay.tsx (132 lines) — SVG overlay with Voronoi cells + hero star circles, role=region added to fix axe aria-prohibited-attr violation. ConstellationContext.Provider moved from Scene.tsx to ConstellationWebGL.tsx so A11yOverlay (outside Canvas) can use useConstellationState(). Scene.tsx simplified to pure renderer reading from context. Labels mounted inside Canvas via Scene. playwright.config.ts updated with a11y project (testDir: ./tests/a11y). Axe WCAG AA test passes. Build clean. Screenshot captured (phase8.png). Console errors: 0."
     },
     {
