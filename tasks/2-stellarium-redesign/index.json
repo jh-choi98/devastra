@@ -43,7 +43,7 @@
       "name": "scene-sky-fieldstars",
       "status": "completed",
       "started_at": "2026-05-15T13:20:53+0900",
-      "completed_at": "2026-05-15T15:25:00+0900",
+      "completed_at": "2026-05-15T13:26:12+0900",
       "ac_notes": "All 6 AC checks pass. Build clean. SkyBackground (31 lines) and FieldStars (67 lines) implemented. Shaders have real source (void main). Scene mounts both layers via orthographic camera + ConstellationContext. Screenshot captured (phase4.png, 43K). 0 console errors (CSP analytics noise filtered). Added: LayerOverrides type in types.ts, useReducedMotion hook, ?layers= toggle on /dev/map, visual-checkpoint.ts script."
     },
     {
