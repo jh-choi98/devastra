@@ -26,6 +26,9 @@ export function MilkyWay() {
       uBreathePeriod: { value: 45.0 },     // 45 second cycle (within 30-60s spec)
       uBreatheAmplitude: { value: 0.05 },  // ±5%
       uMotionEnabled: { value: 1.0 },
+      // Texture comes from a Pexels JPG — too bright at full strength.
+      // 0.35 is the dimmest setting that still reads as "dust lane".
+      uIntensity: { value: 0.35 },
     },
     vertexShader: MILKY_WAY_VERT,
     fragmentShader: MILKY_WAY_FRAG,

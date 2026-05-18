@@ -22,12 +22,16 @@ export type ConstellationData = {
 export type LayerOverrides = Partial<{
   sky: boolean
   milkyway: boolean
+  haze: boolean
   fieldstars: boolean
+  midstars: boolean
   boundaries: boolean
+  unlitanchors: boolean
   connections: boolean
   techstars: boolean
   aura: boolean
   labels: boolean
+  postprocess: boolean
 }>
 
 export interface ConstellationProps {
@@ -41,4 +45,6 @@ export interface ConstellationProps {
   onStarClick?: (territory: TerritoryType, tech_key: string) => void
   /** Called once the WebGL canvas has mounted and begun rendering. */
   onMount?: () => void
+  /** Shows the compact star brightness scale overlay. Defaults to true. */
+  showBrightnessScale?: boolean
 }

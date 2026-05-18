@@ -23,7 +23,7 @@
     "db:push": "drizzle-kit push",
     "email:dev": "email dev --dir lib/email/templates",
     "inngest:dev": "npx inngest-cli@latest dev",
-    "size": "size-limit",
+    "size": "size-limit --config .size-limit.cjs",
     "visual:test": "playwright test tests/visual",
     "axe:test": "playwright test tests/a11y"
   },
@@ -79,17 +79,5 @@
     "tsx": "^4",
     "typescript": "^5",
     "vitest": "^2"
-  },
-  "size-limit": [
-    {
-      "name": "/ initial JS (excluding lazy R3F chunk)",
-      "path": ".next/static/chunks/pages/_app-*.js",
-      "limit": "250 KB"
-    },
-    {
-      "name": "Constellation Scene lazy chunk (R3F + drei + postprocessing)",
-      "path": ".next/static/chunks/constellation-*.js",
-      "limit": "180 KB"
-    }
-  ]
+  }
 }

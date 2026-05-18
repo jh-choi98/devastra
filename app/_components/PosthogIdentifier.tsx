@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect } from 'react'
-import { posthog, initPosthog } from '@/lib/posthog'
+import { identifyClientUser } from './posthog-lite'
 
 export function PosthogIdentifier({ userId }: { userId: string }) {
   useEffect(() => {
-    initPosthog()
-    posthog.identify(userId)
+    identifyClientUser(userId)
   }, [userId])
 
   return null

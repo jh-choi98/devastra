@@ -39,7 +39,9 @@ describe('mstEdges', () => {
       const cur = queue.pop()!
       if (visited.has(cur)) continue
       visited.add(cur)
-      for (const nb of adj.get(cur) ?? []) queue.push(nb)
+      const neighbors = adj.get(cur)
+      if (!neighbors) continue
+      neighbors.forEach((nb) => queue.push(nb))
     }
     for (const s of stars) {
       expect(visited).toContain(key(s))

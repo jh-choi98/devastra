@@ -6,16 +6,24 @@ import { getLatestSyncJobForUser } from '@/lib/db/queries/sync-jobs'
 import { getSinceLastVisitDiff } from '@/lib/db/queries/since-last-visit-diff'
 import { getActiveSystemMessage } from '@/lib/db/queries/system-messages'
 import { getLandingDemoData } from '@/lib/db/queries/landing-demo'
-import { Header } from '@/app/_components/Header'
-import { LivingMapContainer } from './(authenticated)/_map-container'
 import { LandingHero } from '@/app/_components/LandingHero'
 import { SampleProfilesGallery } from '@/app/_components/SampleProfilesGallery'
 import { LandingFooter } from '@/app/_components/LandingFooter'
 import LandingAnalytics from '@/app/_components/LandingAnalytics'
-import { PosthogIdentifier } from '@/app/_components/PosthogIdentifier'
 import { SignedOutToast } from '@/app/_components/SignedOutToast'
+import { AuthenticatedShell } from './(authenticated)/_authenticated-shell'
 import type { BannerState } from '@/app/_components/StateBanners/BannerStack'
 import type { TerritoryType } from '@/features/territories/registry'
+
+function normalizeSyncJobProgress(progress: unknown) {
+  if (!progress || typeof progress !== 'object' || Array.isArray(progress)) return null
+  const row = progress as Record<string, unknown>
+  return {
+    repos_analyzed: Number(row.repos_analyzed ?? 0),
+    total: Number(row.total ?? 0),
+    current_step: typeof row.current_step === 'string' ? row.current_step : '',
+  }
+}
 
 const TERRITORY_UI_LABELS: Record<string, string> = {
   frontend_land: 'Frontend',
@@ -74,8 +82,7 @@ export default async function RootPage() {
 
   const now = Date.now()
   const welcomeBackTrigger =
-    prevLastLoginAt != null &&
-    now - prevLastLoginAt.getTime() > TWENTY_EIGHT_DAYS_MS
+    prevLastLoginAt != null && now - prevLastLoginAt.getTime() > TWENTY_EIGHT_DAYS_MS
 
   // Determine GitHub connection status
   let githubDisconnected: BannerState['githubDisconnected'] | undefined
@@ -86,8 +93,8 @@ export default async function RootPage() {
   }
 
   // Fetch data in parallel; updateLastLoginAt runs concurrently.
-  const [initialData, , latestSyncJob, sinceLastVisitDiff, activeSystemMessage] =
-    await Promise.all([
+  const [initialData, , latestSyncJob, sinceLastVisitDiff, activeSystemMessage] = await Promise.all(
+    [
       getMapDataForUser(user.id, prevLastLoginAt),
       updateLastLoginAt(user.id),
       getLatestSyncJobForUser(user.id),
@@ -95,7 +102,8 @@ export default async function RootPage() {
         ? getSinceLastVisitDiff({ userId: user.id, lastLoginAt: prevLastLoginAt })
         : Promise.resolve(null),
       getActiveSystemMessage(),
-    ])
+    ],
+  )
 
   // Build banner state
   const bannerState: BannerState = {}
@@ -125,36 +133,44 @@ export default async function RootPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-900">
+    <>
       <Suspense fallback={null}>
         <SignedOutToast />
       </Suspense>
-      <PosthogIdentifier userId={user.id} />
-      <Header
+      <AuthenticatedShell
         user={{
           id: user.id,
           displayUsername: user.displayUsername,
           avatarUrl: user.avatarUrl,
           isPublic: user.isPublic,
         }}
-        lastSyncStartedAt={latestSyncJob?.startedAt ?? null}
-      />
-      <div className="flex-1 overflow-hidden">
-        <LivingMapContainer
-          userId={user.id}
-          initial={initialData}
-          firstReveal={isFirstReveal}
-          bannerState={bannerState}
-          renderer={renderer}
-          firstStarCinematicPending={user.firstStarCinematicPending}
-          firstStarCinematicSeen={user.firstStarCinematicSeen}
-          hintFlags={{
+        lastSyncStartedAt={latestSyncJob?.startedAt?.toISOString() ?? null}
+        initialSyncing={latestSyncJob?.status === 'pending' || latestSyncJob?.status === 'running'}
+        map={{
+          userId: user.id,
+          initial: initialData,
+          firstReveal: isFirstReveal,
+          bannerState,
+          renderer,
+          initialSyncJob:
+            latestSyncJob
+              ? {
+                  id: latestSyncJob.id,
+                  kind: latestSyncJob.kind,
+                  status: latestSyncJob.status,
+                  progress: normalizeSyncJobProgress(latestSyncJob.progress),
+                  createdAt: latestSyncJob.createdAt.toISOString(),
+                }
+              : null,
+          firstStarCinematicPending: user.firstStarCinematicPending,
+          firstStarCinematicSeen: user.firstStarCinematicSeen,
+          hintFlags: {
             clusterClickHintSeen: user.clusterClickHintSeen,
             shareHintSeen: user.shareHintSeen,
             recapDiffHintSeen: user.recapDiffHintSeen,
-          }}
-        />
-      </div>
-    </div>
+          },
+        }}
+      />
+    </>
   )
 }

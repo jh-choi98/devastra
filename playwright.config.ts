@@ -18,14 +18,16 @@ export default defineConfig({
       name: 'visual',
       testDir: './tests/visual',
       snapshotDir: './tests/visual/__screenshots__',
-      // reducedMotion disables field-star twinkle, making snapshots deterministic
-      use: { reducedMotion: 'reduce' },
+      // reducedMotion disables field-star twinkle, making snapshots deterministic.
+      // Passed via contextOptions because the top-level `reducedMotion` use option
+      // is only available on newer @playwright/test versions.
+      use: { contextOptions: { reducedMotion: 'reduce' } },
     },
     {
       name: 'mobile-chrome',
       testDir: './tests/visual',
       snapshotDir: './tests/visual/__screenshots__/mobile',
-      use: { ...devices['Pixel 5'], reducedMotion: 'reduce' },
+      use: { ...devices['Pixel 5'], contextOptions: { reducedMotion: 'reduce' } },
     },
   ],
 })

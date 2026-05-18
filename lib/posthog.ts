@@ -14,8 +14,8 @@ export function initPosthog() {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
     persistence: 'memory',
     disable_cookie: true,
-    mask_all_text: false,
-    autocapture: true,
+    mask_all_text: true,
+    autocapture: false,
     capture_pageview: false,
     disable_session_recording: true,
     sanitize_properties: (properties, _eventName) => {

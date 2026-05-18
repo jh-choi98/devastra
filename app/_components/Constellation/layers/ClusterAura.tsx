@@ -44,13 +44,16 @@ interface ClusterAuraProps {
 export function ClusterAura({ viewport = 'desktop' }: ClusterAuraProps) {
   const { selected, hovered, cinematic } = useConstellationState()
 
-  // Priority: cinematic/stage-up > drawer-selected > hover (ADR-61)
+  // Priority: cinematic/stage-up > drawer-selected. HOVER intentionally does
+  // NOT activate the aura — user feedback was that a colored glow on every
+  // pointer pass-over felt heavy and broke the atmosphere. Hover feedback is
+  // expressed via the cluster label brightening instead (see Labels.tsx).
+  void hovered
   const activeCluster: TerritoryType | null = useMemo(() => {
     if (cinematic === 'stage-up') return null // Phase 9 wires cinematicTarget
     if (selected) return selected
-    if (hovered) return hovered
     return null
-  }, [cinematic, selected, hovered])
+  }, [cinematic, selected])
 
   const opacityRef = useRef(0)
   const prevClusterRef = useRef<TerritoryType | null>(null)
@@ -68,12 +71,18 @@ export function ClusterAura({ viewport = 'desktop' }: ClusterAuraProps) {
     blending: THREE.AdditiveBlending,
   }), [])
 
+  // Radius is single-scaled, not double — the previous double-scale produced
+  // a 0.8–1.0 world-unit aura that filled ~half the screen and read as a game
+  // UI effect.
+  const radiusFor = (spread: number) => (spread / 1000) * 0.55
+
   const initAnchor = anchorFor(viewport, 'frontend_land')
   const initWorld = viewBoxToWorld({ x: initAnchor.x, y: initAnchor.y })
-  const initRadius = (initAnchor.spread / 1000) * 2
+  const initRadius = radiusFor(initAnchor.spread)
 
   useFrame((_, dt) => {
-    const target = activeCluster ? 0.55 : 0
+    // Max opacity 0.20 (was 0.55). Aura should be felt, not seen.
+    const target = activeCluster ? 0.20 : 0
     opacityRef.current += (target - opacityRef.current) * Math.min(1, dt * 5)
 
     if (activeCluster !== prevClusterRef.current) {
@@ -81,7 +90,7 @@ export function ClusterAura({ viewport = 'desktop' }: ClusterAuraProps) {
       if (activeCluster && meshRef.current) {
         const anchor = anchorFor(viewport, activeCluster)
         const world = viewBoxToWorld({ x: anchor.x, y: anchor.y })
-        const radius = (anchor.spread / 1000) * 2
+        const radius = radiusFor(anchor.spread)
         meshRef.current.position.set(world.x, world.y, 0)
         meshRef.current.scale.set(radius * 2, radius * 2, 1)
         material.uniforms.uColor.value.set(CLUSTER_COLORS[activeCluster])

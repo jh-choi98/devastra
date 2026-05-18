@@ -11,7 +11,7 @@ const SCENARIOS = [
 for (const s of SCENARIOS) {
   test(`visual regression: ${s.name}`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto(`http://localhost:3000${s.url}`)
+    await page.goto(s.url)
     // Wait for Scene fade-in (~500ms) + texture load
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(800)

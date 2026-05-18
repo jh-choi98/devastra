@@ -45,7 +45,12 @@ function fallbackPosition(tech_key: string): { x: number; y: number } {
 
 // Static inline catalog entries (tech_key + territory + optional hand-tuned x/y).
 // Kept in sync with features/territories/tech-catalog.ts — no server-only import.
-const CATALOG_POSITIONS: Array<{ tech_key: string; territory: TerritoryType; x?: number; y?: number }> = [
+const CATALOG_POSITIONS: Array<{
+  tech_key: string
+  territory: TerritoryType
+  x?: number
+  y?: number
+}> = [
   // Frontend
   { tech_key: 'typescript', territory: 'frontend_land' },
   { tech_key: 'javascript', territory: 'frontend_land' },
@@ -59,19 +64,34 @@ const CATALOG_POSITIONS: Array<{ tech_key: string; territory: TerritoryType; x?:
   { tech_key: 'sass', territory: 'frontend_land' },
   { tech_key: 'vite', territory: 'frontend_land' },
   { tech_key: 'webpack', territory: 'frontend_land' },
+  { tech_key: 'astro', territory: 'frontend_land' },
+  { tech_key: 'remix', territory: 'frontend_land' },
+  { tech_key: 'solidjs', territory: 'frontend_land' },
+  { tech_key: 'tanstack_query', territory: 'frontend_land' },
   // Backend
   { tech_key: 'nodejs', territory: 'backend_fortress' },
   { tech_key: 'express', territory: 'backend_fortress' },
   { tech_key: 'fastify', territory: 'backend_fortress' },
   { tech_key: 'nestjs', territory: 'backend_fortress' },
+  { tech_key: 'hono', territory: 'backend_fortress' },
+  { tech_key: 'trpc', territory: 'backend_fortress' },
   { tech_key: 'go', territory: 'backend_fortress' },
+  { tech_key: 'cpp', territory: 'backend_fortress' },
+  { tech_key: 'c', territory: 'backend_fortress' },
   { tech_key: 'gin', territory: 'backend_fortress' },
+  { tech_key: 'echo', territory: 'backend_fortress' },
+  { tech_key: 'fiber', territory: 'backend_fortress' },
+  { tech_key: 'grpc', territory: 'backend_fortress' },
   { tech_key: 'python', territory: 'backend_fortress' },
   { tech_key: 'fastapi', territory: 'backend_fortress' },
   { tech_key: 'django', territory: 'backend_fortress' },
   { tech_key: 'flask', territory: 'backend_fortress' },
   { tech_key: 'rust', territory: 'backend_fortress' },
+  { tech_key: 'axum', territory: 'backend_fortress' },
+  { tech_key: 'actix', territory: 'backend_fortress' },
   { tech_key: 'java', territory: 'backend_fortress' },
+  { tech_key: 'spring', territory: 'backend_fortress' },
+  { tech_key: 'rails', territory: 'backend_fortress' },
   // Data
   { tech_key: 'postgres', territory: 'data_pipeline_zone' },
   { tech_key: 'mysql', territory: 'data_pipeline_zone' },
@@ -81,6 +101,14 @@ const CATALOG_POSITIONS: Array<{ tech_key: string; territory: TerritoryType; x?:
   { tech_key: 'sql', territory: 'data_pipeline_zone' },
   { tech_key: 'dbt', territory: 'data_pipeline_zone' },
   { tech_key: 'prisma', territory: 'data_pipeline_zone' },
+  { tech_key: 'drizzle', territory: 'data_pipeline_zone' },
+  { tech_key: 'supabase', territory: 'data_pipeline_zone' },
+  { tech_key: 'sqlalchemy', territory: 'data_pipeline_zone' },
+  { tech_key: 'pandas', territory: 'data_pipeline_zone' },
+  { tech_key: 'numpy', territory: 'data_pipeline_zone' },
+  { tech_key: 'scikit_learn', territory: 'data_pipeline_zone' },
+  { tech_key: 'jupyter', territory: 'data_pipeline_zone' },
+  { tech_key: 'duckdb', territory: 'data_pipeline_zone' },
   // Testing
   { tech_key: 'jest', territory: 'testing_lab' },
   { tech_key: 'vitest', territory: 'testing_lab' },
@@ -88,13 +116,24 @@ const CATALOG_POSITIONS: Array<{ tech_key: string; territory: TerritoryType; x?:
   { tech_key: 'playwright', territory: 'testing_lab' },
   { tech_key: 'cypress', territory: 'testing_lab' },
   { tech_key: 'rspec', territory: 'testing_lab' },
+  { tech_key: 'testing_library', territory: 'testing_lab' },
+  { tech_key: 'mocha', territory: 'testing_lab' },
+  { tech_key: 'ava', territory: 'testing_lab' },
+  { tech_key: 'msw', territory: 'testing_lab' },
+  { tech_key: 'tap', territory: 'testing_lab' },
+  { tech_key: 'junit', territory: 'testing_lab' },
   // DevOps
   { tech_key: 'docker', territory: 'devops_harbor' },
+  { tech_key: 'docker_compose', territory: 'devops_harbor' },
   { tech_key: 'ghactions', territory: 'devops_harbor' },
   { tech_key: 'terraform', territory: 'devops_harbor' },
   { tech_key: 'kubernetes', territory: 'devops_harbor' },
+  { tech_key: 'helm', territory: 'devops_harbor' },
   { tech_key: 'aws', territory: 'devops_harbor' },
+  { tech_key: 'cloudflare', territory: 'devops_harbor' },
   { tech_key: 'vercel', territory: 'devops_harbor' },
+  { tech_key: 'netlify', territory: 'devops_harbor' },
+  { tech_key: 'ansible', territory: 'devops_harbor' },
   { tech_key: 'nginx', territory: 'devops_harbor' },
   // Docs
   { tech_key: 'markdown', territory: 'docs_library' },
@@ -102,6 +141,11 @@ const CATALOG_POSITIONS: Array<{ tech_key: string; territory: TerritoryType; x?:
   { tech_key: 'jsdoc', territory: 'docs_library' },
   { tech_key: 'storybook', territory: 'docs_library' },
   { tech_key: 'openapi', territory: 'docs_library' },
+  { tech_key: 'swagger', territory: 'docs_library' },
+  { tech_key: 'typedoc', territory: 'docs_library' },
+  { tech_key: 'docusaurus', territory: 'docs_library' },
+  { tech_key: 'mintlify', territory: 'docs_library' },
+  { tech_key: 'changelog', territory: 'docs_library' },
 ]
 
 let cached: StarPositionEntry[] | null = null

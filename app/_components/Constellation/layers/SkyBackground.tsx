@@ -12,10 +12,15 @@ export function SkyBackground() {
     `,
     fragmentShader: `
       void main() {
-        // Near-black vertical gradient — zenith #020207 to edge #050307
+        // Near-black vertical gradient. Tuned darker per visual review —
+        // previous values produced a perceptible blue-gray cast around the
+        // canvas edges that washed out the star contrast. These approximate
+        // #010104 (zenith) → #030305 (edge): essentially pure black with a
+        // faint cool tint that's only visible against very bright stars.
         float t = gl_FragCoord.y / 900.0;
-        vec3 zenith = vec3(0.008, 0.008, 0.027);
-        vec3 edge   = vec3(0.020, 0.012, 0.027);
+        // Further darkened by ~5% per visual review (cumulative ~15% from baseline).
+        vec3 zenith = vec3(0.00342, 0.00342, 0.01368);
+        vec3 edge   = vec3(0.00855, 0.005985, 0.01539);
         gl_FragColor = vec4(mix(edge, zenith, t), 1.0);
       }
     `,

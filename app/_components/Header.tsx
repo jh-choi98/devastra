@@ -6,7 +6,7 @@ import { signOut } from '@/lib/auth/actions'
 import { RefreshButton } from './RefreshButton'
 import { ShareModal } from './ShareModal'
 import { togglePublicStub } from './share-actions'
-import { posthog, initPosthog } from '@/lib/posthog'
+import { captureClientEvent } from './posthog-lite'
 
 interface HeaderUser {
   id: string
@@ -18,9 +18,11 @@ interface HeaderUser {
 export function Header({
   user,
   lastSyncStartedAt,
+  initialSyncing = false,
 }: {
   user: HeaderUser
   lastSyncStartedAt: Date | null
+  initialSyncing?: boolean
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
@@ -33,13 +35,16 @@ export function Header({
         </Link>
 
         <div className="flex items-center gap-3">
-          <RefreshButton userId={user.id} lastSyncStartedAt={lastSyncStartedAt} />
+          <RefreshButton
+            userId={user.id}
+            lastSyncStartedAt={lastSyncStartedAt}
+            initialSyncing={initialSyncing}
+          />
 
           <button
             data-testid="share-button"
             onClick={() => {
-              initPosthog()
-              posthog.capture('share.clicked')
+              captureClientEvent('share.clicked', { distinctId: user.id })
               setShareModalOpen(true)
             }}
             className="px-3 py-1.5 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"

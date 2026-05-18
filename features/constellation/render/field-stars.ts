@@ -7,6 +7,16 @@ const COUNTS: Record<Viewport, number> = {
   og:      1500,
 }
 
+// Generation extends beyond the nominal 1000x700 viewBox so wide / portrait
+// canvases (which use `meet` camera framing) still have stars filling the
+// margins on either side of the viewBox.
+const GEN_X_MIN = -400
+const GEN_X_MAX = 1400
+const GEN_Y_MIN = -250
+const GEN_Y_MAX = 950
+const GEN_W = GEN_X_MAX - GEN_X_MIN
+const GEN_H = GEN_Y_MAX - GEN_Y_MIN
+
 // cyrb53 hash for seeding
 function cyrb53(str: string): number {
   let h1 = 0xdeadbeef, h2 = 0x41c6ce57
@@ -96,12 +106,15 @@ export function generateFieldStars(viewport: Viewport): FieldStar[] {
       const t = rng()
       const h = (rng() - 0.5) * 2 * BAND_HALF_WIDTH
       const pos = bandPosition(t, h)
-      // Clamp to viewBox
-      x = Math.min(999, Math.max(1, pos.x))
-      y = Math.min(699, Math.max(1, pos.y))
+      // Allow the band to extend slightly past the viewBox so wide-canvas
+      // margins still get the higher density when the band runs near an edge.
+      x = Math.min(GEN_X_MAX - 1, Math.max(GEN_X_MIN + 1, pos.x))
+      y = Math.min(GEN_Y_MAX - 1, Math.max(GEN_Y_MIN + 1, pos.y))
     } else {
-      x = rng() * 1000
-      y = rng() * 700
+      // Uniform field stars cover the EXPANDED generation rectangle so the
+      // dark sky margins on either side of the viewBox are populated.
+      x = GEN_X_MIN + rng() * GEN_W
+      y = GEN_Y_MIN + rng() * GEN_H
     }
 
     const color = pickColor(rng())

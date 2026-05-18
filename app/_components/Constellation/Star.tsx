@@ -12,13 +12,13 @@ export function Star(props: {
   accentColor: string
   /** True if first_unlocked_at is more recent than the diff threshold. Triggers spark. */
   isNew: boolean
-  /** Optional hero label visible without hover. */
-  heroLabel?: string
+  /** Whether the simplified SVG fallback should show the star label. */
+  showLabel?: boolean
   onClick?: () => void
 }): JSX.Element {
-  const { tech_key, x, y, weight, color, accentColor, isNew, heroLabel, onClick } = props
+  const { tech_key, x, y, weight, color, accentColor, isNew, showLabel, onClick } = props
   const entry = getPublicTech(tech_key)
-  const label = heroLabel ?? entry?.displayName ?? tech_key
+  const label = entry?.displayName ?? tech_key
 
   // Size scales with weight: r = min(12, 4 + log(max(1, weight)) * 2.5)
   const r = Math.min(12, 4 + Math.log(Math.max(1, weight)) * 2.5)
@@ -45,7 +45,7 @@ export function Star(props: {
       )}
       {/* Touch-friendly hit area */}
       <circle r={hitR} fill="transparent" />
-      {heroLabel && (
+      {showLabel && (
         <text
           x={r + 8}
           y="0.35em"

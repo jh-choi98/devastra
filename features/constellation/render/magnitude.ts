@@ -3,7 +3,7 @@
 export interface MagnitudeOutput {
   /** Core radius in viewBox units (1000x700 space). */
   coreRadius: number
-  /** HDR-friendly intensity multiplier for the bloom pass. >1 means it will bloom. */
+  /** Intensity multiplier for shader-local glow and optional postprocessing. */
   intensity: number
   /** Whether to draw a visible diffraction spike (top-N brightest). */
   showSpikes: boolean
@@ -11,23 +11,45 @@ export interface MagnitudeOutput {
   spikeLength: number
 }
 
+export type BrightnessDescriptor = 'very dim' | 'dim' | 'mid' | 'bright' | 'brightest'
+
+export type BrightnessScaleStop = {
+  descriptor: BrightnessDescriptor
+  minWeight: number
+  compactLabel: string
+}
+
+export const BRIGHTNESS_SCALE_STOPS: readonly BrightnessScaleStop[] = [
+  { descriptor: 'brightest', minWeight: 200, compactLabel: '200+' },
+  { descriptor: 'bright', minWeight: 80, compactLabel: '80' },
+  { descriptor: 'mid', minWeight: 30, compactLabel: '30' },
+  { descriptor: 'dim', minWeight: 10, compactLabel: '10' },
+  { descriptor: 'very dim', minWeight: 5, compactLabel: '5' },
+] as const
+
 /**
  * Maps a landmark's weight to render parameters.
  *
- *   - weight 5  (just unlocked) → coreRadius ~2, intensity 1.0, no spikes
- *   - weight 50 (typical lit)   → coreRadius ~4, intensity 1.5, no spikes
- *   - weight 500 (heavy hitter) → coreRadius ~6, intensity 1.8, spikes if top-quintile
+ *   - weight 5  (just unlocked) -> coreRadius ~0.85, intensity 0.55, no spikes
+ *   - weight 50 (typical lit)   -> coreRadius ~1.7, intensity 1.1, no spikes
+ *   - weight 500 (heavy hitter) -> coreRadius ~2.8, intensity 1.6, spikes if top-quintile
  *
  * The top-quintile decision needs the full landmark set; callers pre-compute
  * the quintile boundary and pass it via `topQuintileThreshold`.
  */
 export function magnitudeFor(weight: number, topQuintileThreshold: number): MagnitudeOutput {
-  // Logarithmic scale: weight 5 → t=0, weight 500 → t≈1
+  // Logarithmic scale: weight 5 -> t=0, weight 500 -> t~1.
   const t = Math.min(1, Math.max(0, Math.log(weight / 5) / Math.log(100)))
-  const coreRadius = 2 + t * 4        // 2..6
-  const intensity = 1.0 + t * 0.8    // 1.0..1.8
+  const sizeT = Math.pow(t, 1.18)
+  const intensityT = Math.pow(t, 0.9)
+  // Star cores stay small — the glow comes from shader-local halos/spikes,
+  // not oversized icon-like cores.
+  // Newly lit stars remain pinpoints; heavy hitters earn visibly larger halos
+  // and diffraction spikes so brightness grades are readable at a glance.
+  const coreRadius = 0.86 + sizeT * 1.95 // 0.86..2.81
+  const intensity = 0.54 + intensityT * 1.08 // 0.54..1.62 (feeds shader-local glow)
   const showSpikes = weight >= topQuintileThreshold
-  const spikeLength = showSpikes ? 8 + t * 16 : 0
+  const spikeLength = showSpikes ? 4.5 + sizeT * 11.5 : 0 // 4.5..16
   return { coreRadius, intensity, showSpikes, spikeLength }
 }
 
@@ -39,11 +61,7 @@ export function topQuintileThreshold(weightsOfLitStars: number[]): number {
   return sorted[Math.min(idx, sorted.length - 1)]
 }
 
-/** Maps a landmark weight to a human-readable brightness descriptor (5-quintile scale). */
-export function brightnessDescriptor(weight: number): string {
-  if (weight >= 200) return 'brightest'
-  if (weight >= 80) return 'bright'
-  if (weight >= 30) return 'mid'
-  if (weight >= 10) return 'dim'
-  return 'very dim'
+/** Maps a landmark weight to a human-readable brightness descriptor. */
+export function brightnessDescriptor(weight: number): BrightnessDescriptor {
+  return BRIGHTNESS_SCALE_STOPS.find((stop) => weight >= stop.minWeight)?.descriptor ?? 'very dim'
 }

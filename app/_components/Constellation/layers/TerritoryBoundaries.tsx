@@ -29,10 +29,14 @@ export function TerritoryBoundaries({ viewport = 'desktop' }: TerritoryBoundarie
   }, [viewport])
 
   return (
-    <group renderOrder={-100}>
+    // Depth: sits BEHIND tech stars / connections (renderOrder 2) but in front
+    // of background (FieldStars / Haze / SkyBackground). Combined with the
+    // boundary's low opacity this places it firmly in the "map layer" depth
+    // tier without competing with the lit constellation.
+    <group renderOrder={2}>
       {lines.map((g, i) => (
         <lineSegments key={i} geometry={g}>
-          <lineBasicMaterial color="#4a5566" transparent opacity={0.1} />
+          <lineBasicMaterial color="#2a3a4d" transparent opacity={0.05} />
         </lineSegments>
       ))}
     </group>

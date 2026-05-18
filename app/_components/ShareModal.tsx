@@ -21,9 +21,9 @@ export function ShareModal({
   const [toggling, setToggling] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const profileUrl = `https://devatlas.app/${username}`
+  const profileUrl = `https://devastra.app/${username}`
   const tweetText = encodeURIComponent(
-    `I'm building my developer world on DevAstra. See my map →`,
+    `My GitHub activity, as a constellation.`,
   )
 
   async function handleToggle() {
@@ -48,7 +48,7 @@ export function ShareModal({
     const blob = await res.blob()
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `devatlas-${username}.png`
+    a.download = `devastra-${username}.png`
     a.click()
     URL.revokeObjectURL(a.href)
   }

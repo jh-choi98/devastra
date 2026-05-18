@@ -24,8 +24,8 @@ export function Skeleton({ viewport = 'desktop' }: SkeletonProps) {
   return (
     <svg
       viewBox="0 0 1000 700"
-      preserveAspectRatio="xMidYMid slice"
-      className="absolute inset-0 w-full h-full"
+      preserveAspectRatio="xMidYMid meet"
+      className="absolute inset-0 h-full w-full"
       aria-hidden="true"
     >
       <defs>
@@ -45,19 +45,27 @@ export function Skeleton({ viewport = 'desktop' }: SkeletonProps) {
           strokeWidth="0.7"
         />
       ))}
-      {anchors.map((a) => (
-        <text
-          key={a.type}
-          x={a.x}
-          y={a.y + a.spread + 18}
-          fontSize="11"
-          fill="#8aa0b8"
-          textAnchor="middle"
-          fontFamily="system-ui, sans-serif"
-        >
-          {CLUSTER_LABELS[a.type]}
-        </text>
-      ))}
+      {anchors.map((a) => {
+        // Place label below the cluster region for upper-row clusters and
+        // above for lower-row clusters, clamped to the viewBox interior.
+        // Anchor.y < 350 → upper half; otherwise lower half (viewBox is 700 tall).
+        const isLowerRow = a.y >= 350
+        const rawY = isLowerRow ? a.y - a.spread - 18 : a.y + a.spread + 18
+        const y = Math.max(20, Math.min(680, rawY))
+        return (
+          <text
+            key={a.type}
+            x={a.x}
+            y={y}
+            fontSize="11"
+            fill="#8aa0b8"
+            textAnchor="middle"
+            fontFamily="system-ui, sans-serif"
+          >
+            {CLUSTER_LABELS[a.type]}
+          </text>
+        )
+      })}
     </svg>
   )
 }

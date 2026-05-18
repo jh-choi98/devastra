@@ -5,6 +5,7 @@ export const MILKY_WAY_FRAG = /* glsl */ `
   uniform float uBreathePeriod;
   uniform float uBreatheAmplitude;
   uniform float uMotionEnabled;
+  uniform float uIntensity;
   varying vec2 vUv;
 
   // Simple 2D hash + noise (cheap; for a higher-quality noise use a simplex implementation)
@@ -38,8 +39,15 @@ export const MILKY_WAY_FRAG = /* glsl */ `
     vec2 centered = (vUv - 0.5) * 2.0;
     float vignette = 1.0 - dot(centered, centered) * 0.18;
 
-    vec3 col = tex.rgb * breathe * vignette + vec3(grain);
-    float alpha = tex.a;
-    gl_FragColor = vec4(col, alpha);
+    // Crush near-black noise to true black so the background reads as deep space,
+    // and bias toward the warmer / brighter "dust lane" regions only.
+    vec3 texCol = tex.rgb;
+    float luma = dot(texCol, vec3(0.299, 0.587, 0.114));
+    // Soft-knee floor: pixels darker than 0.06 fade to black quickly.
+    float floorMask = smoothstep(0.06, 0.22, luma);
+    texCol *= floorMask;
+
+    vec3 col = (texCol * breathe * vignette + vec3(grain)) * uIntensity;
+    gl_FragColor = vec4(col, 1.0);
   }
 `

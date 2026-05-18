@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { brightnessDescriptor } from '@/features/constellation/render/magnitude'
 
 export function StarTooltip(props: {
   tech_key: string
@@ -11,8 +12,7 @@ export function StarTooltip(props: {
   const { displayName, weight, firstUnlockedAt } = props
   const [visible, setVisible] = useState(false)
 
-  // Brightness descriptor by weight quintile (rough heuristic)
-  const brightness = weight >= 80 ? 'brightest' : weight >= 30 ? 'bright' : 'dim'
+  const brightness = brightnessDescriptor(weight)
 
   const sinceLabel = firstUnlockedAt
     ? new Date(firstUnlockedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })

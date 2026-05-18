@@ -7,12 +7,12 @@ const CSP_PARTS = [
   // 'unsafe-inline' kept for Next.js inline script bootstrap; nonce-based CSP is a post-launch upgrade.
   // 'unsafe-eval' is required by Next.js in dev mode for HMR but NOT in production.
   process.env.NODE_ENV === 'production'
-    ? "script-src 'self' 'unsafe-inline' https://*.posthog.com https://browser.sentry-cdn.com"
-    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.posthog.com https://browser.sentry-cdn.com",
+    ? "script-src 'self' 'unsafe-inline' https://*.posthog.com https://browser.sentry-cdn.com https://va.vercel-scripts.com"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.posthog.com https://browser.sentry-cdn.com https://va.vercel-scripts.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' https://avatars.githubusercontent.com data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.sentry.io",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.sentry.io https://vitals.vercel-insights.com https://va.vercel-scripts.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

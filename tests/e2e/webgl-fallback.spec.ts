@@ -13,7 +13,7 @@ test('WebGL fallback shows banner + skeleton', async ({ browser }) => {
     }
   })
   const page = await context.newPage()
-  await page.goto('http://localhost:3000/dev/map')
+  await page.goto('/dev/map')
   await expect(page.getByRole('status').first()).toContainText("doesn't support advanced graphics")
   // Skeleton (SVG boundary lines) still renders
   await expect(page.locator('svg').first()).toBeVisible()

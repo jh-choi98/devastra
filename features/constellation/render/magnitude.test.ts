@@ -1,21 +1,34 @@
 import { describe, it, expect } from 'vitest'
-import { magnitudeFor, topQuintileThreshold } from './magnitude'
+import {
+  BRIGHTNESS_SCALE_STOPS,
+  brightnessDescriptor,
+  magnitudeFor,
+  topQuintileThreshold,
+} from './magnitude'
 
 describe('magnitudeFor', () => {
-  it('weight 5 (minimum lit) produces smallest coreRadius and no spikes', () => {
+  it('weight 5 (minimum lit) produces a small point-like core and no spikes', () => {
     const out = magnitudeFor(5, 1000)
-    expect(out.coreRadius).toBeCloseTo(2, 0)
-    expect(out.intensity).toBeCloseTo(1.0, 1)
+    expect(out.coreRadius).toBeCloseTo(0.86, 2)
+    expect(out.intensity).toBeCloseTo(0.54, 2)
     expect(out.showSpikes).toBe(false)
     expect(out.spikeLength).toBe(0)
   })
 
-  it('weight 50 produces mid-range coreRadius and no spikes (below threshold)', () => {
+  it('weight 50 produces a brighter but still point-like core and no spikes (below threshold)', () => {
     const out = magnitudeFor(50, 1000)
-    expect(out.coreRadius).toBeGreaterThan(2)
-    expect(out.coreRadius).toBeLessThan(6)
-    expect(out.intensity).toBeGreaterThan(1.0)
+    expect(out.coreRadius).toBeGreaterThan(1)
+    expect(out.coreRadius).toBeLessThan(2.4)
+    expect(out.intensity).toBeGreaterThan(1)
     expect(out.showSpikes).toBe(false)
+  })
+
+  it('weight 500 produces a visibly brighter grade when it qualifies for spikes', () => {
+    const out = magnitudeFor(500, 100)
+    expect(out.coreRadius).toBeGreaterThan(2.7)
+    expect(out.intensity).toBeGreaterThan(1.5)
+    expect(out.showSpikes).toBe(true)
+    expect(out.spikeLength).toBeGreaterThan(15)
   })
 
   it('weight monotonically increases coreRadius and intensity', () => {
@@ -51,5 +64,19 @@ describe('topQuintileThreshold', () => {
 
   it('handles single-element array', () => {
     expect(topQuintileThreshold([42])).toBe(42)
+  })
+})
+
+describe('brightnessDescriptor', () => {
+  it('uses the shared five-step brightness scale', () => {
+    expect(brightnessDescriptor(5)).toBe('very dim')
+    expect(brightnessDescriptor(10)).toBe('dim')
+    expect(brightnessDescriptor(30)).toBe('mid')
+    expect(brightnessDescriptor(80)).toBe('bright')
+    expect(brightnessDescriptor(200)).toBe('brightest')
+  })
+
+  it('keeps scale stops ordered from brightest to newly lit', () => {
+    expect(BRIGHTNESS_SCALE_STOPS.map((stop) => stop.minWeight)).toEqual([200, 80, 30, 10, 5])
   })
 })

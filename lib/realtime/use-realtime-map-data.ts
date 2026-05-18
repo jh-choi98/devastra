@@ -12,8 +12,21 @@ export type SyncJobProgress = {
 }
 
 export type SyncJobUpdate = {
+  id: string
+  kind: 'initial' | 'incremental' | 'manual' | 'backfill' | string
   status: string
   progress: SyncJobProgress | null
+  createdAt: string | null
+}
+
+export function isLatestSyncJobUpdate(
+  current: SyncJobUpdate | null,
+  incoming: SyncJobUpdate,
+): boolean {
+  if (!current) return true
+  if (incoming.id && incoming.id === current.id) return true
+  if (!incoming.createdAt || !current.createdAt) return true
+  return new Date(incoming.createdAt).getTime() >= new Date(current.createdAt).getTime()
 }
 
 // Exported pure helpers for testability
@@ -52,6 +65,15 @@ export function mergeLandmarkUpdate(
   return [...landmarks, incoming]
 }
 
+export function removeLandmark(
+  landmarks: ConstellationData['landmarks'],
+  row: Record<string, unknown>,
+): ConstellationData['landmarks'] {
+  const techKey = String(row['tech_key'] ?? '')
+  if (!techKey) return landmarks
+  return landmarks.filter((landmark) => landmark.tech_key !== techKey)
+}
+
 export function useRealtimeMapData(
   userId: string,
   initial: ConstellationData,
@@ -62,6 +84,10 @@ export function useRealtimeMapData(
   useEffect(() => {
     onSyncJobUpdateRef.current = onSyncJobUpdate
   })
+
+  useEffect(() => {
+    setData(initial)
+  }, [initial, userId])
 
   useEffect(() => {
     const supabase = createBrowserClient()
@@ -96,13 +122,18 @@ export function useRealtimeMapData(
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
+          if (payload.eventType === 'DELETE') {
+            if (!payload.old || typeof payload.old !== 'object') return
+            setData((prev) => ({
+              ...prev,
+              landmarks: removeLandmark(prev.landmarks, payload.old as Record<string, unknown>),
+            }))
+            return
+          }
           if (!payload.new || typeof payload.new !== 'object') return
           setData((prev) => ({
             ...prev,
-            landmarks: mergeLandmarkUpdate(
-              prev.landmarks,
-              payload.new as Record<string, unknown>,
-            ),
+            landmarks: mergeLandmarkUpdate(prev.landmarks, payload.new as Record<string, unknown>),
           }))
         },
       )
@@ -117,13 +148,16 @@ export function useRealtimeMapData(
         (payload) => {
           if (!payload.new || typeof payload.new !== 'object') return
           const row = payload.new as Record<string, unknown>
+          const id = String(row['id'] ?? '')
+          const kind = String(row['kind'] ?? '')
           const status = String(row['status'] ?? '')
+          const createdAt = row['created_at'] ? String(row['created_at']) : null
           const rawProgress = row['progress']
           const progress =
             rawProgress && typeof rawProgress === 'object' && !Array.isArray(rawProgress)
               ? (rawProgress as SyncJobProgress)
               : null
-          onSyncJobUpdateRef.current?.({ status, progress })
+          onSyncJobUpdateRef.current?.({ id, kind, status, progress, createdAt })
         },
       )
       .subscribe()

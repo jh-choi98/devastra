@@ -7,12 +7,16 @@ vi.mock('@/lib/auth/supabase-browser', () => ({
 }))
 
 import {
+  isLatestSyncJobUpdate,
   mergeTerritoryUpdate,
   mergeLandmarkUpdate,
+  removeLandmark,
 } from '@/lib/realtime/use-realtime-map-data'
 import {
   computeRevealDuration,
   formatSyncProgressText,
+  getBuildStatusCopy,
+  isBlockingBuildJob,
 } from '@/app/(authenticated)/_use-reveal-sequence'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 
@@ -132,6 +136,43 @@ describe('reveal-flow — landmark UPSERT events', () => {
   })
 })
 
+describe('reveal-flow — landmark DELETE events', () => {
+  it('removes a landmark deleted by backfill', () => {
+    const existing = [
+      {
+        tech_key: 'react',
+        territory: 'frontend_land' as const,
+        weight: 12,
+        firstUnlockedAt: '2026-04-01T00:00:00Z',
+      },
+      {
+        tech_key: 'docker',
+        territory: 'devops_harbor' as const,
+        weight: 8,
+        firstUnlockedAt: '2026-04-02T00:00:00Z',
+      },
+    ]
+
+    const result = removeLandmark(existing, { tech_key: 'docker' })
+
+    expect(result).toHaveLength(1)
+    expect(result[0].tech_key).toBe('react')
+  })
+
+  it('preserves landmarks when the delete payload is missing a tech key', () => {
+    const existing = [
+      {
+        tech_key: 'react',
+        territory: 'frontend_land' as const,
+        weight: 12,
+        firstUnlockedAt: '2026-04-01T00:00:00Z',
+      },
+    ]
+
+    expect(removeLandmark(existing, {})).toBe(existing)
+  })
+})
+
 // ---------------------------------------------------------------------------
 // Sync progress text
 // ---------------------------------------------------------------------------
@@ -156,6 +197,95 @@ describe('reveal-flow — sync progress text', () => {
   it('uses current_step when provided', () => {
     const progress = { repos_analyzed: 5, total: 10, current_step: 'Fetching commits...' }
     expect(formatSyncProgressText(progress, 'running')).toBe('Fetching commits...')
+  })
+})
+
+describe('reveal-flow — blocking build state', () => {
+  it('blocks the first constellation while initial sync is pending or running', () => {
+    expect(
+      isBlockingBuildJob({
+        id: 'job-1',
+        kind: 'initial',
+        status: 'pending',
+        progress: null,
+        createdAt: '2026-05-17T20:00:00.000Z',
+      }),
+    ).toBe(true)
+    expect(
+      isBlockingBuildJob({
+        id: 'job-1',
+        kind: 'initial',
+        status: 'running',
+        progress: null,
+        createdAt: '2026-05-17T20:00:00.000Z',
+      }),
+    ).toBe(true)
+  })
+
+  it('blocks settings backfill but not manual refresh', () => {
+    expect(
+      isBlockingBuildJob({
+        id: 'job-1',
+        kind: 'backfill',
+        status: 'running',
+        progress: null,
+        createdAt: '2026-05-17T20:00:00.000Z',
+      }),
+    ).toBe(true)
+    expect(
+      isBlockingBuildJob({
+        id: 'job-2',
+        kind: 'manual',
+        status: 'running',
+        progress: null,
+        createdAt: '2026-05-17T20:00:00.000Z',
+      }),
+    ).toBe(false)
+    expect(
+      isBlockingBuildJob({
+        id: 'job-3',
+        kind: 'backfill',
+        status: 'completed',
+        progress: null,
+        createdAt: '2026-05-17T20:00:00.000Z',
+      }),
+    ).toBe(false)
+  })
+
+  it('returns user-facing build copy with the current step when present', () => {
+    const copy = getBuildStatusCopy({
+      id: 'job-1',
+      kind: 'backfill',
+      status: 'running',
+      progress: {
+        repos_analyzed: 2,
+        total: 4,
+        current_step: 'Updating your constellation...',
+      },
+      createdAt: '2026-05-17T20:00:00.000Z',
+    })
+
+    expect(copy?.title).toBe('Updating your constellation')
+    expect(copy?.detail).toBe('Updating your constellation...')
+  })
+
+  it('ignores stale failed sync job updates from cleanup', () => {
+    const current = {
+      id: 'new-job',
+      kind: 'backfill',
+      status: 'completed',
+      progress: null,
+      createdAt: '2026-05-17T20:44:12.000Z',
+    }
+    const staleFailed = {
+      id: 'old-job',
+      kind: 'backfill',
+      status: 'failed',
+      progress: null,
+      createdAt: '2026-05-17T20:10:39.000Z',
+    }
+
+    expect(isLatestSyncJobUpdate(current, staleFailed)).toBe(false)
   })
 })
 

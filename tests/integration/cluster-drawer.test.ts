@@ -5,6 +5,7 @@ vi.mock('@/lib/db/client', () => ({ db: {} }))
 
 import { TERRITORIES } from '@/features/territories/registry'
 import { getPublicTech } from '@/features/territories/tech-catalog-public'
+import { buildClusterDrawerLitStars, type ActivityAttributionRow } from '@/lib/db/queries/drawer'
 
 // ── Pure unit: registry + catalog parity ────────────────────────────────────
 
@@ -78,7 +79,12 @@ describe('cluster-drawer — brightness ordering', () => {
 // ── Visitor drawer data derivation ──────────────────────────────────────────
 
 function buildVisitorLitStars(
-  landmarks: Array<{ tech_key: string; territory: string; weight: number; firstUnlockedAt: string | null }>,
+  landmarks: Array<{
+    tech_key: string
+    territory: string
+    weight: number
+    firstUnlockedAt: string | null
+  }>,
   territoryType: string,
 ) {
   const UNLOCK_WEIGHT = 5
@@ -95,10 +101,25 @@ function buildVisitorLitStars(
 
 describe('cluster-drawer — visitor drawer data derivation', () => {
   const landmarks = [
-    { tech_key: 'react', territory: 'frontend_land', weight: 80, firstUnlockedAt: '2026-04-01T00:00:00Z' },
-    { tech_key: 'nextjs', territory: 'frontend_land', weight: 50, firstUnlockedAt: '2026-03-01T00:00:00Z' },
+    {
+      tech_key: 'react',
+      territory: 'frontend_land',
+      weight: 80,
+      firstUnlockedAt: '2026-04-01T00:00:00Z',
+    },
+    {
+      tech_key: 'nextjs',
+      territory: 'frontend_land',
+      weight: 50,
+      firstUnlockedAt: '2026-03-01T00:00:00Z',
+    },
     { tech_key: 'css', territory: 'frontend_land', weight: 3, firstUnlockedAt: null }, // below unlock threshold
-    { tech_key: 'docker', territory: 'devops_harbor', weight: 20, firstUnlockedAt: '2026-04-15T00:00:00Z' },
+    {
+      tech_key: 'docker',
+      territory: 'devops_harbor',
+      weight: 20,
+      firstUnlockedAt: '2026-04-15T00:00:00Z',
+    },
   ]
 
   it('returns 2 lit stars for frontend_land (above unlock threshold)', () => {
@@ -126,5 +147,67 @@ describe('cluster-drawer — visitor drawer data derivation', () => {
   it('does not include stars from other clusters', () => {
     const stars = buildVisitorLitStars(landmarks, 'frontend_land')
     expect(stars.find((s) => s.tech_key === 'docker')).toBeUndefined()
+  })
+})
+
+describe('cluster-drawer — star-specific attribution', () => {
+  const catalogMap = new Map([
+    [
+      'cpp',
+      {
+        displayName: 'C++',
+        rules: [{ kind: 'ext' as const, extensions: ['.cpp'] }],
+      },
+    ],
+    [
+      'go',
+      {
+        displayName: 'Go',
+        rules: [{ kind: 'ext' as const, extensions: ['.go'] }],
+      },
+    ],
+  ])
+
+  const litLandmarks = [
+    { techKey: 'cpp', weight: '36', firstUnlockedAt: new Date('2026-01-01T00:00:00Z') },
+    { techKey: 'go', weight: '12', firstUnlockedAt: new Date('2026-01-02T00:00:00Z') },
+  ]
+
+  const rowsByTechKey = new Map<string, ActivityAttributionRow[]>([
+    [
+      'cpp',
+      [
+        {
+          techKey: 'cpp',
+          repoId: 'repo-cpp',
+          type: 'commit',
+          repoOwner: 'jh-choi98',
+          repoName: 'cpp-practice',
+          cnt: 36,
+        },
+      ],
+    ],
+    [
+      'go',
+      [
+        {
+          techKey: 'go',
+          repoId: 'repo-go',
+          type: 'commit',
+          repoOwner: 'jh-choi98',
+          repoName: 'qr-backend-mini-project',
+          cnt: 9,
+        },
+      ],
+    ],
+  ])
+
+  it('does not reuse cluster-wide contributing repos across different stars', () => {
+    const stars = buildClusterDrawerLitStars(litLandmarks, catalogMap, rowsByTechKey)
+    const cpp = stars.find((star) => star.tech_key === 'cpp')
+
+    expect(cpp?.contributingRepos.map((repo) => repo.name)).toEqual(['cpp-practice'])
+    expect(cpp?.topContributingRepo?.name).toBe('cpp-practice')
+    expect(cpp?.activity).toEqual({ commits: 36, prs: 0, issues: 0 })
   })
 })

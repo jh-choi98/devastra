@@ -11,11 +11,19 @@ import { useConstellationState } from '../state'
 
 interface FieldStarsProps {
   viewport?: 'desktop' | 'mobile' | 'og'
+  opacity?: number
 }
 
-export function FieldStars({ viewport = 'desktop' }: FieldStarsProps) {
+// Background tier — smallest mouse parallax (~1px equivalent in world units).
+// Tech stars stay completely fixed; the parallax delta between layers is what
+// produces the "I'm looking into space" depth cue without ever moving the
+// user's identity surface (the lit tech constellation).
+const PARALLAX_BG = 0.002
+
+export function FieldStars({ viewport = 'desktop', opacity = 1 }: FieldStarsProps) {
   const { reducedMotion } = useConstellationState()
   const stars = useMemo(() => generateFieldStars(viewport), [viewport])
+  const groupRef = useRef<THREE.Group>(null)
 
   const geom = useMemo(() => {
     const g = new THREE.BufferGeometry()
@@ -42,26 +50,49 @@ export function FieldStars({ viewport = 'desktop' }: FieldStarsProps) {
     return g
   }, [stars])
 
-  const material = useMemo(() => new THREE.ShaderMaterial({
-    uniforms: {
-      uTime: { value: 0 },
-      uTwinkleAmplitude: { value: 0.10 },
-      uTwinkleEnabled: { value: 1.0 },
-    },
-    vertexShader: TWINKLE_VERT,
-    fragmentShader: TWINKLE_FRAG,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  }), [])
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uTwinkleAmplitude: { value: 0.1 },
+          uTwinkleEnabled: { value: 1.0 },
+          uOpacity: { value: 1.0 },
+        },
+        vertexShader: TWINKLE_VERT,
+        fragmentShader: TWINKLE_FRAG,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    [],
+  )
 
   const matRef = useRef(material)
   matRef.current = material
 
-  useFrame((state) => {
-    matRef.current.uniforms.uTime.value = state.clock.elapsedTime
+  useFrame(({ mouse, clock }, dt) => {
+    matRef.current.uniforms.uTime.value = clock.elapsedTime
     matRef.current.uniforms.uTwinkleEnabled.value = reducedMotion ? 0.0 : 1.0
+    matRef.current.uniforms.uOpacity.value = opacity
+
+    if (groupRef.current) {
+      if (reducedMotion) {
+        groupRef.current.position.x = 0
+        groupRef.current.position.y = 0
+      } else {
+        const tx = -mouse.x * PARALLAX_BG
+        const ty = -mouse.y * PARALLAX_BG
+        const lerp = Math.min(1, dt * 3)
+        groupRef.current.position.x += (tx - groupRef.current.position.x) * lerp
+        groupRef.current.position.y += (ty - groupRef.current.position.y) * lerp
+      }
+    }
   })
 
-  return <points args={[geom, material]} />
+  return (
+    <group ref={groupRef}>
+      <points args={[geom, material]} />
+    </group>
+  )
 }

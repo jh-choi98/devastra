@@ -2,20 +2,22 @@
 
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 
-export function PostStack({ isMobile }: { isMobile: boolean }) {
+export function PostStack({ isMobile, enabled = true }: { isMobile: boolean; enabled?: boolean }) {
+  if (!enabled) return null
+
   return (
     <EffectComposer
       multisampling={0}
-      resolutionScale={isMobile ? 0.5 : 1.0}
+      resolutionScale={isMobile ? 0.22 : 0.25}
     >
       <Bloom
-        intensity={0.5}
-        luminanceThreshold={0.75}
-        luminanceSmoothing={0.9}
-        radius={1.0}
-        mipmapBlur
+        intensity={0.35}
+        luminanceThreshold={0.85}
+        luminanceSmoothing={0.85}
+        radius={0.75}
+        mipmapBlur={false}
       />
-      <Vignette eskil={false} offset={0.5} darkness={0.5} />
+      <Vignette eskil={false} offset={0.25} darkness={0.85} />
     </EffectComposer>
   )
 }

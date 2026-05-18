@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { WhyExpansion } from './WhyExpansion'
+import type { BrightnessDescriptor } from '@/features/constellation/render/magnitude'
 
 function formatFirstLit(iso: string | null): string {
   if (!iso) return ''
@@ -14,7 +15,7 @@ export function StarRow(props: {
   weight: number
   firstUnlockedAt: string | null
   topContributingRepo: { owner: string; name: string; repoId: string } | null
-  brightnessDescriptor: 'brightest' | 'bright' | 'dim'
+  brightnessDescriptor: BrightnessDescriptor
   highlighted: boolean
   expandedByDefault: boolean
   ownerUserId: string
@@ -35,16 +36,18 @@ export function StarRow(props: {
     }
   }, [props.highlighted])
 
-  const descriptorColor: Record<string, string> = {
+  const descriptorColor: Record<BrightnessDescriptor, string> = {
     brightest: 'text-yellow-300',
     bright: 'text-slate-200',
-    dim: 'text-slate-500',
+    mid: 'text-slate-300',
+    dim: 'text-slate-400',
+    'very dim': 'text-slate-500',
   }
 
   return (
     <div
       ref={rowRef}
-      className={`rounded-lg px-3 py-2 transition-colors cursor-pointer select-none ${
+      className={`cursor-pointer select-none rounded-lg px-3 py-2 transition-colors ${
         props.highlighted ? 'bg-slate-700/60' : 'hover:bg-slate-700/30'
       }`}
       onClick={() => setExpanded((v) => !v)}
@@ -54,7 +57,7 @@ export function StarRow(props: {
       <div className="flex items-center gap-2">
         {/* Star dot matching cluster color */}
         <span
-          className="inline-block w-2 h-2 rounded-full shrink-0"
+          className="inline-block h-2 w-2 shrink-0 rounded-full"
           style={{ backgroundColor: props.color }}
         />
 
@@ -65,18 +68,18 @@ export function StarRow(props: {
         </span>
 
         {props.firstUnlockedAt && (
-          <span className="text-xs text-slate-500 hidden sm:inline">
+          <span className="hidden text-xs text-slate-500 sm:inline">
             {formatFirstLit(props.firstUnlockedAt)}
           </span>
         )}
 
         {props.topContributingRepo && (
-          <span className="text-xs text-slate-500 hidden md:inline truncate max-w-[120px]">
+          <span className="hidden max-w-[120px] truncate text-xs text-slate-500 md:inline">
             {props.topContributingRepo.owner}/{props.topContributingRepo.name}
           </span>
         )}
 
-        <span className="text-slate-600 text-xs ml-1">{expanded ? '▲' : '▼'}</span>
+        <span className="ml-1 text-xs text-slate-600">{expanded ? '▲' : '▼'}</span>
       </div>
 
       {expanded && (

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test('reduced motion: no twinkle, no parallax, no breathing', async ({ browser }) => {
   const context = await browser.newContext({ reducedMotion: 'reduce' })
   const page = await context.newPage()
-  await page.goto('http://localhost:3000/dev/map?scenario=dense')
+  await page.goto('/dev/map?scenario=dense')
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(500)
   // Take two screenshots 2s apart; they should be identical (no motion)

@@ -242,9 +242,6 @@ export function ConstellationSVG({
 
           const meta = TERRITORIES[type]
           const anchor = anchors[type]
-          const heroKey = [...lit]
-            .sort((a, b) => b.weight - a.weight || a.tech_key.localeCompare(b.tech_key))[0]?.tech_key
-
           return (
             <g key={type} data-testid={`cluster-${type}`}>
               {lit.map((s) => {
@@ -259,7 +256,7 @@ export function ConstellationSVG({
                       color={meta.color}
                       accentColor={meta.accentColor}
                       isNew={isNew}
-                      heroLabel={s.tech_key === heroKey ? s.tech_key : undefined}
+                      showLabel
                       onClick={onStarClick ? () => onStarClick(type, s.tech_key) : undefined}
                     />
                   </g>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { brightnessDescriptor } from '@/features/constellation/render/magnitude'
 import { getPublicTech } from '@/features/territories/tech-catalog-public'
+import { useConstellationState } from '../state'
 import type { ConstellationData } from '../types'
 
 interface TooltipState {
@@ -24,6 +25,7 @@ function formatShortDate(dateStr: string): string {
 
 export function TooltipHost({ data }: TooltipHostProps) {
   const [tip, setTip] = useState<TooltipState | null>(null)
+  const { selected } = useConstellationState()
 
   useEffect(() => {
     const onStarHover = (e: Event) => {
@@ -33,7 +35,11 @@ export function TooltipHost({ data }: TooltipHostProps) {
     return () => window.removeEventListener('constellation:star-hover', onStarHover)
   }, [])
 
-  if (!tip) return null
+  useEffect(() => {
+    if (selected) setTip(null)
+  }, [selected])
+
+  if (!tip || selected) return null
 
   const landmark = data.landmarks.find(l => l.tech_key === tip.tech_key)
   if (!landmark) return null

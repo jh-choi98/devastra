@@ -8,9 +8,12 @@ export type CinematicMode = 'idle' | 'reveal' | 'first-ever' | 'stage-up'
 export interface ConstellationState {
   selected: TerritoryType | null
   hovered: TerritoryType | null
+  /** Currently-hovered tech_key (if any). Independent of cluster hover. */
+  hoveredTechKey: string | null
   cinematic: CinematicMode
   reducedMotion: boolean
   setHovered: (t: TerritoryType | null) => void
+  setHoveredTechKey: (k: string | null) => void
   startCinematic: (mode: CinematicMode) => void
 }
 

@@ -8,16 +8,18 @@ const COOLDOWN_MS = 5 * 60 * 1000
 export function RefreshButton({
   userId,
   lastSyncStartedAt,
+  initialSyncing = false,
 }: {
   userId: string
   lastSyncStartedAt: Date | null
+  initialSyncing?: boolean
 }) {
   const [cooldownUntil, setCooldownUntil] = useState<Date | null>(() => {
     if (!lastSyncStartedAt) return null
     const until = new Date(lastSyncStartedAt.getTime() + COOLDOWN_MS)
     return until > new Date() ? until : null
   })
-  const [syncing, setSyncing] = useState(false)
+  const [syncing, setSyncing] = useState(initialSyncing)
   const [, setTick] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -52,7 +54,7 @@ export function RefreshButton({
           if (!payload.new || typeof payload.new !== 'object') return
           const row = payload.new as Record<string, unknown>
           const status = String(row['status'] ?? '')
-          if (status === 'running') {
+          if (status === 'pending' || status === 'running') {
             setSyncing(true)
           } else if (status === 'completed' || status === 'failed') {
             setSyncing(false)
