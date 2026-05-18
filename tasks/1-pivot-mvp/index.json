@@ -1,0 +1,101 @@
+{
+  "project": "devastra",
+  "task": "pivot-mvp",
+  "prompt": "이제 plan-and-build skill 사용해서 이 서비스의 mvp 전부 구현하자. 오차없이 잘 구현되도록 부탁해",
+  "totalPhases": 13,
+  "created_at": "2026-05-15T06:41:52+0900",
+  "phases": [
+    {
+      "phase": 0,
+      "name": "pivot-docs-commit",
+      "status": "completed",
+      "started_at": "2026-05-15T07:03:06+0900",
+      "completed_at": "2026-05-15T07:08:48+0900"
+    },
+    {
+      "phase": 1,
+      "name": "schema-migration",
+      "status": "completed",
+      "started_at": "2026-05-15T07:08:49+0900",
+      "completed_at": "2026-05-15T07:15:54+0900"
+    },
+    {
+      "phase": 2,
+      "name": "lib-utilities",
+      "status": "completed",
+      "started_at": "2026-05-15T07:15:54+0900",
+      "completed_at": "2026-05-15T07:21:20+0900"
+    },
+    {
+      "phase": 3,
+      "name": "constellation-renderer",
+      "status": "completed",
+      "started_at": "2026-05-15T07:21:20+0900",
+      "completed_at": "2026-05-15T07:34:02+0900"
+    },
+    {
+      "phase": 4,
+      "name": "cluster-drawer",
+      "status": "completed",
+      "started_at": "2026-05-15T07:34:02+0900",
+      "completed_at": "2026-05-15T07:43:55+0900"
+    },
+    {
+      "phase": 5,
+      "name": "state-banners-and-moments",
+      "status": "completed",
+      "started_at": "2026-05-15T07:43:55+0900",
+      "completed_at": "2026-05-15T07:54:42+0900"
+    },
+    {
+      "phase": 6,
+      "name": "public-profile-variants",
+      "status": "completed",
+      "started_at": "2026-05-15T07:54:42+0900",
+      "completed_at": "2026-05-15T08:05:16+0900"
+    },
+    {
+      "phase": 7,
+      "name": "settings-overhaul",
+      "status": "completed",
+      "started_at": "2026-05-15T08:05:16+0900",
+      "completed_at": "2026-05-15T08:15:08+0900"
+    },
+    {
+      "phase": 8,
+      "name": "email-recap-pipeline",
+      "status": "completed",
+      "started_at": "2026-05-15T08:15:09+0900",
+      "completed_at": "2026-05-15T08:23:56+0900"
+    },
+    {
+      "phase": 9,
+      "name": "og-landing-legal",
+      "status": "completed",
+      "started_at": "2026-05-15T08:23:56+0900",
+      "completed_at": "2026-05-15T08:32:11+0900"
+    },
+    {
+      "phase": 10,
+      "name": "security-hardening",
+      "status": "completed",
+      "started_at": "2026-05-15T08:32:11+0900",
+      "completed_at": "2026-05-15T08:39:49+0900"
+    },
+    {
+      "phase": 11,
+      "name": "tests-accessibility",
+      "status": "completed",
+      "started_at": "2026-05-15T08:39:49+0900",
+      "completed_at": "2026-05-15T08:48:05+0900"
+    },
+    {
+      "phase": 12,
+      "name": "final-polish",
+      "status": "completed",
+      "started_at": "2026-05-15T08:48:05+0900",
+      "completed_at": "2026-05-15T08:58:37+0900"
+    }
+  ],
+  "completed_at": "2026-05-15T08:58:37+0900"
+}

@@ -1,3 +1,65 @@
+# DevAstra
+
+> Turn your GitHub activity into a living skill constellation. Each technology you use becomes a star; each domain you grow brightens as a nebula cluster.
+
+DevAstra is a free, open-core developer portfolio tool. It is **not** a GitHub analytics dashboard, **not** a skill ranking, **not** a leaderboard. Read [`docs/prd.md`](docs/prd.md) for the four value pillars before contributing or extending.
+
+This repository is **dual-licensed.** Files carrying `SPDX-License-Identifier: MIT` at the top are released under [LICENSE-MIT](LICENSE-MIT) (the renderer, classifier, tech catalog, scoring, rules). Everything else is covered by [LICENSE-PROPRIETARY](LICENSE-PROPRIETARY). See [ADR-27](docs/adr.md#adr-27) and [ADR-55](docs/adr.md#adr-55).
+
+## Documentation
+
+Read in this order before touching code:
+
+1. [`docs/prd.md`](docs/prd.md) — mission, target user, in/out of scope, success criteria
+2. [`docs/flow.md`](docs/flow.md) — 5 user flows + 11 sub-flows
+3. [`docs/screens.md`](docs/screens.md) — every screen + overlay spec
+4. [`docs/data-schema.md`](docs/data-schema.md) — entities, RLS, retention
+5. [`docs/code-architecture.md`](docs/code-architecture.md) — directory layout, layers, env vars
+6. [`docs/adr.md`](docs/adr.md) — 60 architecture decisions
+7. [`docs/security-checklist.md`](docs/security-checklist.md) — pre-launch verify items
+
+For local development, see [`docs/dev-setup.md`](docs/dev-setup.md).
+
+## Running locally
+
+```bash
+git clone <repo-url> devastra
+cd devastra
+npm install
+cp .env.example .env.local   # populate with your credentials
+npm run dev                   # Next.js dev server at http://localhost:3000
+```
+
+To run background jobs locally, start the Inngest dev server in a second terminal:
+
+```bash
+npx inngest-cli@latest dev
+```
+
+### Tests
+
+```bash
+npm test              # unit + integration (Vitest)
+npm run e2e:local     # E2E smoke test (requires running dev server)
+```
+
+## Deploying to production
+
+1. Create a Supabase project (prod). Apply migrations with `DIRECT_URL=<prod-direct> npm run db:migrate` **before** merging the code PR (see [ADR-57](docs/adr.md#adr-57)).
+2. Configure a GitHub OAuth App — callback URL: `https://devastra.app/auth/callback`.
+3. Set all required env vars in Vercel (see [`docs/dev-setup.md`](docs/dev-setup.md) for the full list, including `DATABASE_URL` pooler / `DIRECT_URL` direct).
+4. Deploy via `git push` — Vercel builds and deploys automatically.
+5. Set up SPF/DKIM/DMARC on `devastra.app` for Resend deliverability.
+6. Verify the [pre-launch security checklist](docs/security-checklist.md).
+
+## Reporting issues
+
+- **Bug / feature feedback:** open an issue on this repository (see [CONTRIBUTING.md](CONTRIBUTING.md) — external PRs are not accepted at MVP stage).
+- **Security vulnerabilities:** use the private channel described in [SECURITY.md](SECURITY.md). Do not open a public issue.
+- **Privacy / data requests:** email `privacy@devastra.app` (see [docs/legal/privacy.md](docs/legal/privacy.md)).
+
+---
+
 # claude-harness-template
 
 A minimal Stage-0 harness for Claude Code projects. The flow:

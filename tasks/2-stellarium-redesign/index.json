@@ -1,0 +1,115 @@
+{
+  "project": "devastra",
+  "task": "stellarium-redesign",
+  "prompt": "좋아. 이제 plan-and-build skill을 사용해서 이 결정사항 전부 구현하자. 오차없이 잘 구현되도록 부탁해. tasks/2-{name}/ 로.",
+  "totalPhases": 13,
+  "created_at": "2026-05-15T12:22:47+0900",
+  "phases": [
+    {
+      "phase": 0,
+      "name": "stellarium-docs-commit",
+      "status": "completed",
+      "started_at": "2026-05-15T12:47:22+0900",
+      "completed_at": "2026-05-15T12:52:07+0900",
+      "commit": "c9fce72",
+      "ac_notes": "AC1/AC4/AC5 pass. AC2/AC3 command bug: 'git diff HEAD~1 --name-only' compares working tree to HEAD~1 (not HEAD to HEAD~1); the commit itself contains exactly the 6 expected files (verified via 'git diff HEAD~1 HEAD --name-only')."
+    },
+    {
+      "phase": 1,
+      "name": "deps-and-scaffold",
+      "status": "completed",
+      "started_at": "2026-05-15T12:52:07+0900",
+      "completed_at": "2026-05-15T13:01:04+0900",
+      "ac_notes": "AC1-AC5 all pass. Fixed: (1) TerritoryType import path corrected from @/lib/db/schema/territories (does not export it) to @/features/territories/registry (actual source). (2) types.ts comment rephrased to avoid literal 'server-only' string matching the AC5 grep check."
+    },
+    {
+      "phase": 2,
+      "name": "render-math",
+      "status": "completed",
+      "started_at": "2026-05-15T13:01:04+0900",
+      "completed_at": "2026-05-15T13:09:43+0900",
+      "ac_notes": "All 6 AC checks pass. 31 tests across 7 test files. One fix needed: Set iteration in labels.ts converted to Array.from() for TS target compatibility. Build passes clean."
+    },
+    {
+      "phase": 3,
+      "name": "switch-skeleton-rename",
+      "status": "completed",
+      "started_at": "2026-05-15T13:09:43+0900",
+      "completed_at": "2026-05-15T13:20:53+0900",
+      "ac_notes": "All 8 AC checks pass. Constellation.tsx renamed to ConstellationSVG.tsx (git mv), new 3-way Constellation.tsx switch created, ConstellationWebGL/Skeleton/Scene/use-webgl-detect/state all implemented. ENABLE_DEV_MAP guard replaces NODE_ENV=production. CONSTELLATION_RENDERER read server-side in app/page.tsx and app/[username]/page.tsx (app/(authenticated)/page.tsx is a redirect — its equivalent server component app/page.tsx has the read). Build passes with both default and CONSTELLATION_RENDERER=svg."
+    },
+    {
+      "phase": 4,
+      "name": "scene-sky-fieldstars",
+      "status": "completed",
+      "started_at": "2026-05-15T13:20:53+0900",
+      "completed_at": "2026-05-15T13:26:12+0900",
+      "ac_notes": "All 6 AC checks pass. Build clean. SkyBackground (31 lines) and FieldStars (67 lines) implemented. Shaders have real source (void main). Scene mounts both layers via orthographic camera + ConstellationContext. Screenshot captured (phase4.png, 43K). 0 console errors (CSP analytics noise filtered). Added: LayerOverrides type in types.ts, useReducedMotion hook, ?layers= toggle on /dev/map, visual-checkpoint.ts script."
+    },
+    {
+      "phase": 5,
+      "name": "milkyway-and-boundary",
+      "status": "completed",
+      "started_at": "2026-05-15T13:26:12+0900",
+      "completed_at": "2026-05-15T13:31:04+0900",
+      "ac_notes": "All 8 AC checks pass. Texture assets (milky-way.webp 4096x2867, @2x 8192x5734, fallback 1200x840) generated from source via sharp. Process script exists. MilkyWay.tsx (47 lines) + TerritoryBoundaries.tsx (38 lines) implemented. Shader has void main. Scene mounts both layers. Build clean. Screenshot captured (phase5.png). 0 console errors."
+    },
+    {
+      "phase": 6,
+      "name": "techstars-connections",
+      "status": "completed",
+      "started_at": "2026-05-15T13:31:04+0900",
+      "completed_at": "2026-05-15T13:36:48+0900",
+      "ac_notes": "All 8 AC checks pass. TechStars.tsx (113 lines) + Connections.tsx (57 lines) implemented. Airy-disk and diffraction-spike shaders (frag + vert) written with void main. Tech stars use spectralColorFor/spectralHex from palette (no cluster colors). Connections use lineBasicMaterial color=#5a6c80 opacity=0.22. MST per-cluster via mstEdges(). resolveStarViewBoxPosition() added to star-positions.ts reusing existing catalog + hash fallback + jitter. Map.entries() iteration converted to Array.from() for TS target. Scene mounts both layers. Build clean. Screenshot captured (phase6.png). Console errors: 0."
+    },
+    {
+      "phase": 7,
+      "name": "aura-postprocessing-parallax",
+      "status": "completed",
+      "started_at": "2026-05-15T13:36:48+0900",
+      "completed_at": "2026-05-15T13:45:44+0900",
+      "ac_notes": "All 8 AC checks pass. ClusterAura.tsx (105 lines) — radial-gradient shader, ADR-61 priority order (cinematic>selected>hover), CLUSTER_COLORS defined here. BloomLayer.tsx (21 lines) — PostStack with EffectComposer+Bloom+Vignette, resolutionScale=0.5 on mobile. ParallaxRig.tsx (33 lines) — ±2.5° micro-tilt, disabled under reducedMotion. Scene.tsx updated: ConstellationContext.Provider moved outside Canvas, selectedCluster prop threaded. types.ts: added selectedCluster prop. _map-container.tsx + _public-profile-map.tsx: pass drawer?.cluster. /dev/map: supports ?cluster= param. Build clean. Screenshot captured (phase7.png). Console errors: 0."
+    },
+    {
+      "phase": 8,
+      "name": "labels-tooltips-a11y",
+      "status": "completed",
+      "started_at": "2026-05-15T13:45:44+0900",
+      "completed_at": "2026-05-15T13:57:51+0900",
+      "ac_notes": "All 9 AC checks pass. Labels.tsx (82 lines) — drei Html cluster + persistent tech star labels, neutral blue-white colors, no cluster hex values. TooltipHost.tsx (57 lines) — window CustomEvent bus, brightnessDescriptor + formatShortDate. A11yOverlay.tsx (132 lines) — SVG overlay with Voronoi cells + hero star circles, role=region added to fix axe aria-prohibited-attr violation. ConstellationContext.Provider moved from Scene.tsx to ConstellationWebGL.tsx so A11yOverlay (outside Canvas) can use useConstellationState(). Scene.tsx simplified to pure renderer reading from context. Labels mounted inside Canvas via Scene. playwright.config.ts updated with a11y project (testDir: ./tests/a11y). Axe WCAG AA test passes. Build clean. Screenshot captured (phase8.png). Console errors: 0."
+    },
+    {
+      "phase": 9,
+      "name": "cinematics",
+      "status": "completed",
+      "started_at": "2026-05-15T13:57:51+0900",
+      "completed_at": "2026-05-15T14:15:32+0900",
+      "ac_notes": "All 9 AC checks pass. SparkSequence.tsx (121 lines) — pool-based (8 slots) shader approach; expanding ring + core flash; useFrame updates uAge uniforms imperatively; firedKeys deduplication for Strict Mode safety. StageUpRipple.tsx (141 lines) — ripple wave shader; startCinematic('stage-up') + 0.3s stagger; setCinematic('idle') after 1.5s + stagger duration. FirstEverCinematic.tsx (91 lines) — 8-second phase-gated DOM strip; cannot be dismissed; reducedMotion snaps to 200ms; onStartCinematic optional prop. RevealSequence.tsx (85 lines) — 12s minimum / 30s max; bottom-right counter + bottom strip; reducedMotion fast-exit. hooks/useDataDiff.ts — ref-based diff; detects newly-lit (firstUnlockedAt + weight>=5) and stage increases. Scene.tsx wires SparkSequence + StageUpRipple via useDataDiff. features/sync/cinematic-acknowledge.ts — server action, idempotent, sets first_star_cinematic_seen=true. SpecialMoments/FirstEverStarCinematic.tsx — thin adapter re-exporting FirstEverCinematic. _map-container.tsx — uses acknowledgeFirstEverCinematic, adds RevealSequence. /dev/map — ?cinematic= + ?tech= params for visual checkpoints. Build clean. Screenshots captured (phase9-spark.png, phase9-stage-up.png). Console errors: 0."
+    },
+    {
+      "phase": 10,
+      "name": "og-renderer",
+      "status": "completed",
+      "started_at": "2026-05-15T14:15:33+0900",
+      "completed_at": "2026-05-15T14:33:45+0900",
+      "ac_notes": "All 8 AC checks pass. Refactored ConstellationImage.tsx imports anchors/palette/voronoi/magnitude/labels/mst from features/constellation/render/* (viewport='og'). Key Satori incompatibilities discovered and worked around: (1) SVG <image> not supported — HTML <img> used instead with absolute URL threaded via baseUrl prop from route origin. (2) SVG <text> not supported inside SVG context — all text (cluster labels, star labels, watermark) moved to absolutely positioned HTML <div> elements with positions computed from viewBox-to-pixel transform. (3) Multi-ring glow circles used instead of feGaussianBlur filter stacks (filters caused layout errors in transformed <g>). OG_RENDER_VERSION bumped to 'devastra-stellarium-v1'. ?test=1 mock mode added to both OG routes. Profile PNG 1.1MB, recap PNG 1.1MB (both >30KB). Build clean."
+    },
+    {
+      "phase": 11,
+      "name": "observability-error-boundary",
+      "status": "completed",
+      "started_at": "2026-05-15T14:33:45+0900",
+      "completed_at": "2026-05-15T14:40:54+0900",
+      "ac_notes": "All 8 AC checks pass. SceneErrorBoundary.tsx created with componentDidCatch + scene_crash Sentry tag. use-constellation-telemetry.ts created (init_success + init_failure events). Scene.tsx wired with webglcontextlost listener + context_lost Sentry tag + onMount callback. ConstellationWebGL.tsx wraps Scene in SceneErrorBoundary; WebGLUnsupportedBanner polished (role=status, aria-live=polite, full message); WebGLCrashBanner added (role=alert, aria-live=assertive, Retry button). use-webgl-detect.ts updated: boolean|null state, experimental-webgl fallback, optimistic null→true default. webpackChunkName='constellation-scene' added to dynamic import so size-limit glob 'constellation-*.js' matches the named chunk (6.1KB brotli, well under 180KB limit). Build clean. Playwright WebGL fallback test passes (1.5s). Sentry beforeSend not regressed."
+    },
+    {
+      "phase": 12,
+      "name": "tests-and-launch-verify",
+      "status": "completed",
+      "started_at": "2026-05-15T14:40:55+0900",
+      "completed_at": "2026-05-15T14:54:04+0900",
+      "ac_notes": "All 10 AC checks pass. (1) 5 visual baselines in tests/visual/__screenshots__/dev-map.spec.ts-snapshots/ + 5 mobile in __screenshots__/mobile/; npx playwright test tests/visual --project=visual: 6 passed. (2) npm run axe:test: 1 passed (WCAG AA, 0 violations). (3) npm run build + npm run size: initial JS 33.52KB brotli (limit 250KB), constellation-scene chunk 6.11KB brotli (limit 180KB). (4) reduced-motion.spec.ts: 1 passed (two screenshots 2s apart are identical). (5) svg-fallback.spec.ts: 1 passed (SVG visible, canvas count 0). (6) mobile-chrome: 6 passed. (7) W1-W9 all [x] in docs/security-checklist.md. (8) npm test features/constellation/render: 31 tests across 7 files, all passed. (9) npm run build: clean, no errors. (10) Console errors: 0 during /dev/map render. Fix applied: visual/mobile-chrome playwright projects use reducedMotion='reduce' to make WebGL snapshots deterministic (field-star twinkle was causing flaky pixel diffs between runs)."
+    }
+  ],
+  "completed_at": "2026-05-15T14:54:05+0900"
+}
