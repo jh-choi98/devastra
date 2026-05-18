@@ -1,15 +1,15 @@
 # Local Development Setup — DevAstra
 
-**Scope of this doc:** what you need installed and configured to run DevAstra locally. For *what* the project is, see `docs/prd.md`. For *how* the code is organized, see `docs/code-architecture.md`. For *deploy procedure*, see `docs/code-architecture.md` §Migration & deploy procedure.
+**Scope of this doc:** what you need installed and configured to run DevAstra locally. For _what_ the project is, see `docs/prd.md`. For _how_ the code is organized, see `docs/code-architecture.md`. For _deploy procedure_, see `docs/code-architecture.md` §Migration & deploy procedure.
 
 ## Required tools
 
-| Tool | Version | Notes |
-|---|---|---|
-| Node.js | 20+ | `node --version` to verify |
-| npm | bundled with Node | or pnpm — scripts below use `npm` |
-| Docker | any recent | required only for local Supabase (optional) |
-| Supabase CLI | latest | `npm install -g supabase` — only if running local Supabase |
+| Tool         | Version           | Notes                                                      |
+| ------------ | ----------------- | ---------------------------------------------------------- |
+| Node.js      | 20+               | `node --version` to verify                                 |
+| npm          | bundled with Node | or pnpm — scripts below use `npm`                          |
+| Docker       | any recent        | required only for local Supabase (optional)                |
+| Supabase CLI | latest            | `npm install -g supabase` — only if running local Supabase |
 
 ## Clone and install
 
@@ -28,57 +28,57 @@ Populate `.env.local` with the values below. All secrets are server-side unless 
 
 ### Core platform
 
-| Variable | Where to get it |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase dashboard → Project Settings → API → Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API → `anon`/`public` key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase dashboard → Project Settings → API → `service_role` key |
-| `DATABASE_URL` | Supabase dashboard → Project Settings → Database → Connection string, **Transaction-mode pooler** (port `6543`). Runtime queries use this. |
-| `DIRECT_URL` | Supabase dashboard → Project Settings → Database → Connection string, **Direct connection** (port `5432`). Used only by `drizzle-kit migrate`. |
+| Variable                        | Where to get it                                                                                                                                |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase dashboard → Project Settings → API → Project URL                                                                                      |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API → `anon`/`public` key                                                                              |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase dashboard → Project Settings → API → `service_role` key                                                                               |
+| `DATABASE_URL`                  | Supabase dashboard → Project Settings → Database → Connection string, **Transaction-mode pooler** (port `6543`). Runtime queries use this.     |
+| `DIRECT_URL`                    | Supabase dashboard → Project Settings → Database → Connection string, **Direct connection** (port `5432`). Used only by `drizzle-kit migrate`. |
 
 ### GitHub OAuth
 
-| Variable | Where to get it |
-|---|---|
-| `GITHUB_OAUTH_CLIENT_ID` | GitHub → Settings → Developer settings → OAuth Apps → your app |
-| `GITHUB_OAUTH_CLIENT_SECRET` | same OAuth App page → "Generate a new client secret" |
-| `APP_HOSTNAME_ALLOWLIST` | Comma-separated list. Local dev: `localhost:3000`. Production: `devastra.app,www.devastra.app`. Used by OAuth origin validation (`docs/adr.md` ADR-47). |
+| Variable                     | Where to get it                                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GITHUB_OAUTH_CLIENT_ID`     | GitHub → Settings → Developer settings → OAuth Apps → your app                                                                                          |
+| `GITHUB_OAUTH_CLIENT_SECRET` | same OAuth App page → "Generate a new client secret"                                                                                                    |
+| `APP_HOSTNAME_ALLOWLIST`     | Comma-separated list. Local dev: `localhost:3000`. Production: `devastra.app,www.devastra.app`. Used by OAuth origin validation (`docs/adr.md` ADR-47). |
 
 ### Background jobs
 
-| Variable | Where to get it |
-|---|---|
-| `INNGEST_EVENT_KEY` | Inngest dashboard → your app → Event Keys |
+| Variable              | Where to get it                            |
+| --------------------- | ------------------------------------------ |
+| `INNGEST_EVENT_KEY`   | Inngest dashboard → your app → Event Keys  |
 | `INNGEST_SIGNING_KEY` | Inngest dashboard → your app → Signing Key |
 
 ### Email
 
-| Variable | Where to get it |
-|---|---|
-| `RESEND_API_KEY` | Resend dashboard → API Keys → Create API Key |
-| `RESEND_WEBHOOK_SECRET` | Resend dashboard → Webhooks → your endpoint → Signing Secret (for bounce webhook verification) |
-| `UNSUBSCRIBE_TOKEN_SECRET` | Generate locally: `openssl rand -base64 64`. **Server-only.** Used to sign unsubscribe JWTs. |
-| `UNSUBSCRIBE_TOKEN_VERSION` | Numeric string, e.g. `1`. Bump to invalidate all outstanding tokens (`docs/adr.md` ADR-48). |
+| Variable                    | Where to get it                                                                                |
+| --------------------------- | ---------------------------------------------------------------------------------------------- |
+| `RESEND_API_KEY`            | Resend dashboard → API Keys → Create API Key                                                   |
+| `RESEND_WEBHOOK_SECRET`     | Resend dashboard → Webhooks → your endpoint → Signing Secret (for bounce webhook verification) |
+| `UNSUBSCRIBE_TOKEN_SECRET`  | Generate locally: `openssl rand -base64 64`. **Server-only.** Used to sign unsubscribe JWTs.   |
+| `UNSUBSCRIBE_TOKEN_VERSION` | Numeric string, e.g. `1`. Bump to invalidate all outstanding tokens (`docs/adr.md` ADR-48).    |
 
 ### OG image cache
 
-| Variable | Where to get it |
-|---|---|
+| Variable            | Where to get it                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `OG_RENDER_VERSION` | String tag, e.g. `devastra-1`. Bump on any global renderer / product-language change to invalidate cached OG images (`docs/adr.md` ADR-52). |
 
 ### Constellation renderer (ADR-62, ADR-63)
 
-| Variable | Where to get it |
-|---|---|
+| Variable                 | Where to get it                                                                                                                                                                                                                                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `CONSTELLATION_RENDERER` | Optional. `webgl` (default if unset) or `svg`. **Server-side only** — never `NEXT_PUBLIC_*`. Local dev typically leaves unset. Set to `svg` in Vercel dashboard for instant production rollback to the legacy renderer without redeploy. Read by server components, passed as prop. |
-| `ENABLE_DEV_MAP` | Optional. Set to `1` to expose `/dev/map` in non-dev environments (CI / Vercel preview only). Production deploys leave it unset → 404 (`docs/adr.md` ADR-63). |
+| `ENABLE_DEV_MAP`         | Optional. Set to `1` to expose `/dev/map` in non-dev environments (CI / Vercel preview only). Production deploys leave it unset → 404 (`docs/adr.md` ADR-63).                                                                                                                       |
 
 ### Observability
 
-| Variable | Where to get it |
-|---|---|
-| `SENTRY_DSN` | Sentry → your project → Settings → SDK Setup → DSN |
-| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog → Project Settings → Project API key |
+| Variable                   | Where to get it                                                         |
+| -------------------------- | ----------------------------------------------------------------------- |
+| `SENTRY_DSN`               | Sentry → your project → Settings → SDK Setup → DSN                      |
+| `NEXT_PUBLIC_POSTHOG_KEY`  | PostHog → Project Settings → Project API key                            |
 | `NEXT_PUBLIC_POSTHOG_HOST` | PostHog → Project Settings → API host (e.g. `https://us.i.posthog.com`) |
 
 ### GitHub OAuth App callback URL
@@ -95,6 +95,22 @@ You can register multiple callback URLs in a single OAuth App, separated by comm
 DevAstra uses Supabase's transaction-mode connection pooler at runtime (`DATABASE_URL`, port `6543`) and direct connection only for migrations (`DIRECT_URL`, port `5432`). See `docs/adr.md` ADR-51.
 
 The `postgres-js` driver is configured with `prepare: false` (in `lib/db/client.ts`) because transaction-mode poolers do not support session-bound prepared statements. **Do not remove this flag.**
+
+Do not point runtime `DATABASE_URL` at the direct `:5432` connection. Local real-GitHub E2E can open many concurrent requests during onboarding + Inngest sync; direct/session-mode connections can exhaust the Supabase client limit. Direct `:5432` is for Drizzle migrations and one-off schema checks only.
+
+## Supabase Vault setup
+
+GitHub OAuth tokens are encrypted with a Supabase Vault secret named `devastra_token_encryption_key` (ADR-10). This value is **not** an `.env.local` variable and is not copied from the Supabase API settings. Create it once per Supabase project in the SQL editor:
+
+```sql
+select vault.create_secret(
+  encode(gen_random_bytes(32), 'base64'),
+  'devastra_token_encryption_key',
+  'GitHub token encryption key for DevAstra'
+);
+```
+
+The app reads the decrypted secret by name from Vault inside server-only DB code. If encrypted GitHub tokens already exist, do not rename this secret without a migration plan that re-encrypts existing rows.
 
 ## Running the dev server
 
@@ -116,12 +132,14 @@ npm run db:generate
 npm run db:migrate
 ```
 
-`DIRECT_URL` in `.env.local` determines the target database for migrations. Point it at your Supabase dev project's direct connection string.
+`DIRECT_URL` in `.env.local` determines the target database for migrations. Point it at your Supabase dev project's direct connection string. If you temporarily export `DIRECT_URL` in a terminal, unset it after the migration and avoid pasting production URLs inline into shared logs.
 
 **Production migration procedure** (do this before merging the PR that introduces the schema change):
 
 ```bash
-DIRECT_URL=<prod-direct-url> npm run db:migrate
+# Set DIRECT_URL to the production direct connection string in your private shell first.
+npm run db:migrate
+unset DIRECT_URL
 ```
 
 Then add `migration: applied` to the PR description and merge. Vercel deploys after merge.
@@ -131,16 +149,33 @@ Then add `migration: applied` to the PR description and merge. Vercel deploys af
 Inngest requires a local dev server to receive and run background jobs during local development.
 
 **Terminal 1 — Next.js dev server:**
+
 ```bash
 npm run dev
 ```
 
 **Terminal 2 — Inngest dev server:**
+
 ```bash
 npx inngest-cli dev
 ```
 
 The Inngest dev server starts at `http://localhost:8288` and auto-discovers your Inngest functions by polling `http://localhost:3000/api/inngest`. No additional configuration is required — the SDK connects to the local dev server automatically when `INNGEST_DEV=1` or when `NODE_ENV=development`.
+
+## Local real-GitHub E2E preflight
+
+Before running the local OAuth/sync flow against a real GitHub account, confirm:
+
+1. Supabase Auth Site URL is `http://localhost:3000`.
+2. Supabase Auth redirect URLs include `http://localhost:3000/auth/callback`.
+3. GitHub OAuth App callback URL is `http://localhost:3000/auth/callback`.
+4. `APP_HOSTNAME_ALLOWLIST` includes `localhost:3000`.
+5. `DATABASE_URL` is the Supabase transaction pooler (`:6543`), not direct `:5432`.
+6. `DIRECT_URL` is set only when running Drizzle migrations.
+7. The Vault secret `devastra_token_encryption_key` exists.
+8. Next.js dev server and Inngest dev server are both running.
+
+Then test: sign in with GitHub → select repos → build constellation → wait for Inngest initial sync → refresh constellation → open Settings → open the public profile if enabled. Inngest `206` step responses are normal while a function is still running; first sync can take minutes on accounts with many repos.
 
 ## Running tests
 
@@ -213,13 +248,16 @@ Local credentials printed by `supabase start` map to env vars as:
 These are performed manually via Supabase dashboard SQL (no admin UI per `docs/adr.md` ADR-42 / ADR-21):
 
 - **System status banner.** Insert a row into `system_messages`:
+
   ```sql
   INSERT INTO system_messages (message, severity, active)
   VALUES ('Sync is delayed right now. Your constellation is safe.', 'warning', true);
   ```
+
   Set `active = false` to retire.
 
 - **Misclassification feedback triage.**
+
   ```sql
   SELECT tech_key, category, note, created_at
   FROM misclassification_feedback

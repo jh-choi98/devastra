@@ -9,115 +9,142 @@ This is a working checklist — items move from `[ ]` to `[x]` as they are verif
 These MUST be verified before any production deployment.
 
 ### 1. Test / mock routes are NODE_ENV-guarded [x]
+
 - **Reference:** ADR-47
 - **Verify:** `app/api/test/mock-oauth/route.ts` (and any sibling test routes) begin with `if (process.env.NODE_ENV === 'production') notFound()` as the first executable line. Production deploy returns 404 from these routes (manual curl test).
 - **Why it matters:** A leaked mock-OAuth route allows arbitrary user impersonation.
 - **Status:** `[x] guarded in app/api/test/mock-oauth/route.ts:12`
 
 ### 2. Resend webhook signature verification [x]
+
 - **Reference:** ADR-6 (Resend), ADR-49 (security baseline)
 - **Verify:** `app/api/webhooks/resend/route.ts` validates the `svix-signature` header (or Resend's equivalent) against `RESEND_WEBHOOK_SECRET` before processing the bounce event. Reject 401 on missing/invalid signature.
 - **Why it matters:** Unverified webhooks let attackers force `users.email_recap_enabled = false` for any user.
 - **Status:** `[x] svix verification in app/api/webhooks/resend/route.ts`
 
 ### 3. OAuth callback origin allowlist [x]
+
 - **Reference:** ADR-47
 - **Verify:** `lib/auth/actions.ts` `signIn()` constructs `redirectTo` from a hardcoded `APP_HOSTNAME_ALLOWLIST` env var. `host` header is not blindly trusted. Dev hostnames (`localhost:3000`) are allowed only when `NODE_ENV !== 'production'`.
 - **Why it matters:** A controlled `Host` header can redirect GitHub OAuth callback to an attacker domain, stealing tokens.
 - **Status:** `[x] APP_HOSTNAME_ALLOWLIST in lib/auth/actions.ts pickOrigin`
 
 ### 4. CSP `'unsafe-eval'` removed in production [x]
+
 - **Reference:** ADR-49
 - **Verify:** `middleware.ts` CSP header includes `'unsafe-eval'` only when `NODE_ENV !== 'production'`. Production response includes the stricter CSP (verify via curl).
 - **Why it matters:** `'unsafe-eval'` is an XSS amplifier and is not required by Next.js in production.
 - **Status:** `[x] removed in production in middleware.ts`
 
 ### 5. Sentry `beforeSend` automatic PII scrub [x]
+
 - **Reference:** ADR-49
 - **Verify:** `lib/sentry.config.ts` defines `beforeSend` hook that strips `authorization` headers, `cookie` headers, and token-like patterns (`gho_*`, `ghu_*`, `ghs_*`, `Bearer *`) from breadcrumbs and exception messages. Unit test covers the scrubbing.
 - **Why it matters:** GitHub tokens / session cookies appearing in Sentry events are a credential leak vector.
 - **Status:** `[x] lib/sentry-scrub.ts shared module; beforeSend in all three sentry.*.config.ts files; tests/unit/sentry-scrub.test.ts`
 
 ### 6. PostHog cookieless mode + URL masking [x]
+
 - **Reference:** ADR-49, ADR-60
 - **Verify:** `lib/posthog.ts` initialization uses cookieless config (no `disable_cookie: false`). URL capture masks `/{username}` paths to `/[username]`. Form input masking enabled (`mask_all_text: true` or equivalent). `display_username` is not sent as an event property.
 - **Why it matters:** PII (username) ending up in analytics events without lawful basis is a GDPR issue.
 - **Status:** `[x] lib/posthog.ts disable_cookie + persistence=memory + sanitize_properties; tests/unit/posthog-sanitize.test.ts`
 
 ### 7. `postgres-js` driver `prepare: false` for pooler [x]
+
 - **Reference:** ADR-51
 - **Verify:** `lib/db/client.ts` instantiates `postgres()` with `{ prepare: false }`. `DATABASE_URL` points to the transaction-mode pooler (port 6543).
 - **Why it matters:** Prepared statements with transaction-mode pooler cause errors that look like data corruption.
 - **Status:** `[x] verified in Phase 1; lib/db/client.ts`
 
 ### 8. Drizzle queries use `withUserScope` helper [x]
+
 - **Reference:** ADR-46
 - **Verify:** `lib/db/queries/_helpers.ts` exports `withUserScope(userId)`. All queries against `activities`, `territories`, `landmarks`, `email_sends`, `weekly_recaps`, `misclassification_feedback`, `sync_jobs` use this helper. Grep for direct table access without `user_id =` clause.
 - **Why it matters:** Drizzle bypasses RLS; forgotten user_id filter is a cross-user data leak.
 - **Status:** `[x] introduced in Phase 1; lib/db/queries/_helpers.ts`
 
 ### 9. Unsubscribe token version claim [x]
+
 - **Reference:** ADR-45, ADR-48
 - **Verify:** `lib/email/unsubscribe-token.ts` includes `version` claim in JWT payload. Server verifies against `UNSUBSCRIBE_TOKEN_VERSION` env var. Mismatch returns the expired-link page (M4.2).
 - **Why it matters:** Permanent tokens without revocation mechanism are a single point of failure if signing secret leaks.
 - **Status:** `[x] Phase 2 lib/email/unsubscribe-token.ts`
 
 ### 10. Misclassification feedback rate limit [x]
+
 - **Reference:** ADR-40
 - **Verify:** `features/feedback/misclassification.ts` Server Action checks the user's 24h feedback count before INSERT. Limit: 5 per `user_id` per 24h. Inline UI error on limit hit.
 - **Why it matters:** Without rate limit, a user (or bot) can DB-spam misclassification rows.
 - **Status:** `[x] Phase 4 features/feedback/misclassification.ts`
 
+### 10b. Public profile view uses `security_invoker` [x]
+
+- **Reference:** ADR-46
+- **Verify:** `public.users_public_view` is created with `security_invoker = true` and filters `is_public = true`. Supabase Advisor must not flag it as a `SECURITY DEFINER` view.
+- **Why it matters:** A security-definer public view can run with owner privileges and bypass the caller/RLS posture.
+- **Status:** `[x] drizzle/migrations/0003_security_invoker_users_public_view.sql`
+
 ## High priority (before broader launch)
 
 ### 11. Inngest webhook signature [x]
+
 - **Reference:** ADR-5
 - **Verify:** `app/api/inngest/route.ts` uses Inngest SDK's built-in signature verification (`INNGEST_SIGNING_KEY`). No custom handler bypasses it.
 - **Status:** `[x] Inngest SDK serve() handles signing via INNGEST_SIGNING_KEY; app/api/inngest/route.ts`
 
 ### 12. Vercel hard budget cap
+
 - **Reference:** ADR-65 (`docs/adr.md`)
 - **Verify:** Vercel project settings have a $200 hard cap configured. Email alerts at $100 and $150 are enabled.
 - **Why it matters:** A DDoS or runaway loop can cost thousands of dollars without a cap.
 - **Status:** `[ ]`
 
 ### 13. Supabase RLS isolation test passes [x]
+
 - **Reference:** ADR-3, ADR-21
 - **Verify:** `tests/integration/rls-isolation.test.ts` passes against a real Supabase dev project. Asserts that user A cannot SELECT user B's private rows from `activities`, `territories`, `landmarks`, `email_sends`, `weekly_recaps`, `sync_jobs`.
 - **Status:** `[x] tests/integration/rls-isolation.test.ts implemented in Phase 11; skips cleanly without .env.test`
 
 ### 14. GitHub OAuth scope minimization [x]
+
 - **Reference:** ADR-11
 - **Verify:** `lib/auth/actions.ts` requests only `read:user user:email` scopes. No `public_repo`, no `repo`.
 - **Why it matters:** Defense-in-depth against accidentally pulling private repo data.
 - **Status:** `[x] scopes: 'read:user user:email' in lib/auth/actions.ts:35`
 
 ### 15. `MVP_INCLUDE_PRIVATE = false` is hardcoded [x]
+
 - **Reference:** ADR-11
 - **Verify:** `features/sync/sources/github.ts` exports `const MVP_INCLUDE_PRIVATE = false`. All repo and activity queries filter on this constant. Grep confirms no overrides.
 - **Status:** `[x] export const MVP_INCLUDE_PRIVATE = false as const in features/sync/sources/github.ts:16`
 
 ### 16. Supabase Vault key provisioned
+
 - **Reference:** ADR-10
-- **Verify:** `devastra_token_encryption_key` exists in Supabase Vault. `lib/db/encryption.ts` successfully encrypts/decrypts a test value via the key.
-- **Status:** `[ ]`
+- **Verify:** `devastra_token_encryption_key` exists in Supabase Vault for each Supabase project. `lib/db/encryption.ts` successfully encrypts/decrypts a test value via the key. This is a Vault secret, not an `.env.local` variable.
+- **Status:** `[ ] production check required before launch; local/dev project should be verified during E2E preflight`
 
 ### 17. CSP headers verified in production [x]
+
 - **Reference:** ADR-49, middleware.ts
 - **Verify:** `curl -I https://devastra.app` returns the `Content-Security-Policy` header with no `'unsafe-eval'`. Also `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
 - **Status:** `[x] middleware.ts strips unsafe-eval when NODE_ENV=production; all security headers set in Phase 10`
 
 ### 18. Initial sync historical cap [x]
+
 - **Reference:** ADR-50
 - **Verify:** `features/sync/initial.ts` only fetches activities with `occurred_at > NOW() - 1 year`. Manual test with a deep-history GitHub account confirms older activity is not pulled.
 - **Status:** `[x] twelveMonthsAgo cap in features/sync/initial.ts:176`
 
 ### 19. UptimeRobot `/api/health` probe [x]
+
 - **Reference:** ADR-53
 - **Verify:** `/api/health` returns 200 with a simple DB ping. UptimeRobot monitor is configured against production URL. Alert routes to founder email.
 - **Status:** `[x] app/api/health/route.ts DB ping implemented; UptimeRobot config is a post-deploy ops step`
 
 ### 20. PostHog funnel events firing in production [x]
+
 - **Reference:** ADR-18, ADR-53
 - **Verify:** Test signup → PostHog dashboard shows `landing.viewed`, `oauth.clicked`, `share.clicked` and other funnel events.
 - **Status:** `[x] PostHog capture calls wired in LandingAnalytics.tsx, SignInButton.tsx, Header.tsx; prod smoke test is a post-deploy ops step`
@@ -125,51 +152,61 @@ These MUST be verified before any production deployment.
 ## Medium priority (post-launch monitoring)
 
 ### 21. Vercel Speed Insights — Web Vitals tracking [x]
+
 - **Reference:** ADR-58
 - **Verify:** Speed Insights dashboard shows LCP, CLS, INP for landing and main constellation pages. Targets: LCP <2.5s, CLS <0.1, INP <200ms.
 - **Status:** `[x] Speed Insights wired in Phase 10; targets verified via Vercel dashboard`
 
 ### 22. Privacy Policy sub-processor disclosure complete [x]
+
 - **Reference:** ADR-25, ADR-60
 - **Verify:** `docs/legal/privacy.md` (rendered at `/privacy`) lists: Supabase, Vercel, Inngest, Resend, Sentry, PostHog, GitHub. Each with a one-line purpose.
 - **Status:** `[x] docs/legal/privacy.md sub-processor table verified in Phase 9`
 
 ### 23. Sitemap + robots.txt [x]
+
 - **Reference:** ADR-59
 - **Verify:** `https://devastra.app/sitemap.xml` returns landing, privacy, terms, and all public users (`is_public = true`). `https://devastra.app/robots.txt` allows main search bots.
 - **Status:** `[x] app/sitemap.ts and app/robots.ts implemented in Phase 9`
 
 ### 24. JS bundle size budget [x]
+
 - **Reference:** ADR-58
 - **Verify:** Initial JS for landing < 250KB gzipped. Use `next build` analyzer report.
 - **Status:** `[x] next build analyzer confirms initial JS under 250KB gzipped`
 
 ### 25. Reduced-motion preference respected [x]
+
 - **Reference:** ADR-54
 - **Verify:** Browser with `prefers-reduced-motion: reduce` set → first-time reveal, first-ever cinematic, stage-up ripple all snap to final state instantly. Spark/glow/pulse animations disabled.
 - **Status:** `[x] useReducedMotion() checks in all motion components; Phase 11 audit complete`
 
 ### 26. Cluster keyboard nav and screen reader summary [x]
+
 - **Reference:** ADR-54
 - **Verify:** Tab key cycles through lit cluster labels. Enter opens drawer. Screen reader on landing reads: "Founder's constellation, N stars lit across M clusters." On owner main page: "Your constellation has X stars lit across Y clusters."
 - **Status:** `[x] Cluster.tsx <g role="button" tabIndex={0}>; sr-only summary in _map-container.tsx and [username]/page.tsx`
 
 ### 27. Color contrast WCAG AA [x]
+
 - **Reference:** ADR-54
 - **Verify:** Run a contrast checker against cluster label text on dim sky background. Target: 4.5:1 for body text, 3:1 for icons/star colors.
 - **Status:** `[x] Cluster label #94a3b8 on #0b1020 ≈ 5.8:1 (passes AA). Star fill colors are decorative icons (≥3:1 acceptable).`
 
 ### 28. Misclassification feedback table is INSERT-only for self [x]
+
 - **Reference:** ADR-40
 - **Verify:** RLS test: user can INSERT into `misclassification_feedback`. User cannot SELECT their own rows back. Service role can SELECT all rows.
 - **Status:** `[x] RLS policy verified; integration tests added in Phase 11`
 
 ### 29. Username history redirect resolves [x]
+
 - **Reference:** ADR-30
 - **Verify:** Change a test user's username from `old` to `new`. Navigate to `/old` → 301 redirect to `/new`. The new URL is canonical via `<link rel="canonical">`.
 - **Status:** `[x] lib/utils/username-redirect.ts + [username]/page.tsx permanentRedirect; canonical meta tag set`
 
 ### 30. OG cache version bump invalidates correctly [x]
+
 - **Reference:** ADR-7 (amended), ADR-52
 - **Verify:** Bump `OG_RENDER_VERSION` constant. Redeploy. New profile/recap OG URLs include the new version. Old version URLs continue serving cached (acceptable) until natural expiry.
 - **Status:** `[x] lib/og/version.ts OG_RENDER_VERSION constant; ogVersionParam() appended to all OG URLs`
@@ -179,54 +216,63 @@ These MUST be verified before any production deployment.
 These items apply when the WebGL constellation renderer ships. Treated as launch blockers for that feature's rollout (NOT for general MVP launch — they are added here for verification when this work merges to main).
 
 ### W1. `/dev/map` is 404 in production [x]
+
 - **Reference:** ADR-63, ADR-47
 - **Verify:** `app/dev/map/page.tsx` begins with `if (process.env.ENABLE_DEV_MAP !== '1') notFound()`. Production deploys leave `ENABLE_DEV_MAP` unset → curl returns 404. CI and Vercel preview have `ENABLE_DEV_MAP=1` set so Playwright visual regression can reach it.
 - **Why it matters:** Same risk class as ADR-47 — a dev surface leaking to production exposes internal mocks.
-- **Status:** `[x] ENABLE_DEV_MAP guard in app/dev/map/page.tsx:112; no NODE_ENV==='production' check (uses !== 'development' for local dev convenience); production unset → notFound()`
+- **Status:** `[x] ENABLE_DEV_MAP guard in app/dev/map/page.tsx uses exactly process.env.ENABLE_DEV_MAP !== '1'; production unset → notFound()`
 
 ### W2. `CONSTELLATION_RENDERER` env var is server-side [x]
+
 - **Reference:** ADR-62
 - **Verify:** Code reads `process.env.CONSTELLATION_RENDERER` ONLY in server components (page.tsx files). No `NEXT_PUBLIC_CONSTELLATION_RENDERER` anywhere in the codebase. Grep confirms zero `NEXT_PUBLIC_CONSTELLATION_RENDERER` occurrences. Flag is passed via prop into client components.
-- **Why it matters:** Build-time inlining (NEXT_PUBLIC_) prevents instant rollback; the operational rollback story depends on server-side reads.
+- **Why it matters:** Build-time inlining (NEXT*PUBLIC*) prevents instant rollback; the operational rollback story depends on server-side reads.
 - **Status:** `[x] grep -rE "NEXT_PUBLIC_CONSTELLATION_RENDERER" app/ lib/ features/ → 0 results; read server-side in app/page.tsx and app/[username]/page.tsx; passed as prop`
 
 ### W3. WebGL feature detect + fallback banner [x]
+
 - **Reference:** ADR-62
 - **Verify:** In a browser with WebGL disabled (or simulated unsupported), the constellation renders the Skeleton (background + boundary + labels) and shows the banner `Your browser doesn't support advanced graphics; using simplified view.` No console errors. No blank page.
 - **Why it matters:** The accessibility unit and the share surface must survive on browsers that cannot run WebGL (in-app browsers, organizational restrictions, old devices).
 - **Status:** `[x] tests/e2e/webgl-fallback.spec.ts passes; use-webgl-detect.ts → boolean|null with experimental-webgl fallback; WebGLUnsupportedBanner role=status verified`
 
 ### W4. R3F chunk size budget [x]
+
 - **Reference:** ADR-62
-- **Verify:** `next build` analyzer report shows the R3F chunk (containing `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`) ≤ 120KB gz. Total initial JS for `/` page stays ≤ 350KB gz (R3F chunk is lazy-loaded and does NOT count). CI gate fails the PR if budget exceeded.
+- **Verify:** `npm run size` checks manifest-derived budgets: home first-load app chunks ≤ 250KB brotli, app layout client shell ≤ 70KB brotli, and constellation lazy chunks (WebGL + SVG fallback) ≤ 300KB brotli. CI gate fails the PR if budgets are exceeded.
 - **Why it matters:** Bundle bloat directly hurts LCP on mobile, which is the conversion-critical metric.
-- **Status:** `[x] npm run size: initial JS 33.52KB brotli (limit 250KB); constellation-scene chunk 6.11KB brotli (limit 180KB); both well under budget`
+- **Status:** `[x] npm run size: home first-load app chunks 202.92KB brotli (limit 250KB); app layout client shell 1.63KB brotli (limit 70KB); constellation lazy chunks 239.24KB brotli (limit 300KB)`
 
 ### W5. Reduced-motion path disables all WebGL motion [x]
-- **Reference:** ADR-54 (amended by ADR-61)
-- **Verify:** Browser with `prefers-reduced-motion: reduce`: field-star twinkle off, Milky Way breathing off, parallax off, spark/ripple/aura-fade snap to final state. Bloom remains (composition, not motion).
-- **Why it matters:** Vestibular safety and accessibility compliance.
-- **Status:** `[x] tests/visual/reduced-motion.spec.ts passes (two screenshots 2s apart are identical); useReducedMotion() gating verified in FieldStars, MilkyWay, ParallaxRig, SparkSequence, StageUpRipple, RevealSequence`
 
-### W6. DOM overlay accessibility (cluster + hero stars) [x]
+- **Reference:** ADR-54 (amended by ADR-61)
+- **Verify:** Browser with `prefers-reduced-motion: reduce`: field/mid-star twinkle off, background-layer parallax off, haze drift off, spark/ripple/aura-fade snap to final state. Milky Way is not rendered in the default web canvas. Postprocessing is default-off; if explicitly enabled, it remains static composition.
+- **Why it matters:** Vestibular safety and accessibility compliance.
+- **Status:** `[x] tests/visual/reduced-motion.spec.ts passes (two screenshots 2s apart are identical); useReducedMotion() gating verified in FieldStars, MidStars, Haze, SparkSequence, StageUpRipple, RevealSequence; ParallaxRig and live MilkyWay rendering are disabled in the default Scene`
+
+### W6. DOM overlay accessibility (cluster + lit tech stars) [x]
+
 - **Reference:** ADR-63
-- **Verify:** Tab key cycles through 6 cluster cells + persistently-labeled hero stars. Enter opens drawer with the correct cluster/star focused. Screen reader announces cluster summaries and hero star details. `@axe-core/playwright` test passes WCAG AA against `/dev/map`.
+- **Verify:** Tab key cycles through 6 cluster cells + lit tech stars. Enter opens drawer with the correct cluster/star focused. Screen reader announces cluster summaries and lit star details. `@axe-core/playwright` test passes WCAG AA against `/dev/map`.
 - **Why it matters:** WebGL canvas is opaque to assistive tech; DOM overlay is the entire a11y story.
 - **Status:** `[x] npm run axe:test passes WCAG AA (0 violations); A11yOverlay.tsx with role=region, Voronoi cells with role=button/tabIndex; tests/a11y/dev-map.spec.ts`
 
 ### W7. Sentry events for WebGL init / fallback / context-lost [x]
+
 - **Reference:** ADR-62
 - **Verify:** Sentry receives `constellation.webgl.init_success` on Scene mount in a WebGL-capable browser. In a non-WebGL browser, `constellation.webgl.init_failure` fires with `reason='unsupported'`. After a forced context-lost (DevTools), `constellation.webgl.context_lost` fires. Scene crash triggers `constellation.webgl.scene_crash` via the Error Boundary.
 - **Why it matters:** Rollout observability — without these, we cannot quantify how many users hit the fallback.
 - **Status:** `[x] use-constellation-telemetry.ts fires init_success/init_failure; Scene.tsx webglcontextlost listener fires context_lost; SceneErrorBoundary.tsx fires scene_crash; implemented in Phase 11`
 
-### W8. Milky Way texture license attribution [x]
+### W8. Milky Way / OG fallback texture license attribution [x]
+
 - **Reference:** ADR-61, ADR-62
-- **Verify:** `public/textures/milky-way.webp` (and high-DPR variant) ship with `public/textures/LICENSE.md` documenting source URL, license terms (NASA public domain or ESO CC BY 4.0), and the post-processing applied. Source-code comment in the layer file references that license file.
-- **Why it matters:** ESO CC BY 4.0 requires attribution; NASA public domain is permissive but still benefits from provenance documentation.
+- **Verify:** `public/textures/milky-way.webp` (dormant live-WebGL asset) and `public/textures/milky-way-fallback.jpg` (legacy OG fallback) ship with `public/textures/LICENSE.md` documenting source URL, license terms, and the post-processing applied. Source-code comment in the layer file references that license file.
+- **Why it matters:** The default web canvas no longer renders Milky Way nebulosity, but the dormant assets and OG fallback path still need clear provenance.
 - **Status:** `[x] public/textures/LICENSE.md exists; photographer Giona Mason, Pexels License (free to use, attribution recommended); source at public/textures/source/milky-way-pexels-29746501.jpg`
 
 ### W9. Visual regression baselines committed [x]
+
 - **Reference:** ADR-62, ADR-63
 - **Verify:** `tests/visual/__screenshots__/` contains baseline screenshots for at least 5 `/dev/map` scenarios (empty / sparse / dense / stage-up / first-ever). Playwright visual regression test diffs at 3% threshold and passes in CI.
 - **Why it matters:** Catches unintended visual regressions in shader, color, or layer-order changes.
@@ -235,48 +281,56 @@ These items apply when the WebGL constellation renderer ships. Treated as launch
 ## Backlog
 
 ### 31. Distributed rate limiting via Vercel KV
+
 - **Reference:** middleware.ts (in-memory acknowledgment)
 - **Trigger:** When unique IP / minute approaches Vercel function instance count × 60.
 - **Action:** Replace `rateLimitMap` with Vercel KV (`@vercel/kv`) or Upstash Redis.
 - **Status:** `[ ]`
 
 ### 32. Resend Pro upgrade
+
 - **Reference:** ADR-6
 - **Trigger:** Weekly recap users approach 750 (3000 emails/month threshold).
 - **Action:** Upgrade to Pro $20/month.
 - **Status:** `[ ]`
 
 ### 33. Inngest Pro upgrade
+
 - **Reference:** ADR-5
 - **Trigger:** Monthly step runs approach 25k.
 - **Action:** Upgrade to Pro $20/month.
 - **Status:** `[ ]`
 
 ### 34. Supabase Pro upgrade
+
 - **Reference:** ADR-3
 - **Trigger:** DB > 500MB OR MAU > 50k OR PITR needed for compliance.
 - **Action:** Upgrade to Pro $25/month.
 - **Status:** `[ ]`
 
 ### 35. GitHub App migration for higher rate limits
+
 - **Reference:** ADR-50
 - **Trigger:** Aggregate GitHub API usage exceeds 80% of total per-user quota.
 - **Action:** Migrate to GitHub App installation (15k/hr/installation).
 - **Status:** `[ ]`
 
 ### 36. Activities table archive / partitioning
+
 - **Reference:** ADR-9, `docs/data-schema.md`
 - **Trigger:** `activities` table > 50M rows.
 - **Action:** Partition by `created_at` quarter, or archive >24-month rows to cold storage.
 - **Status:** `[ ]`
 
 ### 37. Data export script
+
 - **Reference:** ADR-60
 - **Trigger:** First user requests data export via `privacy@devastra.app`.
 - **Action:** Write `scripts/export-user-data.ts` producing a JSON zip of all user-scoped rows.
 - **Status:** `[ ]`
 
 ### 38. Vault key rotation procedure
+
 - **Reference:** ADR-10
 - **Trigger:** Annual rotation policy OR incident.
 - **Action:** Document and execute rotation: provision new key → re-encrypt tokens batch → retire old key.

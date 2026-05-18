@@ -7,7 +7,7 @@
 These emerged from 117 flow + sub-flow decisions and govern every implementation choice:
 
 1. **Visual change reflects data change.** New star → spark. Brightened star → glow halo. Stage-up → cluster aura expansion + one-time ripple. No toast for unlocks. No "Level up!" or "+XP" framing.
-2. **Sparse / empty users are never framed as deficient.** "Every constellation starts here." Sparse owners on public profile are rendered identically, not flagged.
+2. **Sparse / empty users are never framed as deficient.** "Every constellation starts here." Sparse owners on public profile are rendered identically, not flagged. The renderer may use subtle sparse-mode framing and foreground emphasis, but it never invents stars or implies activity that does not exist.
 3. **System limits are stated honestly.** "GitHub can take a few minutes to index commits." "Skipped after 2 quiet weeks."
 4. **The constellation never disappears.** Sync failure, GitHub disconnect, token expiry, system outage — the cached constellation is always visible. Banners surface state without blocking the canvas.
 5. **Share links must survive forever.** Username changes 301-redirect old paths to new ones permanently (`docs/adr.md` ADR-30). Old usernames are reserved permanently.
@@ -22,9 +22,9 @@ These emerged from 117 flow + sub-flow decisions and govern every implementation
 1. **Landing (`/`)** — Hero shows the founder's real constellation (`docs/screens.md` §Landing) with a one-shot reveal animation that plays once per visitor every 7 days. Headline `A developer skill constellation that lights up as you code.` Sub-line `Connect GitHub. See what you've built, brighter every week.` Single CTA `Sign in with GitHub`. Below the fold: a `See others' constellations →` link to a curated 3-card gallery of sample public profiles. Footer: Privacy · Terms · GitHub repo. No top nav.
 2. **OAuth consent** — Redirect to GitHub. User approves `read:user` + `user:email`. On cancel: redirect to `/?auth_error=oauth_failed` with neutral copy `Connection was cancelled — try again?`.
 3. **Callback (`/auth/callback`)** — Brand-themed dim sky with `Connecting your GitHub...` and six dim cluster outlines fading in to preview the next screen. Supabase Auth resolves session; trigger creates `users` row (`docs/data-schema.md` §Users). If callback exceeds 5 seconds, fallback copy `Taking longer than expected. Refresh to try again →` appears. On failure: redirect to `/` with error param.
-4. **Repo selection (`/onboarding/repos`)** — Page header: `Pick your repos` + helper `These will form your constellation. You can change this later in settings.` Loading state: skeleton rows. Each row: name + primary-language icon + last-update date + 90-day commit count + 2–3 cluster-color dots showing contributing domains. Default: all checked; sort: most recent activity first; search box appears at ≥20 repos. Bottom counter `Selected N of M repos`. Single CTA `Build my constellation`. If GitHub API fails: full-page `Couldn't load your repos. Try again?`.
-5. **Initial sync trigger** — Inngest event `sync/initial.requested` fires with `user_id` + selected repo IDs. Initial sync is capped at the last 1 year of activity (`docs/adr.md` ADR-50). Page fade-transitions to `/`.
-6. **First reveal** — Six cluster outlines fade in (dim). Counter bottom-right: `47 commits analyzed in 12 repos`. Bottom strip: `Lit: Frontend · Backend · Testing` (active clusters only). Stars appear in Realtime insert order with 0.1s stagger, each rendered as a *spark* (small dot → brief plus-shape flash → settle). Connection lines (MST per cluster, neutral gray, low opacity) fade in after both endpoints are lit. Cluster labels fade in when each cluster's first star lights. Minimum total reveal duration: 12s. Maximum: 30s, after which remaining stars batch fade-in over 0.5s. Settling pulse on all stars + gentle attention cue (pulse + label highlight) on the brightest cluster, then a one-time `Click to explore` hint anchored to that cluster's label, auto-dismissed after 5s. Users may click stars or cluster labels during the reveal — the animation continues in the background.
+4. **Repo selection (`/onboarding/repos`)** — Page header: `Pick your repos` + helper `These repositories will shape your constellation. All are included by default.` Loading state: skeleton rows. Each row: name + primary-language icon + last-update date + 90-day commit count + 2–3 cluster-color dots showing contributing domains. Default: all checked; sort: most recent activity first; search box appears at ≥20 repos. Controls: `Select all` / `Deselect all`; counter `Selected N of M repos`. Primary CTA `Build my constellation`; secondary `Start with empty sky`. If GitHub API fails: full-page `Couldn't load your repos. Try again?`.
+5. **Initial sync trigger** — A `sync_jobs` row is created synchronously in `pending` state, then Inngest event `sync/initial.requested` fires with `user_id` + selected repo IDs. Initial sync refreshes selected repo metadata by GitHub node ID, fetches the last 1 year of activity, then runs a bounded historical bootstrap for selected repos with no recent activity so older-but-important repos can still seed the first constellation. Page fade-transitions to `/`, where the constellation shows a build-in-progress overlay until the job completes.
+6. **First reveal** — Starts only after the initial sync job completes. Six cluster outlines fade in (dim). Counter bottom-right: `47 commits analyzed in 12 repos`. Bottom strip: `Lit: Frontend · Backend · Testing` (active clusters only). Stars appear in Realtime insert order with 0.1s stagger, each rendered as a _spark_ (small dot → brief plus-shape flash → settle). Connection lines (MST per cluster, neutral gray, low opacity) fade in after both endpoints are lit. Cluster labels fade in when each cluster's first star lights. Minimum total reveal duration: 12s. Maximum: 30s, after which remaining stars batch fade-in over 0.5s. Settling pulse on all stars + gentle attention cue (pulse + label highlight) on the brightest cluster, then a one-time `Click to explore` hint anchored to that cluster's label, auto-dismissed after 5s. Users may click stars or cluster labels during the reveal — the animation continues in the background.
 7. **Post-reveal exploration** — Clicking a cluster label opens the cluster drawer (`docs/screens.md` §Cluster drawer). Clicking a star opens the same drawer with that star's row highlighted, auto-scrolled, and its `Why is this lit?` expansion automatically opened. Star hover (desktop only, 200ms delay) shows a tooltip: `tech name · brightness · first lit date`. The `cluster_click_hint_seen` flag is set when the user opens any drawer.
 8. **First share moment** — After the first drawer close, the top-right Share button pulses once (`share_hint_seen` flag set after this pulse). Click opens the Share modal (`docs/screens.md` §Share modal): OG preview → public toggle + URL/copy/preview → share targets (Twitter / LinkedIn / Copy link / Download PNG + native share on mobile). Twitter pre-filled tweet: `My GitHub activity, as a constellation. {url}`. Share buttons are disabled while `is_public = false`; toggling on inlines the URL + Copy + Preview affordance. On share click: modal closes + brief toast `Shared!`.
 
@@ -32,26 +32,26 @@ These emerged from 117 flow + sub-flow decisions and govern every implementation
 
 - OAuth fail → `/?auth_error=oauth_failed`.
 - Zero public repos → repo selection shows top half: six dim cluster outlines; bottom half: copy `No public repos yet. Push your first public repo to light up your sky.` + GitHub link + `Skip & Build empty sky →` secondary action.
-- Skip with zero repos → main constellation: six cluster outlines + dark sky + one-time persistent hint `Your constellation begins when you push code.` (`cluster_click_hint_seen` does not auto-fire).
+- Start with empty sky → main constellation: six cluster outlines + dark sky + one-time persistent hint `Your constellation begins when you push code.` (`cluster_click_hint_seen` does not auto-fire).
 - Sync fails (GitHub 5xx, rate limit, network) → `sync_jobs.status='failed'`. Bottom banner `Sync failed. Your constellation is safe.` + Retry button. Inngest retries with exponential backoff up to 5 attempts.
 
 ## Flow 2 — Returning user via weekly recap
 
 **Entry trigger:** user receives weekly recap email (Sunday 18:00 user local time; generated Sunday 09:00 UTC by `recap/weekly.generated` Inngest cron).
 
-1. **Email arrives.** Subject is active-week dynamic with priority *stage-up > new star > brightest cluster*:
+1. **Email arrives.** Subject is active-week dynamic with priority _stage-up > new star > brightest cluster_:
    - Stage-up present: `Backend cluster expanded`
    - New stars (1): `Docker is new this week`
    - New stars (2+): `3 new stars this week`
    - Otherwise: `Backend brightened` (most-grown cluster)
    - Empty week subject (static): `Your sky — this week`
    - First week subject: `Your first week on DevAstra`
-   Preview text always orders constellation change before activity counts: `Backend expanded · 2 new stars · 12 commits`.
+     Preview text always orders constellation change before activity counts: `Backend expanded · 2 new stars · 12 commits`.
 2. **Email body** — Hero is a full-constellation OG image (1200×630) with this week's changed stars getting a brighter glow + the changed cluster's aura intensified. A small top-right stat strip overlays the image: `+2 stars · Backend +18%`. Three fixed slots follow:
    - **Slot 1:** stage-up bundle (if any) — `Backend cluster expanded`; otherwise the brightest cluster line — `Backend brightened most this week`.
    - **Slot 2:** new stars — 1–3 names inline (`Docker, TypeScript, Playwright are new this week`); 4+ collapses (`4 new stars this week — Docker, TypeScript, Playwright, +1`); none → `2 stars brightened — TypeScript, React`.
    - **Slot 3:** activity totals — `5 active days · 12 commits · 3 PRs shipped`. Empty fields are omitted naturally.
-   CTA is dynamic: active week `See what's new →` / empty week `See your sky →`. Email background is dark sky tone (consistent with Gmail dark mode). Image alt text: `Your DevAstra constellation, week of May 10`. Footer: Unsubscribe · Privacy · Settings.
+     CTA is dynamic: active week `See what's new →` / empty week `See your sky →`. Email background is dark sky tone (consistent with Gmail dark mode). Image alt text: `Your DevAstra constellation, week of May 10`. Footer: Unsubscribe · Privacy · Settings.
 3. **Empty-week variant** — Subject `Your sky — this week`. Hero: last-known constellation rendered statically (no glow / no stat strip). Body: single line `Steady week — your constellation is the same.` + CTA `See your sky →`. The email is sent for the first empty week; **skipped after 2 consecutive empty weeks** (`docs/adr.md` ADR-32). Activity resumes the cycle.
 4. **First-week variant** — Sent on the first Sunday after signup, even with partial week. Subject `Your first week on DevAstra`. Body: standard 3-slot structure with the user's first star explicitly highlighted (e.g. `Your first star: Docker`). If the partial week has zero activity: body `Welcome — push a commit to begin your constellation.` + CTA.
 5. **Click-through (`/?from=recap&week=2026-W19`)** — Main constellation loads from server-prerendered state (no full reveal). Only the changed stars (1–5 spark animations over 3–5s). Top header-area strip: `This week: 2 new stars · Backend +18%` + dismiss X. The most-changed cluster pulses once. Stage-up takes priority in the strip: `Backend cluster expanded · 2 stars brightened`.
@@ -76,7 +76,7 @@ These emerged from 117 flow + sub-flow decisions and govern every implementation
 
 **Failure branches:**
 
-- `users.is_public = false` → render `{username}'s sky is private` (with username displayed) on a dim-sky page; constellation outline is shown as an *unlit/locked* shape. CTAs: `Create yours, free →` and `Browse other constellations →`.
+- `users.is_public = false` → render `{username}'s sky is private` (with username displayed) on a dim-sky page; constellation outline is shown as an _unlit/locked_ shape. CTAs: `Create yours, free →` and `Browse other constellations →`.
 - Username not found in either `users` or `username_history` → 404 page with `No constellation at this address` + same two CTAs.
 - Rate limit exceeded (60 req/min/IP non-crawler) → dim-sky 429 page `Too many requests — try again in a moment` + manual retry button.
 
@@ -110,11 +110,11 @@ Section order, top to bottom:
 4. **Timezone** — IANA dropdown, default detected from browser. Sub-text: `Your weekly recap arrives Sunday at 6 PM in this timezone.` Auto-save on change.
 5. **Username** — text input with inline live validation (length 2–30, regex `/^[a-z0-9-_]+$/`, reserved name check, collision check). Live URL preview: `devastra.app/{new_username}`. On save: confirmation note `Anyone with your old URL devastra.app/{old} will be redirected to your new one.` Old username is written to `username_history` and reserved permanently. Validation errors:
    - <2 chars → `At least 2 characters`
-   - >30 chars → `Up to 30 characters`
+   - > 30 chars → `Up to 30 characters`
    - Invalid chars → `Only lowercase letters, numbers, hyphens, and underscores`
    - Reserved → `This name is reserved`
    - Collision → `This name is taken`
-6. **Included repos** — default collapsed section. Expand reveals search + list of `repositories` rows, each row: name + last activity + 90-day commits + cluster-color dots + toggle + `View on GitHub →`. Toggling repos and pressing Save first opens a pre-save change summary modal: `These changes will affect your constellation:` + bullet list (`Docker star will be removed`, `Backend cluster will dim`, etc.). If precise estimation isn't possible, append `Some changes may take effect after backfill completes.` Confirming dispatches `sync/backfill.requested`; the settings page closes back to the main constellation, where the standard sync indicator surfaces backfill progress.
+6. **Included repos** — default collapsed section. The collapsed state reads only the repo summary count; expanding lazy-loads the full `repositories` list so Settings remains quick to open. Toggling repos and pressing Save first opens a pre-save confirmation note. Confirming creates a `sync_jobs` row in `pending` state, dispatches `sync/backfill.requested` with the fast rebuild path, and returns to the main constellation. The existing constellation is subtly dimmed/blurred behind a bottom-right build-in-progress panel until saved activity and project manifests have both been checked, so the user never mistakes language-only intermediate data for the final result. The fast path refreshes selected repo metadata by GitHub node ID, reuses parsed dependency cache only when the source `pushed_at` value proves the repo has not changed, skips repeat historical scans only when the same `pushed_at` value proves a quiet repo was already checked, and skips repeat recent commit-list REST calls only when the same `pushed_at` value proves authored commits were already cached. If selected repos have no saved matching activity, the job waits for GitHub historical bootstrap before completing. Newly discovered stars/connections animate into the constellation when the completed build refreshes.
 7. **Danger zone** — red border + heading `Danger zone`. Two sub-sections, Disconnect above and Delete below.
    - **Disconnect GitHub** — confirm modal: heading `Disconnect GitHub?` + body `Your constellation stays. Public profile becomes private. Reconnect anytime.` Buttons: Cancel (text link, left) + Disconnect (red filled, right). Dismiss via X / Cancel / ESC; outside-click is disabled. On confirm: `users.github_access_token_enc = NULL`, `is_public = false`. Mobile: centered modal. The main page surfaces a dismissible banner `GitHub disconnected — reconnect to sync new activity` + Reconnect button, and the settings page reveals a Reconnect entry point.
    - **Delete account** — confirm modal: heading `Delete your account` + body `This cannot be undone. We will delete:` followed by bullets (your constellation / all weekly recaps / your public profile / all account data). Input labeled `Type your username to confirm: {username}`. Delete button is enabled only when input exactly matches. Button copy: `Permanently delete` (red filled). Dismiss via X / Cancel / ESC; outside-click is disabled. Mobile: full-screen modal. On confirm: hard delete via `auth.users` cascade. After confirm: page `/account-deleted` with body `Thanks for trying DevAstra. Your account has been deleted.` + `Go to landing now →`. Auto-redirect to `/` after 5s.
@@ -180,7 +180,7 @@ Three boolean flags on `users` track hint exposure: `cluster_click_hint_seen`, `
 - **Share button pulse** (`share_hint_seen`): one pulse after the first drawer close. Fires once total.
 - **Recap diff hint** (`recap_diff_hint_seen`): when entering via `/?from=recap`, a small floating bubble near the brightest changed cluster: `See what's new in {Cluster}`. Auto-dismisses on target click.
 
-Hint dismissal is by *action*, not by X button — there is no manual dismiss UI.
+Hint dismissal is by _action_, not by X button — there is no manual dismiss UI.
 
 ## Sub-flow F — Cross-device / multi-tab
 
@@ -224,7 +224,7 @@ Pre-launch QA checklist; not an implementation flow. Run all five flows end-to-e
 
 ## Sub-flow K — Auth edge cases
 
-Always preserve the cached constellation. *"Sync can die, but the constellation cannot disappear."* (`docs/adr.md` ADR-43.)
+Always preserve the cached constellation. _"Sync can die, but the constellation cannot disappear."_ (`docs/adr.md` ADR-43.)
 
 - **GitHub OAuth permission revoked externally** → next sync fails with 401 → token cleared → banner `GitHub disconnected — reconnect to sync new activity` + Reconnect button.
 - **Token expired and refresh failed** → same banner.

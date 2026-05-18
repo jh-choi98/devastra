@@ -1,10 +1,10 @@
 # PRD — DevAstra
 
-**Scope of this doc:** what we are building and why. For *how*, see `docs/code-architecture.md` and `docs/data-schema.md`. For *user steps*, see `docs/flow.md`. For *screen-level specs*, see `docs/screens.md`. For *why specific technical choices*, see `docs/adr.md`.
+**Scope of this doc:** what we are building and why. For _how_, see `docs/code-architecture.md` and `docs/data-schema.md`. For _user steps_, see `docs/flow.md`. For _screen-level specs_, see `docs/screens.md`. For _why specific technical choices_, see `docs/adr.md`.
 
 ## Mission
 
-Turn a developer's public GitHub activity into a **living skill constellation** where each technology they use lights up as a star and each domain they grow brightens as a nebula cluster. The outcome we sell: developers *feel* their growth and *recognize their identity* in a single shareable image, instead of reading dashboards.
+Turn a developer's public GitHub activity into a **living skill constellation** where each technology they use lights up as a star and each domain they grow brightens as a nebula cluster. The outcome we sell: developers _feel_ their growth and _recognize their identity_ in a single shareable image, instead of reading dashboards.
 
 This is not a GitHub analytics tool, not a skill ranking, not a developer evaluation, not a leaderboard. The product fails if it makes users feel judged or measured.
 
@@ -12,14 +12,14 @@ This is not a GitHub analytics tool, not a skill ranking, not a developer evalua
 
 Every implementation decision is checked against these. See `memory/project_devastra_compass.md`.
 
-1. **Growth feeling** — Users see *what brightened*, not *how many commits*. "React grew. Testing lit for the first time. Docker is new this week."
+1. **Growth feeling** — Users see _what brightened_, not _how many commits_. "React grew. Testing lit for the first time. Docker is new this week."
 2. **Portfolio value** — A constellation is a better share artifact than a contribution graph. Fits LinkedIn / Twitter / Discord / personal-site embed without feeling game-like.
-3. **Motivation through collection** — Lighting new stars, brightening dim ones, filling empty clusters, this week's new stars. Drives the "I want to do a bit more" feeling *without numeric rankings*.
+3. **Motivation through collection** — Lighting new stars, brightening dim ones, filling empty clusters, this week's new stars. Drives the "I want to do a bit more" feeling _without numeric rankings_.
 4. **Self-understanding** — "I write more docs than I thought." "My backend is bigger than my frontend." "Testing is empty — maybe try Playwright next." Helps users see their actual habits.
 
 ## Failure mode
 
-If the constellation is **pretty but disconnected from meaning**, the user reaction is *"so what?"* Every visual flourish must earn its keep against this question. Required couplings (see `memory/project_devastra_compass.md`):
+If the constellation is **pretty but disconnected from meaning**, the user reaction is _"so what?"_ Every visual flourish must earn its keep against this question. Required couplings (see `memory/project_devastra_compass.md`):
 
 - star ↔ actual `tech_key` (with detection rule)
 - cluster ↔ actual growth domain (one of six)
@@ -27,16 +27,17 @@ If the constellation is **pretty but disconnected from meaning**, the user react
 - weekly recap ↔ this-week change
 - public profile ↔ shareable identity
 - labels ↔ clarity without clutter
+- sparse users ↔ honest early-state visual treatment; never fake stars or inflate activity
 
 ## Target user
 
-| Attribute | Detail |
-|---|---|
-| Segment | Students, interns, junior developers, portfolio builders |
-| Geography (initial) | English-speaking developers globally; beta seeded via founder's network + Twitter/Discord developer circles |
-| Current workaround | GitHub profile contribution graph + hand-curated portfolio site + LinkedIn |
-| Pain | Static portfolios don't capture growth over time; contribution graph treats every commit equally; nothing celebrates "you became a backend developer this quarter" |
-| Willingness to share | High — these users *already* share GitHub profiles, ProductHunt launches, side projects |
+| Attribute            | Detail                                                                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Segment              | Students, interns, junior developers, portfolio builders                                                                                                           |
+| Geography (initial)  | English-speaking developers globally; beta seeded via founder's network + Twitter/Discord developer circles                                                        |
+| Current workaround   | GitHub profile contribution graph + hand-curated portfolio site + LinkedIn                                                                                         |
+| Pain                 | Static portfolios don't capture growth over time; contribution graph treats every commit equally; nothing celebrates "you became a backend developer this quarter" |
+| Willingness to share | High — these users _already_ share GitHub profiles, ProductHunt launches, side projects                                                                            |
 
 ## In scope (MVP — free only)
 
@@ -58,27 +59,27 @@ If the constellation is **pretty but disconnected from meaning**, the user react
 
 ## Out of scope (explicit non-goals)
 
-| Category | Items |
-|---|---|
-| Monetization | Paid tier · Team/org constellation · Private repo support · Multi-identity (work + personal GitHub) · Custom domain · Theme customization · Embed widget · Poster export |
-| Social | Friend comparison · Weekly shipping league · Leaderboards · Skill ranking · Following / subscriptions · Comments / reactions |
-| Analytics depth | Rare star UI (logic prepared, hidden until `tech_global_stats.eligible_user_count ≥ 500`) · Per-star numeric rankings · "You are top N%" framing |
-| Notifications | Push · Slack · Discord · Welcome email · Achievement / level-up copy · "+XP" framing |
-| Platforms | Mobile native app · PWA / service worker · Browser extension · Public API · Embed iframe |
-| Content | `/recap/{id}` archive page · LLM-generated copy in core flow · Tutorial / help center · Status page · View-in-browser email link |
-| Other | i18n (English only) · Cookie consent banner (PostHog runs in cookieless mode) |
+| Category        | Items                                                                                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Monetization    | Paid tier · Team/org constellation · Private repo support · Multi-identity (work + personal GitHub) · Custom domain · Theme customization · Embed widget · Poster export |
+| Social          | Friend comparison · Weekly shipping league · Leaderboards · Skill ranking · Following / subscriptions · Comments / reactions                                             |
+| Analytics depth | Rare star UI (logic prepared, hidden until `tech_global_stats.eligible_user_count ≥ 500`) · Per-star numeric rankings · "You are top N%" framing                         |
+| Notifications   | Push · Slack · Discord · Welcome email · Achievement / level-up copy · "+XP" framing                                                                                     |
+| Platforms       | Mobile native app · PWA / service worker · Browser extension · Public API · Embed iframe                                                                                 |
+| Content         | `/recap/{id}` archive page · LLM-generated copy in core flow · Tutorial / help center · Status page · View-in-browser email link                                         |
+| Other           | i18n (English only) · Cookie consent banner (PostHog runs in cookieless mode)                                                                                            |
 
 ## Success criteria
 
 Decision rule for "MVP succeeded, build v0.2":
 
-| Metric | Threshold | Source |
-|---|---|---|
-| Closed beta size | ≥50 invited users with completed signup | Supabase `users` count |
-| Activation rate | ≥60% of OAuth-completed users reach first-reveal | PostHog funnel: `landing_view` → `first_reveal_complete` |
-| Share rate | ≥20% of activated users toggle profile to public | PostHog event: `public_toggle_on` |
-| Return rate | ≥40% of activated users click weekly recap email at least once | PostHog event: `recap_email_clicked` |
-| Qualitative | ≥3 unsolicited social shares (Twitter / LinkedIn) of own constellation | Founder manual count |
+| Metric           | Threshold                                                              | Source                                                   |
+| ---------------- | ---------------------------------------------------------------------- | -------------------------------------------------------- |
+| Closed beta size | ≥50 invited users with completed signup                                | Supabase `users` count                                   |
+| Activation rate  | ≥60% of OAuth-completed users reach first-reveal                       | PostHog funnel: `landing_view` → `first_reveal_complete` |
+| Share rate       | ≥20% of activated users toggle profile to public                       | PostHog event: `public_toggle_on`                        |
+| Return rate      | ≥40% of activated users click weekly recap email at least once         | PostHog event: `recap_email_clicked`                     |
+| Qualitative      | ≥3 unsolicited social shares (Twitter / LinkedIn) of own constellation | Founder manual count                                     |
 
 If activation < 60%, fix onboarding before scaling. If share rate < 20%, the constellation isn't compelling enough — iterate viz, not features.
 

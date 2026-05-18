@@ -1,6 +1,6 @@
 # Screens — DevAstra
 
-**Scope of this doc:** every distinct screen and overlay surface. Each entry lists *purpose · info displayed · actions · state variations · mobile/desktop deltas*. Use this with `docs/flow.md` (transitions) and `docs/data-schema.md` (data shape).
+**Scope of this doc:** every distinct screen and overlay surface. Each entry lists _purpose · info displayed · actions · state variations · mobile/desktop deltas_. Use this with `docs/flow.md` (transitions) and `docs/data-schema.md` (data shape).
 
 Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (M1–M5). Every screen maintains brand consistency: dim sky background (`#0b1020` gradient), constellation as identity, sticky CTAs only on visitor surfaces.
 
@@ -13,6 +13,7 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 **Purpose:** unauthenticated visitor → OAuth decision.
 
 **Layout:**
+
 - Hero: founder's real constellation, rendered with one-shot reveal animation playing once per visitor every 7 days (localStorage flag).
 - Headline: `A developer skill constellation that lights up as you code.`
 - Sub-line: `Connect GitHub. See what you've built, brighter every week.`
@@ -22,6 +23,7 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 - No top navigation.
 
 **State variations:**
+
 - First visit (or >7 days): reveal animation plays once.
 - Within 7 days: static hero.
 - Post-OAuth-cancel return: small inline message above CTA `Connection was cancelled — try again?`
@@ -38,6 +40,7 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 **Purpose:** recovery from invalid URL.
 
 **Layout:**
+
 - Dim sky background with faint constellation outline (decorative).
 - Copy: `No constellation at this address`
 - CTAs: `Create yours, free →` (primary) · `Browse other constellations →` (secondary, links to landing gallery)
@@ -47,7 +50,8 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 **Purpose:** indicate a real but private constellation.
 
 **Layout:**
-- Dim sky + *unlit/locked* constellation outline (six dim cluster outlines + faint star positions but no glow).
+
+- Dim sky + _unlit/locked_ constellation outline (six dim cluster outlines + faint star positions but no glow).
 - Copy: `{username}'s sky is private`
 - CTA: `Create yours, free →`
 
@@ -56,6 +60,7 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 **Purpose:** rate-limit guard recovery.
 
 **Layout:**
+
 - Brand-consistent dim sky.
 - Copy: `Too many requests — try again in a moment`
 - Manual `Retry` button (page reload).
@@ -65,6 +70,7 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 **Purpose:** confirm hard delete + auto-redirect.
 
 **Layout:**
+
 - Dim sky.
 - Copy: `Thanks for trying DevAstra. Your account has been deleted.`
 - Button: `Go to landing now →`
@@ -79,12 +85,14 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 **Purpose:** complete GitHub OAuth handshake; bridge to onboarding or `/`.
 
 **Layout:**
+
 - Dim sky background.
 - Six dim cluster outlines fade in to preview the next screen.
 - Copy: `Connecting your GitHub...`
 - If >5s elapsed: copy changes to `Taking longer than expected. Refresh to try again →`.
 
 **Outcomes:**
+
 - Success + no `last_event_id` → redirect to `/onboarding/repos`.
 - Success + `last_event_id` present → redirect to `/`.
 - Failure → redirect to `/?auth_error=oauth_failed`.
@@ -93,11 +101,12 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 
 **Purpose:** user picks which repos contribute to their constellation.
 
-**Header:** `Pick your repos` + helper `These will form your constellation. You can change this later in settings.`
+**Header:** `Pick your repos` + helper `These repositories will shape your constellation. All are included by default.`
 
 **Loading state:** 8 skeleton rows. Fetched from GitHub via server-side API.
 
 **Repo row (per-repo):**
+
 - Checkbox (default: checked).
 - Repo name + owner.
 - Primary language icon.
@@ -110,12 +119,13 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 
 **Sort:** most recent activity first (fixed; no user override).
 
-**Bottom counter:** `Selected N of M repos`.
+**Bulk actions + counter:** `Selected N of M repos` with `Select all` and `Deselect all`.
 
-**Single CTA:** `Build my constellation`.
+**Actions:** primary `Build my constellation`; secondary `Start with empty sky`.
 
 **Special states:**
-- **Zero public repos.** Top half: six dim cluster outlines. Bottom half: copy `No public repos yet. Push your first public repo to light up your sky.` + link to GitHub + secondary action `Skip & Build empty sky →`.
+
+- **Zero public repos.** Top half: six dim cluster outlines. Bottom half: copy `No public repos yet. Push your first public repo to light up your sky.` + link to GitHub + secondary action `Start with empty sky`.
 - **100+ repos.** Above the list: subtle note `Initial sync may take a few minutes`.
 - **Sparse user (3 repos, few commits).** Helper copy below the header: `Every constellation starts here.`
 - **GitHub API failure.** Full-page state: `Couldn't load your repos. Try again?` + Retry.
@@ -136,11 +146,13 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 - **Right:** Refresh button · Share button · Avatar dropdown (`Settings · My public profile (if is_public) · Sign out`).
 
 **Refresh button states:**
+
 - Idle: clock-arrow icon.
 - Cooldown: countdown text (`4:32`) within button; disabled cursor; tooltip on hover.
 - Loading: spinner.
 
 **Share button states:**
+
 - Default: share icon.
 - After first drawer close: one pulse animation, then steady.
 
@@ -148,46 +160,48 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 
 Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster identity is conveyed by spatial grouping + boundary lines + connections + labels — never by persistent color. Default canvas reads as an observational star atlas, not a colorful skill dashboard.
 
-**Renderer stack:** WebGL via React Three Fiber + drei + postprocessing on the web. SVG-only fallback for OG image generation and for browsers that cannot run WebGL. The shared math (anchors, palette, Voronoi cells, magnitude curve, label-selection rule, MST) lives in `features/constellation/render/*` and is consumed by both. See `docs/adr.md` ADR-62.
+**Renderer stack:** WebGL via React Three Fiber + drei on the web. `@react-three/postprocessing` remains available as an optional low-resolution debug / experiment layer, but the production steady-state canvas does not rely on full-screen bloom. SVG-only fallback is kept for OG image generation and for browsers that cannot run WebGL. The shared math (anchors, palette, Voronoi cells, magnitude curve, label-selection rule, MST) lives in `features/constellation/render/*` and is consumed by both. See `docs/adr.md` ADR-62.
 
 **Layers (back to front):**
 
-- **Sky background.** Pure near-black (`#020207` zenith → `#050307` edges). No vertical gradient toward a warm horizon; the only warm element on the canvas is the Milky Way layer.
-- **Milky Way nebulosity.** Hybrid: a baked panorama-derived texture (NASA Gaia or ESO public-domain crop, warm sepia / ochre / cream palette with dark dust lanes) + a thin procedural noise warp + slow opacity breathing (~30–60s, ±5%) + subtle grain + subtle vignette. The texture is masked / positioned to pass through cluster anchor centers so its placement is data-coupled.
-- **Field stars** (~2000 desktop / ~1000 mobile). Deterministic seed; density biased toward the Milky Way band. Spectral palette weighted 70% white / 20% blue-white / 7% yellow-white / 3% orange-red. Sizes: 80% 1px / 15% 2px / 5% with visible halo. Per-star bounded twinkle (±10% intensity, 4–8s phases). No labels, no hover, no click.
+- **Sky background.** Pure near-black (`#020207` zenith → `#050307` edges). No vertical gradient toward a warm horizon and no warm nebulosity wash in the default product canvas.
+- **Milky Way nebulosity.** Disabled in the default web renderer by final visual decision: the canvas should read as a clean observational star atlas, not a nebula illustration. The component and texture assets may remain for OG / historical experiments, but the live steady-state Scene does not render the Milky Way layer.
+- **Atmospheric haze.** A very faint cool blue-gray additive layer between sky and stars, capped at ~5% peak alpha. It gives depth without becoming a colored aura or warm nebula. Its low-frequency drift is disabled under `prefers-reduced-motion: reduce`.
+- **Field stars** (~2000 desktop / ~1000 mobile). Deterministic seed; density biased toward a diagonal star-field band, not a rendered Milky Way texture. Spectral palette weighted 70% white / 20% blue-white / 7% yellow-white / 3% orange-red. Sizes: 80% 1px / 15% 2px / 5% with visible halo. Per-star bounded twinkle (±10% intensity, 4–8s phases). No labels, no hover, no click. Sparse constellations may dim field/mid stars by at most ~10–12% so lit tech stars read as the foreground; density, color, and twinkle character do not change.
+- **Mid-depth stars** (~420 desktop / ~220 mobile). Deterministic, slightly larger than field stars, and slightly stronger in parallax response. They sit between field stars and tech stars to restore depth without increasing semantic star count.
 - **Territory boundary lines.** Six Voronoi cells computed at render time from the cluster anchors (see `docs/adr.md` ADR-63). Always visible. Thin (~10% opacity) muted blue-gray polygonal strokes. Fixed regardless of which stars are lit. This is the persistent "map layer" that establishes cluster regions without color.
-- **Connection lines.** MST among lit stars per cluster. Muted blue-gray (not cluster color), opacity `0.15–0.25`, glow minimized. Map-ink feel, not a game-UI overlay.
-- **Tech stars.** 50 positions from `tech-catalog.md` (deterministic per-`tech_key` `{x, y}` within cluster anchor + jitter). Spectral colors from the same palette as field stars (deterministic mapping by tech_key — see `features/constellation/render/palette.ts`). Airy disk core + soft Gaussian halo. Visible 4-spike diffraction cross (vertical + horizontal, length ≈ 4–6× core diameter). Brightness scales with `landmarks.weight` via the magnitude curve in `features/constellation/render/magnitude.ts`. Tech stars have NO ambient motion — identity is preserved.
-- **Cluster aura (event-only).** Steady state: OFF. Cluster color appears only on these triggers, in priority order: `cinematic/stage-up > drawer-selected > hover > none`. Only one aura is active at a time. Hover region is the boundary polygon interior; star hover and label hover also count as cluster hover. While the drawer is open with cluster X selected, X's aura stays on; hovering another cluster Y highlights Y's boundary line but does NOT activate Y's aura. Fade in/out ~200ms; additive blend; feeds the bloom postprocessing.
+- **Connection lines.** MST among lit stars per cluster. Muted blue-gray (not cluster color), rendered as thin tapered quad strips with a narrow blue-white core and a very soft shader-local halo. The line should read like a real sky chart thread: more legible than a 1px stroke, but never like a bright game-UI overlay or cluster-color route line.
+- **Tech stars.** Positions come from `tech-catalog.md` (deterministic per-`tech_key` `{x, y}` within cluster anchor + jitter). Spectral colors from the same palette as field stars (deterministic mapping by tech_key — see `features/constellation/render/palette.ts`). Airy disk core + soft shader-local halo. Visible 4-spike diffraction cross (vertical + horizontal) only for the current top-brightness tier. Brightness scales with `landmarks.weight` via the logarithmic magnitude curve in `features/constellation/render/magnitude.ts`: newly lit stars remain pinpoints, mid-weight stars gain visible halo, and heavy hitters gain larger cores plus longer diffraction spikes. Sparse constellations gently boost tech star scale/intensity/spike length (bounded, data-preserving) so a small number of lit stars still feels intentional. Tech stars have NO ambient motion — identity is preserved.
+- **Cluster aura (event-only).** Steady state: OFF. Cluster color appears only on these triggers, in priority order: `cinematic/stage-up > drawer-selected > hover > none`. Only one aura is active at a time. Hover region is the boundary polygon interior; star hover and label hover also count as cluster hover. While the drawer is open with cluster X selected, X's aura stays on; hovering another cluster Y highlights Y's boundary line but does NOT activate Y's aura. Fade in/out ~200ms; additive blend; does not depend on full-screen bloom.
 - **Labels.** Small blue-white sans-serif, Stellarium typography. NOT cluster color, NOT caps, NOT letter-spaced.
   - Cluster labels: always visible, one per cluster (e.g. `Backend`). The inline `· STAGE N` suffix is removed; stage information lives in the drawer / strip instead.
   - Tech star labels (persistent rule):
-    - top 1 lit star per active cluster (active = stage ≥ 2 OR has any lit stars)
-    - PLUS globally brightest lit stars filling up to a global cap of 8–12
-    - if total lit stars ≤ 6, label ALL lit stars (sparse-state override)
-    - dedupe: a star already labeled via cluster-top is not double-counted
-  - All other lit stars: tooltip on hover only. Unlit stars: no label, no hover.
+    - label every lit tech star, including newly lit / low-brightness stars
+    - smaller stars use quieter, smaller map-style labels; brighter stars get slightly stronger labels
+    - labels are offset outward from each cluster anchor so dense clusters stay readable without leader lines
+  - Unlit stars: no label, no hover.
 
-**Postprocessing:** UnrealBloom (threshold ≈ 0.75, intensity ≈ 0.5, radius ≈ 1.0 — tuned in `/dev/map` iteration). Vignette (subtle edge darkening ~20%).
+**Postprocessing:** OFF by default in the production steady-state canvas. The default glow is shader-local (Airy disk halo + diffraction spikes + soft field/mid-star points) so first paint and FPS stay stable. A low-resolution Bloom + Vignette stack remains available for manual `/dev/map` layer checks and future experiments, but it is not part of the default visual contract.
 
-**Camera / parallax:** Static camera. Mouse-driven micro-tilt of ±2–3° (parallax rig) provides depth without changing the visible scene. Disabled when `prefers-reduced-motion: reduce`.
+**Camera / parallax:** User pan/zoom is disabled. Dense constellations use the full atlas framing. Sparse constellations (1–17 lit tech stars) use a bounded system framing boost: orthographic zoom up to ~10% desktop / ~6% mobile, with a small blend toward the lit-star bounding box. Mouse-driven camera parallax is disabled in steady state; bounded background-layer parallax on field/mid stars is allowed because tech stars and labels remain fixed.
 
-**SSR / first paint:** server-rendered Skeleton (HTML/SVG: background + boundary lines + cluster labels, ≈3KB) ships in the initial HTML payload. The WebGL Scene mounts post-hydration via dynamic import and fades in over 300–500ms. Skeleton stays underneath the canvas (which has alpha) for a seamless blend.
+**First paint / fallback:** `Skeleton` (HTML/SVG: background + boundary lines + cluster labels, ≈3KB) is the dynamic loading fallback and the WebGL-unsupported / Scene-crash fallback. In the normal WebGL path, the Skeleton is removed once the WebGL wrapper and Scene mount; the Scene then fades in over 300–500ms. This avoids keeping duplicate map layers under the canvas during steady state.
 
-**Viewport:** full viewport below the header. No scroll. Pan/zoom disabled (the constellation is identity, not a map).
+**Viewport:** full viewport below the header. No scroll. User pan/zoom disabled (the constellation is identity, not a map); sparse-mode system framing is the only zoom/pan-like adjustment.
 
 **Mobile:**
+
 - Header: logo icon + avatar. Refresh/share become floating actions (top-right of canvas).
 - Constellation: viewport-aware cluster center positions (separate set from desktop, hardcoded in renderer config).
 - Cluster labels: scaled down (no abbreviation — semantic meaning preserved).
-- Star tap targets: invisible 24px (minimum) hit area, ideally 44px.
+- Star tap targets: enlarged invisible coarse-pointer hit areas, tuned to stay at or above the 44px mobile target size on common viewports.
 - Pull-to-refresh enabled on main constellation only.
 - Safe-area-insets respected (notch / nav bar).
-- **Adaptive quality:** Bloom render target 0.5×, field stars 1000 (vs 2000 desktop), DPR cap `Math.min(devicePixelRatio, 2)`.
+- **Adaptive quality:** field stars 1000 (vs 2000 desktop), mid-depth stars 220 (vs 420 desktop), DPR cap `Math.min(devicePixelRatio, 2)`. Postprocessing remains default-off; if manually enabled, it uses a low-resolution render target.
 
-**Reduced motion (`prefers-reduced-motion: reduce`):** twinkle off (field stars settle at average brightness), parallax off, Milky Way breathing off, spark / ripple / aura fade replaced by instant final-state swap. Bloom remains (it is not motion, it is composition).
+**Reduced motion (`prefers-reduced-motion: reduce`):** field/mid-star twinkle off, background-layer parallax off, haze drift off, spark / ripple / aura fade replaced by instant final-state swap. Postprocessing is default-off; if explicitly enabled, it remains static composition.
 
-**Accessibility:** WebGL canvas is purely visual. A DOM overlay layer with invisible buttons is absolutely positioned over (a) each Voronoi cluster cell, (b) each cluster label, (c) each persistently-labeled (hero) lit star. Keyboard tab + ARIA + screen-reader summary all flow through this overlay. Field stars and non-labeled lit stars are NOT accessible targets — accessibility unit is "cluster + hero lit stars" (`docs/adr.md` ADR-63).
+**Accessibility:** WebGL canvas is purely visual. A DOM overlay layer with invisible buttons is absolutely positioned over (a) each Voronoi cluster cell, (b) each cluster label, (c) each lit tech star and its visible label. The overlay receives the same sparse-mode transform as the WebGL camera so visual stars and hit targets stay aligned. Keyboard tab + ARIA + screen-reader summary all flow through this overlay. Field stars and unlit anchors are NOT accessible targets (`docs/adr.md` ADR-63).
 
 **Browser without WebGL:** Skeleton stays mounted (boundary + labels + dim sky), with a small banner: `Your browser doesn't support advanced graphics; using simplified view.` See `docs/adr.md` ADR-62.
 
@@ -198,6 +212,14 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 - Position: above the star; auto-flips at edges.
 - Dismissal: mouse leave → immediate hide.
 - Mobile: not used (tap → drawer).
+
+### Brightness scale
+
+- Location: bottom-right of the constellation viewport by default. It sits below drawer/scrim layers and is hidden during first-reveal/build overlays to avoid competing with transient status copy.
+- Compact state: a vertical Stellarium-style signal scale with tick marks at 5, 10, 30, 80, and 200+ signal. It uses muted amber map ink and no cluster color.
+- Expanded state: hover, focus, or tap reveals a concise explanation: stars light at 5 signal; brightness follows the logarithmic magnitude curve in `features/constellation/render/magnitude.ts`; classification signal comes from selected public repo file paths, dependencies, and repo language; activity signal weights are commit = 1, issue = 2, PR = 5 before confidence splitting.
+- If the user has lit stars, the expanded state also summarizes the current lit-star count, strongest star signal, and the current top-20% threshold used for diffraction spikes.
+- Mobile: the same compact scale is tappable and expands upward so it does not cover the main star field more than necessary.
 
 ### Initial page load
 
@@ -213,14 +235,17 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 **Trigger:** click on cluster label (full drawer) or click on a star (drawer opens with that star's row focused, scrolled, and `Why is this lit?` expanded).
 
 **Layout:**
+
 - Desktop: right slide panel, 480px fixed width.
 - Mobile: bottom sheet — half-screen by default, swipe up for full screen.
 
 **Header:**
+
 - Cluster name (`Backend`).
 - Status line: `Active this week` (if any activity in last 7 days) and/or `· Recently expanded` (if `stage_changed_at` within last 7 days).
 
 **Body (top to bottom):**
+
 1. **Cluster summary** — brief stats: `12 stars lit · 4 brightened this week`. Stage info as small footer text: `Stage 2`.
 2. **Lit stars list** — each row: star icon (color, size matched to canvas), tech name, brightness descriptor (`brightest` / `bright` / `dim` mapped from weight quintiles), first-lit date, top contributing repo (`from juho/my-app`). Row is clickable → toggles inline `Why is this lit?` expansion. Recently unlocked/brightened rows are visually marked.
 3. **`Why is this lit?` expansion (per star, on click)** — detection-rule summary (e.g. `Lit from TypeScript files and React-related paths`), contributing repos list (1–3 repos with the most matches), activity breakdown (`12 commits · 3 PRs`). Inside the expansion: a small `This doesn't look right` button → opens misclassification modal (Sub-flow D).
@@ -238,6 +263,7 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 **Trigger:** Share button in header.
 
 **Layout (top to bottom):**
+
 1. **Header:** `Share your sky` + close X.
 2. **OG preview** — rendered preview of `/api/og/profile/{username}` at 1200×630 ratio.
 3. **Public toggle row** — `Make your constellation public at devastra.app/{username}` + toggle.
@@ -248,6 +274,7 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 **Feedback after a share button click:** modal closes + brief toast `Shared!`.
 
 **Animation:**
+
 - Desktop: fade in/out.
 - Mobile: slide up from bottom.
 
@@ -296,6 +323,7 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 **Purpose:** account, preferences, danger zone.
 
 **Layout:**
+
 - Header: `← Back` link · `Settings` title · avatar dropdown (right).
 - Max width 800px, centered.
 - Single long page, divider lines between sections (no card backgrounds).
@@ -306,20 +334,22 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 1. **Account info** (read-only) — compact: avatar + `@username` on one line, email on the next.
 2. **Public profile** — toggle. OFF state: just toggle + helper `Make your constellation public at devastra.app/{username}`. ON state: toggle expansion below with URL · Copy · `Preview →`.
 3. **Email recap** — toggle + sub-text `Sundays. Skipped after 2 quiet weeks. Next recap: May 18`.
-4. **Timezone** — IANA dropdown, browser default. Sub-text live: `Your weekly recap arrives Sunday at 6 PM in this timezone.` Auto-save on change.
+4. **Timezone** — IANA dropdown, browser default. Sub-text live: `Your weekly recap arrives Sunday at 6 PM in this timezone.` Auto-save on change. The dropdown is rendered from a deterministic server-provided option list, with the user's current timezone always included; client-only `Intl.supportedValuesOf('timeZone')` must not drive the initial option render because Node and Chrome can ship different ICU timezone lists.
 5. **Username change** — text input + inline live validation + URL preview `devastra.app/{new}`. On save success: helper `Anyone with your old URL devastra.app/{old} will be redirected to your new one.`
-6. **Included repos** — default *collapsed* section. Expand → search box + list of repos. Each row: name + last activity + 90-day commits + cluster-color dots + toggle + `View on GitHub →`. Save button at bottom of section. On save: pre-save change-summary modal (`These changes will affect your constellation:` + bullet list).
+6. **Included repos** — default _collapsed_ section. The collapsed state shows only the included/total count and privacy note; the full repo list is lazy-loaded when the user expands the editor. Expand → search box + list of repos. Each row: name + language + toggle. Save button at bottom of section. On save: pre-save change-summary modal (`These changes will affect your constellation:` + brief rebuild note).
 7. **Danger zone** — red border + heading `Danger zone`. Two sub-sections:
    - **Disconnect GitHub** — description + Disconnect button → E.1 modal.
    - **Delete account** — description + Delete button (red text) → E.2 modal.
 
 **Save model:**
+
 - Toggles (public, email recap, timezone): auto-save + toast.
 - Username, repos: explicit Save button per section.
 
 **Validation copy:**
+
 - Username <2 chars: `At least 2 characters`
-- >30 chars: `Up to 30 characters`
+- > 30 chars: `Up to 30 characters`
 - Invalid chars: `Only lowercase letters, numbers, hyphens, and underscores`
 - Reserved name: `This name is reserved`
 - Collision: `This name is taken`
@@ -371,6 +401,16 @@ All banners apply over the main constellation, never block it. Multi-banner prio
 - Refresh button spinner (header).
 - Floating text bottom-right: `Looking for new activity...`
 - After 30s: `Still syncing — this can take a moment for active accounts`
+
+### H.1a — Constellation build-in-progress
+
+- Triggered by `sync_jobs.kind = initial|backfill` with `status = pending|running`.
+- The existing constellation stays visible and interactive context is preserved; a subtle dim/blur veil and bottom-right status panel clarify that the displayed sky is being rebuilt.
+- Initial copy: `Building your constellation` + `Your selected repositories are being analyzed. Stars and connections will settle in as the first build becomes ready.`
+- Settings backfill copy: `Updating your constellation` + `Your repo choices are being applied. Stars and connections will redraw after saved activity and project manifests are checked.`
+- The panel detail line uses `sync_jobs.progress.current_step` when available; otherwise it falls back to a calm starting message.
+- As new data lands, tech stars fade/grow into place and connection lines draw from one endpoint to the other. Reduced-motion users receive the final state without draw animation.
+- The overlay is removed only when the sync job reaches `completed` or `failed`. On failure, the normal sync-failed banner appears and the cached constellation is visible.
 
 ### H.2 — Sync-failed banner
 
@@ -484,6 +524,7 @@ All emails are dark-sky themed (Gmail dark mode looks correct without inversion)
 ### M1.1 — Privacy Policy (`/privacy`)
 
 **Layout:**
+
 - Dim sky background with a light-colored document card (dark text on white, readable for long-form).
 - Header: same as Landing (logo + Sign in CTA).
 - Single column, sections top to bottom, no sidebar TOC.
@@ -497,6 +538,7 @@ Same layout as Privacy Policy. Content sourced from `docs/legal/terms.md`.
 ### M2 — Generic 500 error page (`app/error.tsx`)
 
 **Layout:**
+
 - Dim sky.
 - Copy: `Something went wrong on our end. We've been notified. Please try again in a moment.`
 - Buttons: `Retry` (page reload) · `Home` (`/`).
@@ -504,6 +546,7 @@ Same layout as Privacy Policy. Content sourced from `docs/legal/terms.md`.
 ### M3 — Sign-out state
 
 No dedicated page. After Avatar dropdown → Sign out:
+
 - Redirect to `/?signed_out=true`.
 - Landing page detects the param and shows toast `Signed out`.
 
@@ -512,10 +555,12 @@ No dedicated page. After Avatar dropdown → Sign out:
 **Purpose:** one-click unsubscribe from weekly recap emails. Works without login.
 
 **Behavior on GET with valid token:**
+
 - Server action (idempotent via signed token) sets `users.email_recap_enabled = false`.
 - Render confirmation page (M4.1).
 
 **Behavior on invalid / expired token:**
+
 - Render error page (M4.2).
 
 **Important:** the unsubscribe mutation runs only on POST (server action) to prevent GET prefetch from accidentally unsubscribing. The page issues a POST under the hood; the URL itself is a confirmation surface.
@@ -538,4 +583,4 @@ No dedicated page. After Avatar dropdown → Sign out:
 
 Brief fade transition between submit and first reveal. No additional copy on this transition itself — pre-reveal screen already shows `Analyzing your repos...`.
 
-**Edge case:** if the user navigates away during this transition and returns to `/`, the in-progress sync continues. The page surfaces `Still building your sky...` status until the sync emits its first batch of `landmarks` rows via Realtime.
+**Edge case:** if the user navigates away during this transition and returns to `/`, the in-progress sync continues. The page surfaces the build-in-progress overlay until the `sync_jobs` row reaches `completed` or `failed`.
