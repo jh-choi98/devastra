@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/auth/session'
-import { listUserRepos } from '@/lib/db/queries/users'
+import { getUserRepoSummary } from '@/lib/db/queries/users'
 import { AccountInfoSection } from './_sections/account-info'
 import { PublicProfileSection } from './_sections/public-profile'
 import { EmailRecapSection } from './_sections/email-recap'
@@ -8,6 +8,7 @@ import { TimezoneSection } from './_sections/timezone'
 import { UsernameChangeSection } from './_sections/username-change'
 import { IncludedReposSection } from './_sections/included-repos'
 import { DangerZoneSection } from './_sections/danger-zone'
+import { getTimezoneOptions } from './_timezones'
 
 function getNextSunday(): string {
   const now = new Date()
@@ -38,34 +39,28 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://devastra.app'
 
 export default async function SettingsPage() {
   const user = await requireUser()
-  const repos = await listUserRepos(user.id)
+  const repoSummary = await getUserRepoSummary(user.id)
 
   const nextRecapDate = getNextSunday()
   const timezonePreview = getTimezonePreviewLine(user.timezone)
+  const timezoneOptions = getTimezoneOptions(user.timezone)
 
   return (
-    <main className="min-h-screen bg-[#0b1020] py-10 px-4">
-      <div className="max-w-[800px] mx-auto">
+    <main className="min-h-screen bg-[#0b1020] px-4 py-10">
+      <div className="mx-auto max-w-[800px]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-10">
+        <div className="mb-10 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-            >
+            <Link href="/" className="text-sm text-zinc-400 transition-colors hover:text-zinc-200">
               ← Back
             </Link>
             <h1 className="text-lg font-semibold text-white">Settings</h1>
           </div>
           {user.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={user.avatarUrl}
-              alt={user.displayUsername}
-              className="w-8 h-8 rounded-full"
-            />
+            <img src={user.avatarUrl} alt={user.displayUsername} className="h-8 w-8 rounded-full" />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-200">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs text-zinc-200">
               {user.displayUsername[0]?.toUpperCase()}
             </div>
           )}
@@ -99,6 +94,7 @@ export default async function SettingsPage() {
           <TimezoneSection
             initialTimezone={user.timezone}
             initialPreviewLine={timezonePreview}
+            timezones={timezoneOptions}
           />
 
           <hr className="border-zinc-800" />
@@ -110,7 +106,10 @@ export default async function SettingsPage() {
 
           <hr className="border-zinc-800" />
 
-          <IncludedReposSection repos={repos} />
+          <IncludedReposSection
+            initialIncludedCount={repoSummary.includedCount}
+            totalCount={repoSummary.totalCount}
+          />
 
           <hr className="border-zinc-800" />
 

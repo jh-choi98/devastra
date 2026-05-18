@@ -9,6 +9,7 @@ export type SourceRepo = {
   name: string
   primaryLanguage: string | null
   isPrivate: boolean
+  pushedAt?: Date | null
 }
 
 export type SourceActivity = {
@@ -23,11 +24,25 @@ export type SourceActivity = {
   githubUrl: string
 }
 
+export type HistoricalActivityRepo = {
+  externalRepoId: string
+  owner: string
+  name: string
+  sourcePushedAt?: Date | string | null
+  historicalBootstrapSourcePushedAt?: Date | string | null
+}
+
 export interface SourceClient {
   listAuthoredRepos(): Promise<SourceRepo[]>
   listAuthoredActivities(opts: {
     repoExternalIds: string[]
     since: Date // contributions window
+  }): Promise<SourceActivity[]>
+  listHistoricalAuthoredActivities(opts: {
+    repos: HistoricalActivityRepo[]
+    maxRepos: number
+    maxCommitsPerRepo: number
+    maxPagesPerRepo: number
   }): Promise<SourceActivity[]>
   fetchCommitFiles(
     repoOwner: string,

@@ -1,3 +1,5 @@
+import 'server-only'
+
 export const EVENTS = {
   SYNC_INITIAL_REQUESTED: 'sync/initial.requested',
   SYNC_INCREMENTAL_SCHEDULED: 'sync/incremental.scheduled',

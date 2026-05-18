@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { pgTable, uuid, bigint, text, boolean, timestamp, customType } from 'drizzle-orm/pg-core'
 
 const bytea = customType<{ data: Buffer }>({

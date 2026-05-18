@@ -10,9 +10,12 @@ import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema/users'
 import { usernameHistory } from '@/lib/db/schema/username-history'
 import { repositories } from '@/lib/db/schema/repositories'
+import { listUserRepos } from '@/lib/db/queries/users'
+import { createSyncJob, failSyncJob } from '@/lib/db/queries/sync-jobs'
 import { inngest } from '@/lib/inngest/client'
 import { EVENTS } from '@/features/sync/events'
 import { createAdminClient } from '@/lib/auth/supabase-server'
+import { isSupportedTimezone } from './_timezones'
 
 // ── Public toggle ─────────────────────────────────────────────────────────────
 export async function setPublicProfile(isPublic: boolean): Promise<void> {
@@ -44,8 +47,7 @@ export async function toggleEmailRecap(input: unknown): Promise<void> {
 export async function setTimezone(tz: string): Promise<void> {
   const user = await requireUser()
   const parsed = z.string().min(3).max(60).parse(tz)
-  const validTimezones = Intl.supportedValuesOf('timeZone')
-  if (!validTimezones.includes(parsed)) throw new Error('Invalid timezone.')
+  if (!isSupportedTimezone(parsed)) throw new Error('Invalid timezone.')
   await db.update(users).set({ timezone: parsed }).where(eq(users.id, user.id))
 }
 
@@ -56,7 +58,9 @@ export async function changeTimezone(input: unknown): Promise<void> {
 }
 
 // ── Username availability check ───────────────────────────────────────────────
-export async function checkUsernameAvailable(draft: string): Promise<
+export async function checkUsernameAvailable(
+  draft: string,
+): Promise<
   | { kind: 'available' }
   | { kind: 'taken' }
   | { kind: 'reserved' }
@@ -119,9 +123,28 @@ export async function changeUsername(newUsername: string): Promise<void> {
 
 // ── Included repos ────────────────────────────────────────────────────────────
 const reposSchema = z.array(z.object({ id: z.string().uuid(), isIncluded: z.boolean() }))
-export async function updateIncludedRepos(
-  updates: z.infer<typeof reposSchema>,
-): Promise<void> {
+
+export async function getIncludedRepoEditorData(): Promise<
+  Array<{
+    id: string
+    owner: string
+    name: string
+    primaryLanguage: string | null
+    isIncluded: boolean
+  }>
+> {
+  const user = await requireUser()
+  const repos = await listUserRepos(user.id)
+  return repos.map((repo) => ({
+    id: repo.id,
+    owner: repo.owner,
+    name: repo.name,
+    primaryLanguage: repo.primaryLanguage,
+    isIncluded: repo.isIncluded,
+  }))
+}
+
+export async function updateIncludedRepos(updates: z.infer<typeof reposSchema>): Promise<void> {
   const user = await requireUser()
   const parsed = reposSchema.parse(updates)
 
@@ -134,10 +157,26 @@ export async function updateIncludedRepos(
     }
   })
 
-  await inngest.send({
-    name: EVENTS.SYNC_BACKFILL_REQUESTED,
-    data: { userId: user.id },
+  const includedCount = parsed.filter((repo) => repo.isIncluded).length
+  const job = await createSyncJob({
+    userId: user.id,
+    kind: 'backfill',
+    progress: {
+      repos_analyzed: 0,
+      total: includedCount,
+      current_step: 'Applying your repo choices...',
+    },
   })
+
+  try {
+    await inngest.send({
+      name: EVENTS.SYNC_BACKFILL_REQUESTED,
+      data: { userId: user.id, jobId: job.id, fast: true },
+    })
+  } catch (err) {
+    await failSyncJob(job.id, err instanceof Error ? err.message : String(err))
+    throw err
+  }
 
   redirect('/')
 }

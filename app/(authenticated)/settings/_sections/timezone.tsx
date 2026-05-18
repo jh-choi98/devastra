@@ -7,14 +7,17 @@ import { setTimezone } from '../_actions'
 interface TimezoneSectionProps {
   initialTimezone: string
   initialPreviewLine: string
+  timezones: string[]
 }
 
-export function TimezoneSection({ initialTimezone, initialPreviewLine }: TimezoneSectionProps) {
+export function TimezoneSection({
+  initialTimezone,
+  initialPreviewLine,
+  timezones,
+}: TimezoneSectionProps) {
   const [timezone, setTz] = useState(initialTimezone)
   const [previewLine, setPreviewLine] = useState(initialPreviewLine)
   const [isPending, startTransition] = useTransition()
-
-  const timezones = Intl.supportedValuesOf('timeZone')
 
   function handleChange(tz: string) {
     setTz(tz)
@@ -45,12 +48,12 @@ export function TimezoneSection({ initialTimezone, initialPreviewLine }: Timezon
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">Timezone</h2>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">Timezone</h2>
       <select
         value={timezone}
         onChange={(e) => handleChange(e.target.value)}
         disabled={isPending}
-        className="w-full rounded-lg bg-zinc-800 border border-zinc-600 text-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+        className="w-full rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
       >
         {timezones.map((tz) => (
           <option key={tz} value={tz}>
@@ -58,7 +61,7 @@ export function TimezoneSection({ initialTimezone, initialPreviewLine }: Timezon
           </option>
         ))}
       </select>
-      <p className="text-xs text-zinc-500 mt-2">{previewLine}</p>
+      <p className="mt-2 text-xs text-zinc-500">{previewLine}</p>
     </section>
   )
 }

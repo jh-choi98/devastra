@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { TECH_CATALOG } from '@/features/territories/tech-catalog'
 import { getPublicTech, getAllPublicTech } from '@/features/territories/tech-catalog-public'
+import { getClientStarPositions } from '@/app/_components/Constellation/star-positions'
 
 describe('tech-catalog-parity', () => {
   it('has the same number of entries', () => {
@@ -20,6 +21,17 @@ describe('tech-catalog-parity', () => {
     for (const pub of getAllPublicTech()) {
       const entry = TECH_CATALOG.find((e) => e.tech_key === pub.tech_key)
       expect(entry, `unexpected public entry ${pub.tech_key}`).toBeDefined()
+    }
+  })
+
+  it('has a client star position for every server catalog entry', () => {
+    const clientPositions = getClientStarPositions()
+    expect(clientPositions.length).toBe(TECH_CATALOG.length)
+
+    for (const entry of TECH_CATALOG) {
+      const position = clientPositions.find((p) => p.tech_key === entry.tech_key)
+      expect(position, `missing client star position for ${entry.tech_key}`).toBeDefined()
+      expect(position!.territory).toBe(entry.territory)
     }
   })
 })

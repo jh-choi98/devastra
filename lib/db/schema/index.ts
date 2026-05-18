@@ -1,3 +1,5 @@
+import 'server-only'
+
 export * from './users'
 export * from './repositories'
 export * from './activities'

@@ -7,7 +7,7 @@
  * contain commit messages or other prose that must not be persisted or logged).
  */
 
-const USER_AGENT = 'DevAstra/0.1 (+https://devatlas.app)'
+const USER_AGENT = 'DevAstra/0.1 (+https://devastra.app)'
 
 if (process.argv.includes('--help') || !process.env.GITHUB_TEST_TOKEN) {
   console.log('Usage: GITHUB_TEST_TOKEN=<token> npx tsx scripts/spike-github-api.ts')

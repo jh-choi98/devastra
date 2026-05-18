@@ -7,6 +7,7 @@ import { activityTerritories } from '@/lib/db/schema/activity-territories'
 import { activities } from '@/lib/db/schema/activities'
 import { computeStage } from '@/features/territories/rules'
 import { ALL_TERRITORY_TYPES } from '@/features/territories/registry'
+import { toSyncDateOrNull } from './dates'
 
 export async function recomputeUserDenorm(userId: string): Promise<void> {
   const aggs = await db
@@ -43,13 +44,15 @@ export async function recomputeUserDenorm(userId: string): Promise<void> {
       const agg = aggMap.get(type)
       const totalWeight = agg ? parseFloat(agg.totalWeight) : 0
       const growth30d = agg ? parseFloat(agg.growth30d) : 0
-      const lastGrownAt = agg?.lastGrownAt ?? null
+      const lastGrownAt = toSyncDateOrNull(agg?.lastGrownAt)
       const newStage = computeStage(totalWeight)
 
       const current = currentMap.get(type)
       const oldStage = current?.stage ?? null
       const stageChangedAt =
-        oldStage !== null && newStage !== oldStage ? now : (current?.stageChangedAt ?? null)
+        oldStage !== null && newStage !== oldStage
+          ? now
+          : toSyncDateOrNull(current?.stageChangedAt)
 
       await tx
         .insert(territories)

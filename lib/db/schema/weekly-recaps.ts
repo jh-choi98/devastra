@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { pgTable, uuid, text, jsonb, timestamp, date, uniqueIndex } from 'drizzle-orm/pg-core'
 import { users } from './users'
 

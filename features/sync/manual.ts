@@ -6,17 +6,26 @@ import { activities as activitiesTable } from '@/lib/db/schema/activities'
 import { activityTerritories as activityTerritoriesTable } from '@/lib/db/schema/activity-territories'
 import { landmarks as landmarksTable } from '@/lib/db/schema/landmarks'
 import { buildActivityRaw } from '@/lib/db/queries/activities'
-import { createSyncJob, startSyncJob, completeSyncJob, failSyncJob } from '@/lib/db/queries/sync-jobs'
+import {
+  createSyncJob,
+  startSyncJob,
+  completeSyncJob,
+  failSyncJob,
+} from '@/lib/db/queries/sync-jobs'
 import { getIncludedRepositoriesForUser } from '@/lib/db/queries/repositories'
 import { getUserById, updateUserSyncState } from '@/lib/db/queries/users'
-import { getLatestSyncJobForUser } from '@/lib/db/queries/sync-jobs'
+import { getLatestStartedSyncJobForUser } from '@/lib/db/queries/sync-jobs'
 import { getUsableAccessToken } from '@/lib/github/token'
 import { GitHubClassifier } from '@/features/territories/classifier'
 import { LANDMARK_UNLOCK_THRESHOLD } from '@/features/territories/rules'
 import { GitHubSourceClient } from './sources/github'
 import type { ClassificationContext } from '@/features/territories/classifier'
+import type { DbRepository } from '@/lib/db/queries/repositories'
+import type { SourceActivity } from './sources/interface'
 import { recomputeUserDenorm } from './denorm'
 import { getPreviousLitCount, markFirstStarCinematicIfApplicable } from './cinematic-detection'
+import { toSyncDate, toSyncDateOrNull } from './dates'
+import { mapWithConcurrency } from './concurrency'
 import type { GetStepTools } from 'inngest'
 import type { inngest } from '@/lib/inngest/client'
 
@@ -25,6 +34,45 @@ type StepTools = GetStepTools<typeof inngest>
 const COOLDOWN_MS = 5 * 60 * 1000
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000
+const MAX_MANUAL_COMMIT_DETAILS = 50
+const COMMIT_DETAIL_CONCURRENCY = 6
+
+type StepActivity = Omit<SourceActivity, 'occurredAt'> & { occurredAt: Date | string }
+
+async function enrichCommitActivities(
+  activities: StepActivity[],
+  dbRepos: DbRepository[],
+  github: GitHubSourceClient,
+): Promise<StepActivity[]> {
+  const repoMap = new Map(dbRepos.map((repo) => [repo.externalRepoId, repo]))
+  const commitsToEnrich = new Set(
+    activities
+      .filter((activity) => activity.type === 'commit' && activity.filePaths.length === 0)
+      .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+      .slice(0, MAX_MANUAL_COMMIT_DETAILS)
+      .map((activity) => activity.externalId),
+  )
+
+  return mapWithConcurrency(activities, COMMIT_DETAIL_CONCURRENCY, async (activity) => {
+    let { filePaths, additions, deletions } = activity
+
+    if (activity.type === 'commit' && commitsToEnrich.has(activity.externalId)) {
+      const repo = repoMap.get(activity.repoExternalId)
+      if (repo) {
+        try {
+          const fileData = await github.fetchCommitFiles(repo.owner, repo.name, activity.externalId)
+          filePaths = fileData.file_paths
+          additions = fileData.additions
+          deletions = fileData.deletions
+        } catch {
+          // Keep the activity; classification can still use repo and manifest context.
+        }
+      }
+    }
+
+    return { ...activity, filePaths, additions, deletions }
+  })
+}
 
 export async function run(
   event: { data: { userId: string } },
@@ -33,8 +81,9 @@ export async function run(
   const { userId } = event.data
 
   // Cooldown check — fast DB query, done inline before any steps
-  const recent = await getLatestSyncJobForUser(userId)
-  if (recent?.startedAt && Date.now() - recent.startedAt.getTime() < COOLDOWN_MS) {
+  const recent = await getLatestStartedSyncJobForUser(userId)
+  const recentStartedAt = toSyncDateOrNull(recent?.startedAt)
+  if (recentStartedAt && Date.now() - recentStartedAt.getTime() < COOLDOWN_MS) {
     return { skipped: true, reason: 'cooldown' }
   }
 
@@ -51,57 +100,46 @@ export async function run(
     const accessToken = await step.run('fetch-token', () => getUsableAccessToken(userId))
     const github = new GitHubSourceClient(accessToken, userId)
 
-    const previousLitCount = await step.run('get-prev-lit-count', () =>
-      getPreviousLitCount(userId),
-    )
+    const previousLitCount = await step.run('get-prev-lit-count', () => getPreviousLitCount(userId))
 
     const now = new Date()
+    const lastIncrementalSyncAt = toSyncDateOrNull(user.lastIncrementalSyncAt)
     const sinceDate =
-      user.lastIncrementalSyncAt != null &&
-      now.getTime() - user.lastIncrementalSyncAt.getTime() < NINETY_DAYS_MS
-        ? user.lastIncrementalSyncAt
+      lastIncrementalSyncAt != null &&
+      now.getTime() - lastIncrementalSyncAt.getTime() < NINETY_DAYS_MS
+        ? lastIncrementalSyncAt
         : new Date(now.getTime() - SEVEN_DAYS_MS)
 
     const dbRepos = await getIncludedRepositoriesForUser(userId)
     const repoExternalIds = dbRepos.map((r) => r.externalRepoId)
     const repoIdMap = new Map(dbRepos.map((r) => [r.externalRepoId, r.id]))
+    const repoMap = new Map(dbRepos.map((r) => [r.externalRepoId, r]))
 
     const sourceActivities = await step.run('fetch-activities', () =>
       github.listAuthoredActivities({ repoExternalIds, since: sinceDate }),
+    )
+
+    const enrichedActivities: StepActivity[] = await step.run('enrich-commit-files', () =>
+      enrichCommitActivities(sourceActivities as StepActivity[], dbRepos, github),
     )
 
     await step.run('classify-and-write', async () => {
       const classifier = new GitHubClassifier()
 
       await db.transaction(async (tx) => {
-        const landmarkAccum = new Map<string, { weight: number; territory: string; lastDate: Date }>()
+        const landmarkAccum = new Map<
+          string,
+          { weight: number; territory: string; lastDate: Date }
+        >()
 
-        for (const activity of sourceActivities) {
+        for (const activity of enrichedActivities) {
           // Inngest serializes Date to ISO string — always reconstruct
-          const occurredAt = new Date(activity.occurredAt as unknown as string)
+          const occurredAt = toSyncDate(activity.occurredAt as Date | string)
 
           const repoId = repoIdMap.get(activity.repoExternalId)
           if (!repoId) continue
 
-          let { filePaths, additions, deletions } = activity
-
-          if (activity.type === 'commit' && filePaths.length === 0) {
-            const repo = dbRepos.find((r) => r.externalRepoId === activity.repoExternalId)
-            if (repo) {
-              try {
-                const fileData = await github.fetchCommitFiles(
-                  repo.owner,
-                  repo.name,
-                  activity.externalId,
-                )
-                filePaths = fileData.file_paths
-                additions = fileData.additions
-                deletions = fileData.deletions
-              } catch {
-                // skip
-              }
-            }
-          }
+          const { filePaths, additions, deletions } = activity
 
           const raw = buildActivityRaw({
             file_paths: filePaths,
@@ -129,10 +167,13 @@ export async function run(
           const ctx: ClassificationContext = {
             parsedPackageJsonDeps: [],
             parsedRequirementsTxtDeps: [],
+            parsedPyprojectTomlDeps: [],
             parsedGoModDeps: [],
+            parsedPomXmlDeps: [],
+            parsedGradleDeps: [],
             parsedGemfileDeps: [],
             parsedCargoTomlDeps: [],
-            primaryLanguage: null,
+            primaryLanguage: repoMap.get(activity.repoExternalId)?.primaryLanguage ?? null,
           }
 
           const results = classifier.classify(
@@ -147,13 +188,14 @@ export async function run(
                 activityId: inserted.id,
                 territoryType: result.territory,
                 weight: result.weight.toString(),
+                techKeys: result.techKeys,
               })
               .onConflictDoUpdate({
                 target: [
                   activityTerritoriesTable.activityId,
                   activityTerritoriesTable.territoryType,
                 ],
-                set: { weight: result.weight.toString() },
+                set: { weight: result.weight.toString(), techKeys: result.techKeys },
               })
 
             for (const techKey of result.techKeys) {
@@ -170,7 +212,9 @@ export async function run(
           }
         }
 
-        for (const [techKey, { weight, territory, lastDate }] of Array.from(landmarkAccum.entries())) {
+        for (const [techKey, { weight, territory, lastDate }] of Array.from(
+          landmarkAccum.entries(),
+        )) {
           const [existing] = await tx
             .select({
               weight: landmarksTable.weight,
@@ -182,7 +226,8 @@ export async function run(
           const existingWeight = existing ? parseFloat(existing.weight) : 0
           const newWeight = existingWeight + weight
           const firstUnlockedAt =
-            existing?.firstUnlockedAt ?? (newWeight >= LANDMARK_UNLOCK_THRESHOLD ? lastDate : null)
+            toSyncDateOrNull(existing?.firstUnlockedAt) ??
+            (newWeight >= LANDMARK_UNLOCK_THRESHOLD ? lastDate : null)
 
           await tx
             .insert(landmarksTable)

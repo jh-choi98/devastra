@@ -1,12 +1,13 @@
 import 'server-only'
 
-import { and, count, desc, eq, gte, sql } from 'drizzle-orm'
+import { count, desc, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { activities } from '@/lib/db/schema/activities'
 import { activityTerritories } from '@/lib/db/schema/activity-territories'
 import { landmarks } from '@/lib/db/schema/landmarks'
 import { repositories } from '@/lib/db/schema/repositories'
-import { withUserScope, withUserScopeAnd } from './_helpers'
+import { withUserScopeAnd } from './_helpers'
+import type { TechCatalogEntry } from '@/features/territories/tech-catalog'
 import type { TerritoryType } from '@/features/territories/registry'
 
 // ── Landmark unlock threshold (mirrors rules.ts) ────────────────────────────
@@ -29,6 +30,149 @@ export type ClusterDrawerData = {
   growth30d: number
   stageChangedAt: string | null
   litStars: ClusterDrawerLitStar[]
+}
+
+export type ActivityAttributionRow = {
+  techKey: string
+  repoId: string
+  type: string
+  repoOwner: string
+  repoName: string
+  cnt: number
+}
+
+type ActivityRaw = {
+  file_paths?: unknown
+}
+
+const PRIMARY_LANGUAGE_TECH_FALLBACK: Record<string, string> = {
+  go: 'go',
+  python: 'python',
+  rust: 'rust',
+  java: 'java',
+  javascript: 'javascript',
+  typescript: 'typescript',
+  css: 'css',
+  vue: 'vue',
+  svelte: 'svelte',
+  sql: 'sql',
+  dockerfile: 'docker',
+  hcl: 'terraform',
+  'c++': 'cpp',
+  c: 'c',
+}
+
+function basename(filePath: string): string {
+  return filePath.split('/').pop() ?? filePath
+}
+
+function filePathsFromRaw(raw: unknown): string[] {
+  const maybeRaw = raw as ActivityRaw
+  return Array.isArray(maybeRaw.file_paths)
+    ? maybeRaw.file_paths.filter((path): path is string => typeof path === 'string')
+    : []
+}
+
+function inferStoredActivityTechKeys(
+  raw: unknown,
+  primaryLanguage: string | null,
+  catalog: readonly TechCatalogEntry[],
+): Set<string> {
+  const keys = new Set<string>()
+  const filePaths = filePathsFromRaw(raw).map((path) => path.replace(/\\/g, '/').toLowerCase())
+
+  for (const entry of catalog) {
+    for (const rule of entry.rules) {
+      if (
+        rule.kind === 'ext' &&
+        filePaths.some((path) => rule.extensions.some((ext) => path.endsWith(ext.toLowerCase())))
+      ) {
+        keys.add(entry.tech_key)
+      }
+      if (
+        rule.kind === 'path' &&
+        filePaths.some((path) =>
+          rule.prefixes.some((prefix) => path.startsWith(prefix.toLowerCase())),
+        )
+      ) {
+        keys.add(entry.tech_key)
+      }
+      if (
+        rule.kind === 'filename' &&
+        filePaths.some((path) => rule.names.includes(basename(path)))
+      ) {
+        keys.add(entry.tech_key)
+      }
+    }
+  }
+
+  const primaryFallback = primaryLanguage
+    ? PRIMARY_LANGUAGE_TECH_FALLBACK[primaryLanguage.toLowerCase()]
+    : undefined
+  if (primaryFallback) keys.add(primaryFallback)
+
+  return keys
+}
+
+export function buildClusterDrawerLitStars(
+  litLandmarks: Array<{
+    techKey: string
+    weight: string | number
+    firstUnlockedAt: Date | null
+  }>,
+  catalogMap: Map<string, Pick<TechCatalogEntry, 'displayName' | 'rules'>>,
+  rowsByTechKey: Map<string, ActivityAttributionRow[]>,
+): ClusterDrawerLitStar[] {
+  return litLandmarks.map((lm) => {
+    const entry = catalogMap.get(lm.techKey)
+    const matchedRuleKinds = entry ? Array.from(new Set(entry.rules.map((r) => r.kind))) : []
+    const rows = rowsByTechKey.get(lm.techKey) ?? []
+    const repoTotals: Map<string, { owner: string; name: string; repoId: string; total: number }> =
+      new Map()
+    let commits = 0
+    let prs = 0
+    let issues = 0
+
+    for (const row of rows) {
+      const existing = repoTotals.get(row.repoId)
+      if (existing) {
+        existing.total += row.cnt
+      } else {
+        repoTotals.set(row.repoId, {
+          owner: row.repoOwner,
+          name: row.repoName,
+          repoId: row.repoId,
+          total: row.cnt,
+        })
+      }
+
+      if (row.type === 'commit' || row.type === 'push') commits += row.cnt
+      else if (row.type === 'pr') prs += row.cnt
+      else if (row.type === 'issue') issues += row.cnt
+    }
+
+    const sortedRepos = Array.from(repoTotals.values()).sort((a, b) => b.total - a.total)
+    const topRepo = sortedRepos[0] ?? null
+    const contributingRepos = sortedRepos.slice(0, 3).map((r) => ({
+      owner: r.owner,
+      name: r.name,
+      repoId: r.repoId,
+      matchCount: r.total,
+    }))
+
+    return {
+      tech_key: lm.techKey,
+      displayName: entry?.displayName ?? lm.techKey,
+      weight: Number(lm.weight),
+      firstUnlockedAt: lm.firstUnlockedAt?.toISOString() ?? null,
+      topContributingRepo: topRepo
+        ? { owner: topRepo.owner, name: topRepo.name, repoId: topRepo.repoId }
+        : null,
+      matchedRuleKinds,
+      contributingRepos,
+      activity: { commits, prs, issues },
+    }
+  })
 }
 
 export async function getClusterDrawerData(
@@ -60,13 +204,19 @@ export async function getClusterDrawerData(
     return { type: territoryType, stage, growth30d, stageChangedAt, litStars: [] }
   }
 
-  // 2. For each landmark, fetch per-repo activity counts
+  // 2. Fetch per-repo activity counts for all lit tech keys in one query.
   const techKeys = litLandmarks.map((l) => l.techKey)
+  const techKeySet = new Set(techKeys)
+  const techKeyArray = sql`ARRAY[${sql.join(
+    techKeys.map((techKey) => sql`${techKey}`),
+    sql`, `,
+  )}]::text[]`
 
-  // Query activity counts grouped by (techKey, repoId, type)
-  const activityRows = await db
+  const activityRows: ActivityAttributionRow[] = []
+
+  const rows = await db
     .select({
-      techKey: activityTerritories.territoryType, // we use territory, not techKey directly
+      storedTechKeys: activityTerritories.techKeys,
       repoId: activities.repoId,
       type: activities.type,
       repoOwner: repositories.owner,
@@ -81,90 +231,100 @@ export async function getClusterDrawerData(
         userId,
         activities.userId,
         eq(activityTerritories.territoryType, territoryType),
+        sql`${activityTerritories.techKeys} && ${techKeyArray}`,
       ),
     )
     .groupBy(
-      activityTerritories.territoryType,
+      activityTerritories.techKeys,
       activities.repoId,
       activities.type,
       repositories.owner,
       repositories.name,
     )
 
-  // 3. Per-repo totals for the cluster (to resolve topContributingRepo per star)
-  //    Since file-level tech_key mapping isn't stored, we approximate:
-  //    top repo per star = the repo with most total activities in this cluster.
-  const repoTotals: Map<string, { owner: string; name: string; repoId: string; total: number }> =
-    new Map()
-  const activityTypeCountByRepo: Map<string, { commits: number; prs: number; issues: number }> =
-    new Map()
-
-  for (const row of activityRows) {
-    const key = row.repoId
-    const existing = repoTotals.get(key)
-    const n = Number(row.cnt)
-    if (existing) {
-      existing.total += n
-    } else {
-      repoTotals.set(key, {
-        owner: row.repoOwner,
-        name: row.repoName,
+  for (const row of rows) {
+    for (const techKey of row.storedTechKeys) {
+      if (!techKeySet.has(techKey)) continue
+      activityRows.push({
+        techKey,
         repoId: row.repoId,
-        total: n,
+        type: row.type,
+        repoOwner: row.repoOwner,
+        repoName: row.repoName,
+        cnt: Number(row.cnt),
       })
     }
-
-    const typeMap = activityTypeCountByRepo.get(key) ?? { commits: 0, prs: 0, issues: 0 }
-    if (row.type === 'commit' || row.type === 'push') typeMap.commits += n
-    else if (row.type === 'pr') typeMap.prs += n
-    else if (row.type === 'issue') typeMap.issues += n
-    activityTypeCountByRepo.set(key, typeMap)
   }
 
-  const sortedRepos = Array.from(repoTotals.values()).sort((a, b) => b.total - a.total)
-  const topRepo = sortedRepos[0] ?? null
-
-  // 4. Cluster-wide activity breakdown
-  let clusterCommits = 0
-  let clusterPRs = 0
-  let clusterIssues = 0
-  for (const row of activityRows) {
-    const n = Number(row.cnt)
-    if (row.type === 'commit' || row.type === 'push') clusterCommits += n
-    else if (row.type === 'pr') clusterPRs += n
-    else if (row.type === 'issue') clusterIssues += n
-  }
-
-  // 5. Derive matched rule kinds from the tech catalog (server-side)
+  // 3. Derive matched rule kinds from the tech catalog (server-side)
   //    Import lazily to keep the query file focused.
   const { TECH_CATALOG } = await import('@/features/territories/tech-catalog')
   const catalogMap = new Map(TECH_CATALOG.map((e) => [e.tech_key, e]))
 
-  // 6. Build litStars
-  const litStars: ClusterDrawerLitStar[] = litLandmarks.map((lm) => {
-    const entry = catalogMap.get(lm.techKey)
-    const matchedRuleKinds = entry ? Array.from(new Set(entry.rules.map((r) => r.kind))) : []
+  const attributedTechKeys = new Set(activityRows.map((row) => row.techKey))
+  const missingTechKeys = techKeys.filter((techKey) => !attributedTechKeys.has(techKey))
 
-    const contributingRepos = sortedRepos.slice(0, 3).map((r) => ({
-      owner: r.owner,
-      name: r.name,
-      repoId: r.repoId,
-      matchCount: r.total,
-    }))
+  if (missingTechKeys.length > 0) {
+    const legacyRows = await db
+      .select({
+        repoId: activities.repoId,
+        type: activities.type,
+        raw: activities.raw,
+        repoOwner: repositories.owner,
+        repoName: repositories.name,
+        primaryLanguage: repositories.primaryLanguage,
+        storedTechKeys: activityTerritories.techKeys,
+      })
+      .from(activities)
+      .innerJoin(repositories, eq(repositories.id, activities.repoId))
+      .innerJoin(activityTerritories, eq(activityTerritories.activityId, activities.id))
+      .where(
+        withUserScopeAnd(
+          userId,
+          activities.userId,
+          eq(activityTerritories.territoryType, territoryType),
+        ),
+      )
 
-    return {
-      tech_key: lm.techKey,
-      displayName: entry?.displayName ?? lm.techKey,
-      weight: Number(lm.weight),
-      firstUnlockedAt: lm.firstUnlockedAt?.toISOString() ?? null,
-      topContributingRepo: topRepo
-        ? { owner: topRepo.owner, name: topRepo.name, repoId: topRepo.repoId }
-        : null,
-      matchedRuleKinds,
-      contributingRepos,
-      activity: { commits: clusterCommits, prs: clusterPRs, issues: clusterIssues },
+    const fallbackCounts = new Map<string, ActivityAttributionRow>()
+
+    for (const row of legacyRows) {
+      if (row.storedTechKeys.length > 0) continue
+      const inferredTechKeys = inferStoredActivityTechKeys(
+        row.raw,
+        row.primaryLanguage,
+        TECH_CATALOG,
+      )
+      for (const techKey of missingTechKeys) {
+        if (!inferredTechKeys.has(techKey)) continue
+        const key = `${techKey}:${row.repoId}:${row.type}`
+        const existing = fallbackCounts.get(key)
+        if (existing) {
+          existing.cnt += 1
+        } else {
+          fallbackCounts.set(key, {
+            techKey,
+            repoId: row.repoId,
+            type: row.type,
+            repoOwner: row.repoOwner,
+            repoName: row.repoName,
+            cnt: 1,
+          })
+        }
+      }
     }
-  })
+
+    activityRows.push(...Array.from(fallbackCounts.values()))
+  }
+
+  const rowsByTechKey = new Map<string, ActivityAttributionRow[]>()
+  for (const row of activityRows) {
+    const rows = rowsByTechKey.get(row.techKey) ?? []
+    rows.push(row)
+    rowsByTechKey.set(row.techKey, rows)
+  }
+
+  const litStars = buildClusterDrawerLitStars(litLandmarks, catalogMap, rowsByTechKey)
 
   return { type: territoryType, stage, growth30d, stageChangedAt, litStars }
 }
@@ -188,10 +348,7 @@ export async function getTopReposForTerritory(
     .innerJoin(repositories, eq(repositories.id, activities.repoId))
     .innerJoin(activityTerritories, eq(activityTerritories.activityId, activities.id))
     .where(
-      and(
-        eq(activities.userId, userId),
-        eq(activityTerritories.territoryType, territoryType),
-      ),
+      withUserScopeAnd(userId, activities.userId, eq(activityTerritories.territoryType, territoryType)),
     )
     .groupBy(repositories.owner, repositories.name)
     .orderBy(desc(count()))
@@ -215,8 +372,9 @@ export async function getRecentPRsForTerritory(
     .from(activities)
     .innerJoin(activityTerritories, eq(activityTerritories.activityId, activities.id))
     .where(
-      and(
-        eq(activities.userId, userId),
+      withUserScopeAnd(
+        userId,
+        activities.userId,
         eq(activityTerritories.territoryType, territoryType),
         eq(activities.type, 'pr'),
       ),

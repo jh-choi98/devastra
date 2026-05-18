@@ -26,13 +26,20 @@ function makeActivity(opts: {
 const emptyCtx: ClassificationContext = {
   parsedPackageJsonDeps: [],
   parsedRequirementsTxtDeps: [],
+  parsedPyprojectTomlDeps: [],
   parsedGoModDeps: [],
+  parsedPomXmlDeps: [],
+  parsedGradleDeps: [],
   parsedGemfileDeps: [],
   parsedCargoTomlDeps: [],
 }
 
 function ctxWith(overrides: Partial<ClassificationContext>): ClassificationContext {
   return { ...emptyCtx, ...overrides }
+}
+
+function techKeysFrom(results: ReturnType<GitHubClassifier['classify']>): Set<string> {
+  return new Set(results.flatMap((result) => result.techKeys))
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +82,16 @@ describe('Frontend Land catalog entries', () => {
       ctxWith({ parsedPackageJsonDeps: ['react'] }),
     )
     expect(results.some((r) => r.techKeys.includes('react'))).toBe(true)
+  })
+
+  it('react in a TypeScript repo also lights the TypeScript language star', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: [] }),
+      ctxWith({ parsedPackageJsonDeps: ['react'], primaryLanguage: 'TypeScript' }),
+    )
+    const techKeys = techKeysFrom(results)
+    expect(techKeys.has('react')).toBe(true)
+    expect(techKeys.has('typescript')).toBe(true)
   })
 
   it('nextjs: matches packageJson dep', () => {
@@ -147,6 +164,19 @@ describe('Frontend Land catalog entries', () => {
     )
     expect(results.some((r) => r.techKeys.includes('webpack'))).toBe(true)
   })
+
+  it('astro/remix/solid/tanstack query: match packageJson deps', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: [] }),
+      ctxWith({
+        parsedPackageJsonDeps: ['astro', '@remix-run/react', 'solid-js', '@tanstack/react-query'],
+      }),
+    )
+    expect(results.some((r) => r.techKeys.includes('astro'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('remix'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('solidjs'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('tanstack_query'))).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -190,17 +220,59 @@ describe('Backend Fortress catalog entries', () => {
     expect(results.some((r) => r.techKeys.includes('nestjs'))).toBe(true)
   })
 
+  it('hono and tRPC: match packageJson deps', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: [] }),
+      ctxWith({ parsedPackageJsonDeps: ['hono', '@trpc/server'] }),
+    )
+    expect(results.some((r) => r.techKeys.includes('hono'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('trpc'))).toBe(true)
+  })
+
   it('go: matches .go files', () => {
     const results = classifier.classify(makeActivity({ filePaths: ['main.go'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('go'))).toBe(true)
   })
 
+  it('c and cpp: match native backend file extensions', () => {
+    const cppResults = classifier.classify(
+      makeActivity({ filePaths: ['src/main.cpp', 'include/app.hpp'] }),
+      emptyCtx,
+    )
+    const cResults = classifier.classify(
+      makeActivity({ filePaths: ['src/main.c', 'include/app.h'] }),
+      emptyCtx,
+    )
+
+    expect(techKeysFrom(cppResults).has('cpp')).toBe(true)
+    expect(techKeysFrom(cResults).has('c')).toBe(true)
+  })
+
   it('gin: matches goMod dep', () => {
     const results = classifier.classify(
       makeActivity({ filePaths: [] }),
-      ctxWith({ parsedGoModDeps: ['gin-gonic/gin'] }),
+      ctxWith({ parsedGoModDeps: ['github.com/gin-gonic/gin'] }),
     )
-    expect(results.some((r) => r.techKeys.includes('gin'))).toBe(true)
+    const techKeys = techKeysFrom(results)
+    expect(techKeys.has('gin')).toBe(true)
+    expect(techKeys.has('go')).toBe(true)
+  })
+
+  it('echo, fiber, and gRPC: match Go module deps', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: [] }),
+      ctxWith({
+        parsedGoModDeps: [
+          'github.com/labstack/echo/v4',
+          'github.com/gofiber/fiber/v2',
+          'google.golang.org/grpc',
+        ],
+      }),
+    )
+    expect(results.some((r) => r.techKeys.includes('echo'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('fiber'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('grpc'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('go'))).toBe(true)
   })
 
   it('python: matches .py files', () => {
@@ -212,6 +284,16 @@ describe('Backend Fortress catalog entries', () => {
     const results = classifier.classify(
       makeActivity({ filePaths: [] }),
       ctxWith({ parsedRequirementsTxtDeps: ['fastapi'] }),
+    )
+    const techKeys = techKeysFrom(results)
+    expect(techKeys.has('fastapi')).toBe(true)
+    expect(techKeys.has('python')).toBe(true)
+  })
+
+  it('fastapi: matches pyproject dep', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: [] }),
+      ctxWith({ parsedPyprojectTomlDeps: ['fastapi'] }),
     )
     expect(results.some((r) => r.techKeys.includes('fastapi'))).toBe(true)
   })
@@ -240,6 +322,35 @@ describe('Backend Fortress catalog entries', () => {
   it('java: matches .java files', () => {
     const results = classifier.classify(makeActivity({ filePaths: ['Main.java'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('java'))).toBe(true)
+  })
+
+  it('axum/actix/spring/rails: match ecosystem manifests', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: [] }),
+      ctxWith({
+        parsedCargoTomlDeps: ['axum', 'actix-web'],
+        parsedPomXmlDeps: ['spring-boot-starter-web'],
+        parsedGemfileDeps: ['rails'],
+      }),
+    )
+    expect(results.some((r) => r.techKeys.includes('axum'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('actix'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('spring'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('rails'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('rust'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('java'))).toBe(true)
+  })
+
+  it('node framework packages also light the Node.js runtime star', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: [] }),
+      ctxWith({ parsedPackageJsonDeps: ['express', 'fastify', '@nestjs/core'] }),
+    )
+    const techKeys = techKeysFrom(results)
+    expect(techKeys.has('express')).toBe(true)
+    expect(techKeys.has('fastify')).toBe(true)
+    expect(techKeys.has('nestjs')).toBe(true)
+    expect(techKeys.has('nodejs')).toBe(true)
   })
 })
 
@@ -296,10 +407,7 @@ describe('Data Pipeline Zone catalog entries', () => {
   })
 
   it('dbt: matches dbt_project.yml filename', () => {
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['dbt_project.yml'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['dbt_project.yml'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('dbt'))).toBe(true)
   })
 
@@ -309,6 +417,24 @@ describe('Data Pipeline Zone catalog entries', () => {
       ctxWith({ parsedPackageJsonDeps: ['prisma'] }),
     )
     expect(results.some((r) => r.techKeys.includes('prisma'))).toBe(true)
+  })
+
+  it('drizzle/supabase/data science deps: match manifests and notebooks', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: ['notebooks/explore.ipynb'] }),
+      ctxWith({
+        parsedPackageJsonDeps: ['drizzle-orm', '@supabase/supabase-js', 'duckdb'],
+        parsedPyprojectTomlDeps: ['sqlalchemy', 'pandas', 'numpy', 'scikit-learn'],
+      }),
+    )
+    expect(results.some((r) => r.techKeys.includes('drizzle'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('supabase'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('sqlalchemy'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('pandas'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('numpy'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('scikit_learn'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('jupyter'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('duckdb'))).toBe(true)
   })
 })
 
@@ -363,6 +489,22 @@ describe('Testing Lab catalog entries', () => {
     )
     expect(results.some((r) => r.techKeys.includes('rspec'))).toBe(true)
   })
+
+  it('additional testing tools match package and JVM manifests', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: [] }),
+      ctxWith({
+        parsedPackageJsonDeps: ['@testing-library/react', 'mocha', 'ava', 'msw', 'tap'],
+        parsedGradleDeps: ['junit-jupiter'],
+      }),
+    )
+    expect(results.some((r) => r.techKeys.includes('testing_library'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('mocha'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('ava'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('msw'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('tap'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('junit'))).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -370,10 +512,7 @@ describe('Testing Lab catalog entries', () => {
 // ---------------------------------------------------------------------------
 describe('DevOps Harbor catalog entries', () => {
   it('docker: matches Dockerfile filename', () => {
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['Dockerfile'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['Dockerfile'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('docker'))).toBe(true)
   })
 
@@ -394,10 +533,7 @@ describe('DevOps Harbor catalog entries', () => {
   })
 
   it('terraform: matches .tf files', () => {
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['infra/main.tf'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['infra/main.tf'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('terraform'))).toBe(true)
   })
 
@@ -418,19 +554,33 @@ describe('DevOps Harbor catalog entries', () => {
   })
 
   it('vercel: matches vercel.json filename', () => {
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['vercel.json'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['vercel.json'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('vercel'))).toBe(true)
   })
 
   it('nginx: matches nginx.conf filename', () => {
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['nginx.conf'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['nginx.conf'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('nginx'))).toBe(true)
+  })
+
+  it('additional DevOps tools match config files and paths', () => {
+    const results = classifier.classify(
+      makeActivity({
+        filePaths: [
+          'docker-compose.yml',
+          'charts/api/Chart.yaml',
+          'wrangler.toml',
+          'netlify.toml',
+          'ansible/site.yml',
+        ],
+      }),
+      ctxWith({ parsedPackageJsonDeps: ['wrangler'] }),
+    )
+    expect(results.some((r) => r.techKeys.includes('docker_compose'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('helm'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('cloudflare'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('netlify'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('ansible'))).toBe(true)
   })
 })
 
@@ -439,26 +589,17 @@ describe('DevOps Harbor catalog entries', () => {
 // ---------------------------------------------------------------------------
 describe('Docs Library catalog entries', () => {
   it('markdown: matches .md files', () => {
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['README.md'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['README.md'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('markdown'))).toBe(true)
   })
 
   it('mdx: matches .mdx files', () => {
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['docs/guide.mdx'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['docs/guide.mdx'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('mdx'))).toBe(true)
   })
 
   it('jsdoc: matches jsdoc.json filename', () => {
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['jsdoc.json'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['jsdoc.json'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('jsdoc'))).toBe(true)
   })
 
@@ -471,11 +612,20 @@ describe('Docs Library catalog entries', () => {
   })
 
   it('openapi: matches openapi.yaml filename', () => {
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['openapi.yaml'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['openapi.yaml'] }), emptyCtx)
     expect(results.some((r) => r.techKeys.includes('openapi'))).toBe(true)
+  })
+
+  it('additional docs tools match docs files and package deps', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: ['swagger.yaml', 'mint.json', 'CHANGELOG.md'] }),
+      ctxWith({ parsedPackageJsonDeps: ['typedoc', '@docusaurus/core'] }),
+    )
+    expect(results.some((r) => r.techKeys.includes('swagger'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('typedoc'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('docusaurus'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('mintlify'))).toBe(true)
+    expect(results.some((r) => r.techKeys.includes('changelog'))).toBe(true)
   })
 })
 
@@ -486,7 +636,7 @@ describe('Multi-territory affinity', () => {
   it('multi-territory commit yields three results with affinity < 1.0', () => {
     // React (frontend_land) + .sql migration (data_pipeline_zone) + Dockerfile (devops_harbor)
     const activity = makeActivity({
-      filePaths: ['migrations/001_init.sql', 'Dockerfile'],
+      filePaths: ['components/App.tsx', 'migrations/001_init.sql', 'Dockerfile'],
     })
     const ctx = ctxWith({ parsedPackageJsonDeps: ['react'] })
     const results = classifier.classify(activity, ctx)
@@ -510,8 +660,8 @@ describe('Multi-territory affinity', () => {
   })
 
   it('two-territory commit has affinity = 1/sqrt(2)', () => {
-    // .go (backend_fortress) + .tf (devops_harbor)
-    const activity = makeActivity({ filePaths: ['main.go', 'infra/main.tf'] })
+    // .go under cmd/ (backend_fortress) + .tf under infra/ (devops_harbor)
+    const activity = makeActivity({ filePaths: ['cmd/main.go', 'infra/main.tf'] })
     const results = classifier.classify(activity, emptyCtx)
     expect(results).toHaveLength(2)
     const expected = Math.max(0.5, 1 / Math.sqrt(2))
@@ -524,7 +674,13 @@ describe('Multi-territory affinity', () => {
     // frontend_land (.ts) + backend_fortress (.go) + data_pipeline_zone (.sql)
     // + devops_harbor (.tf) + docs_library (.md) = 5 territories
     const activity = makeActivity({
-      filePaths: ['src/app.ts', 'cmd/main.go', 'migrations/001.sql', 'infra/main.tf', 'README.md'],
+      filePaths: [
+        'components/App.tsx',
+        'cmd/main.go',
+        'migrations/001.sql',
+        'infra/main.tf',
+        'README.md',
+      ],
     })
     const results = classifier.classify(activity, emptyCtx)
     expect(results.length).toBeGreaterThanOrEqual(5)
@@ -598,6 +754,7 @@ describe('Fallback logic', () => {
     )
     expect(results).toHaveLength(1)
     expect(results[0].territory).toBe('backend_fortress')
+    expect(results[0].techKeys).toEqual(['go'])
   })
 
   it('primary language matching is case-insensitive', () => {
@@ -607,14 +764,32 @@ describe('Fallback logic', () => {
     )
     expect(results).toHaveLength(1)
     expect(results[0].territory).toBe('backend_fortress')
+    expect(results[0].techKeys).toEqual(['go'])
+  })
+
+  it('primary language fallback lights matching backend language stars', () => {
+    const cases = [
+      ['python', 'python'],
+      ['rust', 'rust'],
+      ['java', 'java'],
+      ['c++', 'cpp'],
+      ['c', 'c'],
+    ] as const
+
+    for (const [primaryLanguage, techKey] of cases) {
+      const results = classifier.classify(
+        makeActivity({ filePaths: [] }),
+        ctxWith({ primaryLanguage }),
+      )
+      expect(results).toHaveLength(1)
+      expect(results[0].territory).toBe('backend_fortress')
+      expect(results[0].techKeys).toEqual([techKey])
+    }
   })
 
   it('returns testing_lab via extension fallback for .test. files', () => {
     // .rb extension has no catalog entry; .test. triggers fallback
-    const results = classifier.classify(
-      makeActivity({ filePaths: ['unit.test.rb'] }),
-      emptyCtx,
-    )
+    const results = classifier.classify(makeActivity({ filePaths: ['unit.test.rb'] }), emptyCtx)
     expect(results).toHaveLength(1)
     expect(results[0].territory).toBe('testing_lab')
   })
@@ -628,15 +803,33 @@ describe('Fallback logic', () => {
     expect(results[0].territory).toBe('testing_lab')
   })
 
-  it('extension fallback does not activate when catalog already matched', () => {
-    // .ts matched by typescript catalog entry; extension fallback should not add testing_lab
+  it('test paths override generic language extension matches', () => {
+    const results = classifier.classify(makeActivity({ filePaths: ['App.test.ts'] }), emptyCtx)
+    const territories = results.map((r) => r.territory)
+    expect(territories).toContain('testing_lab')
+    expect(territories).not.toContain('frontend_land')
+  })
+
+  it('backend TypeScript paths grow Backend / Node.js, not generic Frontend', () => {
     const results = classifier.classify(
-      makeActivity({ filePaths: ['App.test.ts'] }),
+      makeActivity({ filePaths: ['server/routes/users.ts'] }),
       emptyCtx,
     )
     const territories = results.map((r) => r.territory)
-    expect(territories).toContain('frontend_land')
-    expect(territories).not.toContain('testing_lab')
+    expect(territories).toContain('backend_fortress')
+    expect(territories).not.toContain('frontend_land')
+    expect(results.some((r) => r.techKeys.includes('nodejs'))).toBe(true)
+  })
+
+  it('data Python paths grow Data without lighting the Backend Python star', () => {
+    const results = classifier.classify(
+      makeActivity({ filePaths: ['notebooks/explore.py'] }),
+      emptyCtx,
+    )
+    const territories = results.map((r) => r.territory)
+    expect(territories).toContain('data_pipeline_zone')
+    expect(territories).not.toContain('backend_fortress')
+    expect(results.some((r) => r.techKeys.includes('python'))).toBe(false)
   })
 
   it('returns null for unknown primary language', () => {

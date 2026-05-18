@@ -1,27 +1,24 @@
 import 'server-only'
 
-import { createClient } from '@supabase/supabase-js'
 import { sql } from 'drizzle-orm'
 import { db } from './client'
 
 // TODO (Phase 3/4): Wire up real Vault key retrieval once the Supabase Vault secret
-// 'devatlas_token_encryption_key' is provisioned in the project.
+// 'devastra_token_encryption_key' is provisioned in the project.
+const TOKEN_ENCRYPTION_KEY_SECRET_NAME = 'devastra_token_encryption_key'
+
 async function getEncryptionKey(): Promise<string> {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  const result = await db.execute<{ decrypted_secret: string }>(
+    sql`
+      SELECT decrypted_secret
+      FROM vault.decrypted_secrets
+      WHERE name = ${TOKEN_ENCRYPTION_KEY_SECRET_NAME}
+      LIMIT 1
+    `,
   )
-  const { data, error } = await (supabase.schema('vault') as ReturnType<typeof supabase.schema>)
-    .from('decrypted_secrets')
-    .select('name, decrypted_secret')
-  if (error || !data) {
-    throw new Error('Vault key not available — ensure devatlas_token_encryption_key is provisioned')
-  }
-  const secret = (data as Array<{ name: string; decrypted_secret: string }>).find(
-    (s) => s.name === 'devatlas_token_encryption_key',
-  )
+  const [secret] = result as unknown as Array<{ decrypted_secret: string }>
   if (!secret) {
-    throw new Error('Vault secret devatlas_token_encryption_key not found')
+    throw new Error(`Vault secret ${TOKEN_ENCRYPTION_KEY_SECRET_NAME} not found`)
   }
   return secret.decrypted_secret
 }

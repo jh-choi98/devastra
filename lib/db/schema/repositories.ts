@@ -1,4 +1,15 @@
-import { pgTable, uuid, text, boolean, timestamp, uniqueIndex, index } from 'drizzle-orm/pg-core'
+import 'server-only'
+
+import {
+  pgTable,
+  uuid,
+  text,
+  boolean,
+  timestamp,
+  jsonb,
+  uniqueIndex,
+  index,
+} from 'drizzle-orm/pg-core'
 import { users } from './users'
 
 export const repositories = pgTable(
@@ -14,6 +25,19 @@ export const repositories = pgTable(
     name: text('name').notNull(),
     primaryLanguage: text('primary_language'),
     isIncluded: boolean('is_included').notNull().default(true),
+    sourcePushedAt: timestamp('source_pushed_at', { withTimezone: true }),
+    manifestContext: jsonb('manifest_context'),
+    manifestSourcePushedAt: timestamp('manifest_source_pushed_at', { withTimezone: true }),
+    manifestCachedAt: timestamp('manifest_cached_at', { withTimezone: true }),
+    historicalBootstrapSourcePushedAt: timestamp('historical_bootstrap_source_pushed_at', {
+      withTimezone: true,
+    }),
+    historicalBootstrapCheckedAt: timestamp('historical_bootstrap_checked_at', {
+      withTimezone: true,
+    }),
+    commitsFetchedSourcePushedAt: timestamp('commits_fetched_source_pushed_at', {
+      withTimezone: true,
+    }),
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

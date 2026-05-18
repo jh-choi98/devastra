@@ -7,7 +7,13 @@ import { activityTerritories as activityTerritoriesTable } from '@/lib/db/schema
 import { landmarks as landmarksTable } from '@/lib/db/schema/landmarks'
 import { repositories } from '@/lib/db/schema/repositories'
 import { buildActivityRaw } from '@/lib/db/queries/activities'
-import { createSyncJob, startSyncJob, completeSyncJob, failSyncJob } from '@/lib/db/queries/sync-jobs'
+import {
+  createSyncJob,
+  startSyncJob,
+  completeSyncJob,
+  failSyncJob,
+  updateSyncJobProgress,
+} from '@/lib/db/queries/sync-jobs'
 import { getUsableAccessToken } from '@/lib/github/token'
 import { GitHubClassifier } from '@/features/territories/classifier'
 import { LANDMARK_UNLOCK_THRESHOLD } from '@/features/territories/rules'
@@ -15,25 +21,40 @@ import { GitHubSourceClient, MVP_INCLUDE_PRIVATE } from './sources/github'
 import {
   parsePackageJsonDeps,
   parseRequirementsTxt,
+  parsePyprojectTomlDeps,
   parseGoMod,
+  parsePomXmlDeps,
+  parseGradleDeps,
   parseGemfile,
   parseCargoToml,
 } from './sources/parsers'
 import type { ClassificationContext } from '@/features/territories/classifier'
 import { recomputeUserDenorm } from './denorm'
 import { getPreviousLitCount, markFirstStarCinematicIfApplicable } from './cinematic-detection'
+import { toSyncDate, toSyncDateOrNull } from './dates'
+import {
+  HISTORICAL_BOOTSTRAP_MAX_COMMITS_PER_REPO,
+  HISTORICAL_BOOTSTRAP_MAX_PAGES_PER_REPO,
+  HISTORICAL_BOOTSTRAP_MAX_REPOS,
+  dedupeActivities,
+  selectHistoricalBootstrapRepos,
+} from './historical'
+import { mapWithConcurrency } from './concurrency'
+import { cacheManifestContextForRepo } from './manifest-cache'
+import { markHistoricalBootstrapChecked } from './historical-cache'
 import type { GetStepTools } from 'inngest'
 import type { inngest } from '@/lib/inngest/client'
 
 type StepTools = GetStepTools<typeof inngest>
 
 // Serializable repo shape for step caching
-type StepRepo = {
+export type StepRepo = {
   id: string
   externalRepoId: string
   owner: string
   name: string
   primaryLanguage: string | null
+  sourcePushedAt: string | null
 }
 
 // Serializable activity shape (dates as ISO strings for step caching)
@@ -49,22 +70,87 @@ type StepActivity = {
   githubUrl: string
 }
 
-async function buildManifestContext(
+const MAX_INITIAL_COMMIT_DETAILS = 50
+const MAX_MANIFEST_REPO_PROBES = 50
+const COMMIT_DETAIL_CONCURRENCY = 6
+const MANIFEST_FETCH_CONCURRENCY = 5
+
+type ManifestFile = { path: string; parser: (content: string) => void }
+
+function toStepActivity(activity: {
+  source: string
+  externalId: string
+  type: string
+  repoExternalId: string
+  occurredAt: Date | string
+  filePaths: string[]
+  additions: number
+  deletions: number
+  githubUrl: string
+}): StepActivity {
+  return {
+    source: activity.source,
+    externalId: activity.externalId,
+    type: activity.type,
+    repoExternalId: activity.repoExternalId,
+    occurredAt: toSyncDate(activity.occurredAt).toISOString(),
+    filePaths: activity.filePaths,
+    additions: activity.additions,
+    deletions: activity.deletions,
+    githubUrl: activity.githubUrl,
+  }
+}
+
+function emptyClassificationContext(primaryLanguage: string | null): ClassificationContext {
+  return {
+    parsedPackageJsonDeps: [],
+    parsedRequirementsTxtDeps: [],
+    parsedPyprojectTomlDeps: [],
+    parsedGoModDeps: [],
+    parsedPomXmlDeps: [],
+    parsedGradleDeps: [],
+    parsedGemfileDeps: [],
+    parsedCargoTomlDeps: [],
+    primaryLanguage,
+  }
+}
+
+export function selectManifestPathsForLanguage(primaryLanguage: string | null): string[] {
+  const language = primaryLanguage?.toLowerCase()
+
+  switch (language) {
+    case 'javascript':
+    case 'typescript':
+    case 'vue':
+    case 'svelte':
+    case 'html':
+    case 'css':
+      return ['package.json']
+    case 'python':
+      return ['requirements.txt', 'pyproject.toml']
+    case 'go':
+      return ['go.mod']
+    case 'java':
+    case 'kotlin':
+      return ['pom.xml', 'build.gradle', 'build.gradle.kts']
+    case 'ruby':
+      return ['Gemfile']
+    case 'rust':
+      return ['Cargo.toml']
+    default:
+      return ['package.json']
+  }
+}
+
+export async function buildManifestContext(
   github: GitHubSourceClient,
   owner: string,
   repo: string,
   primaryLanguage: string | null,
 ): Promise<ClassificationContext> {
-  const ctx: ClassificationContext = {
-    parsedPackageJsonDeps: [],
-    parsedRequirementsTxtDeps: [],
-    parsedGoModDeps: [],
-    parsedGemfileDeps: [],
-    parsedCargoTomlDeps: [],
-    primaryLanguage,
-  }
+  const ctx = emptyClassificationContext(primaryLanguage)
 
-  const files: Array<{ path: string; parser: (content: string) => void }> = [
+  const manifestFiles: ManifestFile[] = [
     {
       path: 'package.json',
       parser: (content) => {
@@ -78,9 +164,33 @@ async function buildManifestContext(
       },
     },
     {
+      path: 'pyproject.toml',
+      parser: (content) => {
+        ctx.parsedPyprojectTomlDeps = parsePyprojectTomlDeps(content)
+      },
+    },
+    {
       path: 'go.mod',
       parser: (content) => {
         ctx.parsedGoModDeps = parseGoMod(content)
+      },
+    },
+    {
+      path: 'pom.xml',
+      parser: (content) => {
+        ctx.parsedPomXmlDeps = parsePomXmlDeps(content)
+      },
+    },
+    {
+      path: 'build.gradle',
+      parser: (content) => {
+        ctx.parsedGradleDeps = parseGradleDeps(content)
+      },
+    },
+    {
+      path: 'build.gradle.kts',
+      parser: (content) => {
+        ctx.parsedGradleDeps = parseGradleDeps(content)
       },
     },
     {
@@ -96,9 +206,19 @@ async function buildManifestContext(
       },
     },
   ]
+  const filesByPath = new Map(manifestFiles.map((file) => [file.path, file]))
 
-  for (const { path, parser } of files) {
-    const content = await github.fetchFileContent(owner, repo, path)
+  const paths = selectManifestPathsForLanguage(primaryLanguage)
+  const contents = await Promise.all(
+    paths.map(async (path) => ({
+      path,
+      content: await github.fetchFileContent(owner, repo, path),
+    })),
+  )
+
+  for (const { path, content } of contents) {
+    const parser = filesByPath.get(path)?.parser
+    if (!parser) continue
     if (content) {
       try {
         parser(content)
@@ -111,6 +231,14 @@ async function buildManifestContext(
   return ctx
 }
 
+export function buildDefaultManifestContexts(
+  dbRepos: Pick<StepRepo, 'externalRepoId' | 'primaryLanguage'>[],
+): Record<string, ClassificationContext> {
+  return Object.fromEntries(
+    dbRepos.map((repo) => [repo.externalRepoId, emptyClassificationContext(repo.primaryLanguage)]),
+  )
+}
+
 export async function run(
   event: {
     data: {
@@ -120,31 +248,44 @@ export async function run(
       // Legacy alias accepted for backward compat with already-queued events; treated
       // as identical to includedExternalRepoIds.
       includedRepoIds?: string[]
+      jobId?: string
     }
   },
   step: StepTools,
 ) {
   const { userId } = event.data
-  const includedExternalRepoIds =
-    event.data.includedExternalRepoIds ?? event.data.includedRepoIds
+  const includedExternalRepoIds = event.data.includedExternalRepoIds ?? event.data.includedRepoIds
   void MVP_INCLUDE_PRIVATE // referenced to satisfy ADR-11 guard grep
 
   const jobId = await step.run('create-job', async () => {
+    if (event.data.jobId) {
+      await startSyncJob(event.data.jobId)
+      return event.data.jobId
+    }
     const job = await createSyncJob({ userId, kind: 'initial' })
     await startSyncJob(job.id)
     return job.id
   })
 
   try {
+    await step.run('progress-fetch-token', () =>
+      updateSyncJobProgress(jobId, {
+        repos_analyzed: 0,
+        total: 0,
+        current_step: 'Connecting to GitHub...',
+      }),
+    )
+
     const accessToken = await step.run('fetch-token', () => getUsableAccessToken(userId))
     const github = new GitHubSourceClient(accessToken, userId)
 
-    const previousLitCount = await step.run('get-prev-lit-count', () =>
-      getPreviousLitCount(userId),
-    )
+    const previousLitCount = await step.run('get-prev-lit-count', () => getPreviousLitCount(userId))
 
     const dbRepos: StepRepo[] = await step.run('fetch-repos', async () => {
-      const sourceRepos = await github.listAuthoredRepos()
+      const sourceRepos =
+        includedExternalRepoIds === undefined
+          ? await github.listAuthoredRepos()
+          : await github.fetchReposByExternalIds(includedExternalRepoIds)
       // Filter rule:
       //   undefined → no explicit list provided; sync all repos.
       //   [] (empty array) → user deselected everything; sync nothing.
@@ -165,6 +306,7 @@ export async function run(
             owner: repo.owner,
             name: repo.name,
             primaryLanguage: repo.primaryLanguage,
+            sourcePushedAt: repo.pushedAt ?? null,
             isIncluded: true,
           })
           .onConflictDoUpdate({
@@ -173,6 +315,7 @@ export async function run(
               owner: repo.owner,
               name: repo.name,
               primaryLanguage: repo.primaryLanguage,
+              sourcePushedAt: repo.pushedAt ?? null,
             },
           })
           .returning()
@@ -182,6 +325,7 @@ export async function run(
           owner: repo.owner,
           name: repo.name,
           primaryLanguage: repo.primaryLanguage,
+          sourcePushedAt: repo.pushedAt?.toISOString() ?? null,
         })
       }
       return result
@@ -190,35 +334,98 @@ export async function run(
     const repoExternalIds = dbRepos.map((r) => r.externalRepoId)
     const twelveMonthsAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
 
+    await step.run('progress-fetch-activities', () =>
+      updateSyncJobProgress(jobId, {
+        repos_analyzed: 0,
+        total: dbRepos.length,
+        current_step: 'Reading activity from selected repos...',
+      }),
+    )
+
     const sourceActivities: StepActivity[] = await step.run('fetch-activities', async () => {
       const acts = await github.listAuthoredActivities({
         repoExternalIds,
         since: twelveMonthsAgo,
       })
-      return acts.map((a) => ({
-        source: a.source,
-        externalId: a.externalId,
-        type: a.type,
-        repoExternalId: a.repoExternalId,
-        occurredAt: a.occurredAt instanceof Date ? a.occurredAt.toISOString() : String(a.occurredAt),
-        filePaths: a.filePaths,
-        additions: a.additions,
-        deletions: a.deletions,
-        githubUrl: a.githubUrl,
-      }))
+      return acts.map(toStepActivity)
     })
 
-    const enrichedActivities: StepActivity[] = await step.run('sample-commits', async () => {
+    const historicalBootstrap: {
+      activities: StepActivity[]
+      checkedRepos: Array<Pick<StepRepo, 'id' | 'sourcePushedAt'>>
+    } = await step.run('fetch-historical-bootstrap-activities', async () => {
+      const recent = sourceActivities.map((activity) => ({
+        ...activity,
+        source: 'github' as const,
+        type: activity.type as 'commit' | 'pr' | 'issue',
+        occurredAt: toSyncDate(activity.occurredAt),
+      }))
+      const historicalRepos = selectHistoricalBootstrapRepos(dbRepos, recent)
+      if (historicalRepos.length === 0) return { activities: [], checkedRepos: [] }
+
+      const acts = await github.listHistoricalAuthoredActivities({
+        repos: historicalRepos,
+        maxRepos: HISTORICAL_BOOTSTRAP_MAX_REPOS,
+        maxCommitsPerRepo: HISTORICAL_BOOTSTRAP_MAX_COMMITS_PER_REPO,
+        maxPagesPerRepo: HISTORICAL_BOOTSTRAP_MAX_PAGES_PER_REPO,
+      })
+      return {
+        activities: acts.map(toStepActivity),
+        checkedRepos: historicalRepos.map((repo) => ({
+          id: repo.id,
+          sourcePushedAt: repo.sourcePushedAt,
+        })),
+      }
+    })
+
+    const syncActivities = dedupeActivities([
+      ...sourceActivities,
+      ...historicalBootstrap.activities,
+    ])
+
+    await step.run('progress-sample-commits', () =>
+      updateSyncJobProgress(jobId, {
+        repos_analyzed: 0,
+        total: dbRepos.length,
+        current_step: 'Reading files that shape your stars...',
+      }),
+    )
+
+    const buildInputs: {
+      enrichedActivities: StepActivity[]
+      manifestContexts: Record<string, ClassificationContext>
+    } = await step.run('sample-commits-and-parse-manifests', async () => {
       const repoMap = new Map(dbRepos.map((r) => [r.externalRepoId, r]))
-      const acts = [...sourceActivities]
+      const acts = [...syncActivities]
       const commits = acts
         .filter((a) => a.type === 'commit')
         .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
-        .slice(0, 50)
+        .slice(0, MAX_INITIAL_COMMIT_DETAILS)
 
-      for (const commit of commits) {
+      const manifestTask = (async () => {
+        const result = buildDefaultManifestContexts(dbRepos)
+        const entries = await mapWithConcurrency(
+          dbRepos.slice(0, MAX_MANIFEST_REPO_PROBES),
+          MANIFEST_FETCH_CONCURRENCY,
+          async (repo) =>
+            [
+              repo.externalRepoId,
+              await buildManifestContext(github, repo.owner, repo.name, repo.primaryLanguage),
+            ] as const,
+        )
+        for (const [externalRepoId, ctx] of entries) {
+          result[externalRepoId] = ctx
+          const repo = dbRepos.find((candidate) => candidate.externalRepoId === externalRepoId)
+          if (repo) {
+            await cacheManifestContextForRepo({ userId, repo, context: ctx })
+          }
+        }
+        return result
+      })()
+
+      const enrichTask = mapWithConcurrency(commits, COMMIT_DETAIL_CONCURRENCY, async (commit) => {
         const repo = repoMap.get(commit.repoExternalId)
-        if (!repo) continue
+        if (!repo) return
         try {
           const fileData = await github.fetchCommitFiles(repo.owner, repo.name, commit.externalId)
           commit.filePaths = fileData.file_paths
@@ -227,24 +434,18 @@ export async function run(
         } catch {
           // network error or 404 — keep empty paths
         }
-      }
-      return acts
+      })
+
+      const [, manifestContexts] = await Promise.all([enrichTask, manifestTask])
+      return { enrichedActivities: acts, manifestContexts }
     })
 
-    const manifestContexts: Record<string, ClassificationContext> = await step.run(
-      'parse-manifests',
-      async () => {
-        const result: Record<string, ClassificationContext> = {}
-        for (const repo of dbRepos) {
-          result[repo.externalRepoId] = await buildManifestContext(
-            github,
-            repo.owner,
-            repo.name,
-            repo.primaryLanguage,
-          )
-        }
-        return result
-      },
+    await step.run('progress-classify', () =>
+      updateSyncJobProgress(jobId, {
+        repos_analyzed: dbRepos.length,
+        total: dbRepos.length,
+        current_step: 'Lighting your constellation...',
+      }),
     )
 
     await step.run('classify-and-write', async () => {
@@ -258,9 +459,10 @@ export async function run(
           { weight: number; territory: string; lastDate: Date }
         >()
 
-        for (const activity of enrichedActivities) {
+        for (const activity of buildInputs.enrichedActivities) {
           const repoId = repoIdMap.get(activity.repoExternalId)
           if (!repoId) continue
+          const occurredAt = toSyncDate(activity.occurredAt)
 
           const raw = buildActivityRaw({
             file_paths: activity.filePaths,
@@ -277,7 +479,7 @@ export async function run(
               source: activity.source,
               externalId: activity.externalId,
               type: activity.type,
-              occurredAt: new Date(activity.occurredAt),
+              occurredAt,
               raw,
             })
             .onConflictDoNothing()
@@ -286,10 +488,15 @@ export async function run(
           // Skip already-existing activities (idempotency: don't re-classify)
           if (!inserted) continue
 
-          const ctx: ClassificationContext = manifestContexts[activity.repoExternalId] ?? {
+          const ctx: ClassificationContext = buildInputs.manifestContexts[
+            activity.repoExternalId
+          ] ?? {
             parsedPackageJsonDeps: [],
             parsedRequirementsTxtDeps: [],
+            parsedPyprojectTomlDeps: [],
             parsedGoModDeps: [],
+            parsedPomXmlDeps: [],
+            parsedGradleDeps: [],
             parsedGemfileDeps: [],
             parsedCargoTomlDeps: [],
             primaryLanguage: null,
@@ -301,7 +508,7 @@ export async function run(
               externalId: activity.externalId,
               type: activity.type as 'commit' | 'pr' | 'issue',
               repoExternalId: activity.repoExternalId,
-              occurredAt: new Date(activity.occurredAt),
+              occurredAt,
               filePaths: activity.filePaths,
               additions: activity.additions,
               deletions: activity.deletions,
@@ -317,44 +524,46 @@ export async function run(
                 activityId: inserted.id,
                 territoryType: result.territory,
                 weight: result.weight.toString(),
+                techKeys: result.techKeys,
               })
               .onConflictDoUpdate({
                 target: [
                   activityTerritoriesTable.activityId,
                   activityTerritoriesTable.territoryType,
                 ],
-                set: { weight: result.weight.toString() },
+                set: { weight: result.weight.toString(), techKeys: result.techKeys },
               })
 
-            const actDate = new Date(activity.occurredAt)
             for (const techKey of result.techKeys) {
               const existing = landmarkAccum.get(techKey)
               landmarkAccum.set(techKey, {
                 weight: (existing?.weight ?? 0) + result.weight,
                 territory: result.territory,
                 lastDate:
-                  !existing?.lastDate || actDate > existing.lastDate ? actDate : existing.lastDate,
+                  !existing?.lastDate || occurredAt > existing.lastDate
+                    ? occurredAt
+                    : existing.lastDate,
               })
             }
           }
         }
 
         // Upsert landmarks with accumulated weights from new activities
-        for (const [techKey, { weight, territory, lastDate }] of Array.from(landmarkAccum.entries())) {
+        for (const [techKey, { weight, territory, lastDate }] of Array.from(
+          landmarkAccum.entries(),
+        )) {
           const [existing] = await tx
             .select({
               weight: landmarksTable.weight,
               firstUnlockedAt: landmarksTable.firstUnlockedAt,
             })
             .from(landmarksTable)
-            .where(
-              and(eq(landmarksTable.userId, userId), eq(landmarksTable.techKey, techKey)),
-            )
+            .where(and(eq(landmarksTable.userId, userId), eq(landmarksTable.techKey, techKey)))
 
           const existingWeight = existing ? parseFloat(existing.weight) : 0
           const newWeight = existingWeight + weight
           const firstUnlockedAt =
-            existing?.firstUnlockedAt ??
+            toSyncDateOrNull(existing?.firstUnlockedAt) ??
             (newWeight >= LANDMARK_UNLOCK_THRESHOLD ? lastDate : null)
 
           await tx
@@ -378,6 +587,12 @@ export async function run(
         }
       })
     })
+
+    if (historicalBootstrap.checkedRepos.length > 0) {
+      await step.run('mark-historical-bootstrap-checked', () =>
+        markHistoricalBootstrapChecked({ userId, repos: historicalBootstrap.checkedRepos }),
+      )
+    }
 
     await step.run('recompute-denorm', () => recomputeUserDenorm(userId))
 

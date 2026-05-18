@@ -12,7 +12,17 @@ export const initialSync = inngest.createFunction(
   { id: 'sync-initial', name: 'Initial sync' },
   { event: EVENTS.SYNC_INITIAL_REQUESTED },
   async ({ event, step }) =>
-    initial.run(event as { data: { userId: string; includedRepoIds?: string[] } }, step),
+    initial.run(
+      event as {
+        data: {
+          userId: string
+          includedRepoIds?: string[]
+          includedExternalRepoIds?: string[]
+          jobId?: string
+        }
+      },
+      step,
+    ),
 )
 
 export const incrementalSync = inngest.createFunction(
@@ -28,8 +38,7 @@ export const manualRefresh = inngest.createFunction(
     concurrency: { key: 'event.data.userId', limit: 1 },
   },
   { event: EVENTS.SYNC_MANUAL_REQUESTED },
-  async ({ event, step }) =>
-    manual.run(event as { data: { userId: string } }, step),
+  async ({ event, step }) => manual.run(event as { data: { userId: string } }, step),
 )
 
 export const syncCleanup = inngest.createFunction(
@@ -42,7 +51,7 @@ export const backfill = inngest.createFunction(
   { id: 'sync-backfill', name: 'Reclassify activities' },
   { event: EVENTS.SYNC_BACKFILL_REQUESTED },
   async ({ event, step }) =>
-    backfill_.run(event as { data: { userId?: string } }, step),
+    backfill_.run(event as { data: { userId?: string; jobId?: string; fast?: boolean } }, step),
 )
 
 import { generateWeeklyRecapForUser, listUsersForRecap } from '@/features/recap/generate'

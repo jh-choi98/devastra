@@ -22,6 +22,41 @@
       "when": 1778889700000,
       "tag": "0002_rls_and_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778896246348,
+      "tag": "0003_security_invoker_users_public_view",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778985968789,
+      "tag": "0004_activity_territory_tech_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778987300000,
+      "tag": "0005_repository_manifest_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778990500000,
+      "tag": "0006_repository_historical_bootstrap_cache",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779049200000,
+      "tag": "0007_repository_commit_fetch_cache",
+      "breakpoints": true
     }
   ]
 }

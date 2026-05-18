@@ -1,4 +1,4 @@
-// No server-only: these are pure date helpers usable anywhere
+import 'server-only'
 
 /**
  * Returns Monday 00:00 UTC of the most recently completed full UTC week.

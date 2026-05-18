@@ -11,9 +11,7 @@ export function extractFilePaths(rawCommit: GitHubCommitRest): string[] {
   }
 }
 
-export function parsePackageJsonDeps(
-  jsonText: string,
-): { dep: string; type: 'dep' | 'devDep' }[] {
+export function parsePackageJsonDeps(jsonText: string): { dep: string; type: 'dep' | 'devDep' }[] {
   try {
     const parsed = JSON.parse(jsonText) as unknown
     if (typeof parsed !== 'object' || parsed === null) return []
@@ -57,6 +55,26 @@ export function parseRequirementsTxt(text: string): string[] {
   }
 }
 
+export function parsePyprojectTomlDeps(text: string): string[] {
+  try {
+    const results = new Set<string>()
+    const quoted = Array.from(
+      text.matchAll(/["']([A-Za-z0-9_.-]+)(?:\[[^\]"']+\])?(?:[<>=~! ].*)?["']/g),
+    )
+    for (const match of quoted) results.add(match[1].toLowerCase())
+
+    const poetryDeps = Array.from(text.matchAll(/^([A-Za-z0-9_.-]+)\s*=/gm))
+    for (const match of poetryDeps) {
+      const dep = match[1].toLowerCase()
+      if (!['python', 'requires-python'].includes(dep)) results.add(dep)
+    }
+
+    return Array.from(results)
+  } catch {
+    return []
+  }
+}
+
 export function parseGoMod(text: string): string[] {
   try {
     const results: string[] = []
@@ -92,6 +110,33 @@ export function parseGoMod(text: string): string[] {
   }
 }
 
+export function parsePomXmlDeps(text: string): string[] {
+  try {
+    const results = new Set<string>()
+    const artifactIds = Array.from(text.matchAll(/<artifactId>\s*([^<\s]+)\s*<\/artifactId>/g))
+    for (const match of artifactIds) results.add(match[1].toLowerCase())
+    return Array.from(results)
+  } catch {
+    return []
+  }
+}
+
+export function parseGradleDeps(text: string): string[] {
+  try {
+    const results = new Set<string>()
+    const coordinates = Array.from(
+      text.matchAll(/['"]([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+):[^'"]+['"]/g),
+    )
+    for (const match of coordinates) {
+      results.add(`${match[1].toLowerCase()}:${match[2].toLowerCase()}`)
+      results.add(match[2].toLowerCase())
+    }
+    return Array.from(results)
+  } catch {
+    return []
+  }
+}
+
 export function parseGemfile(text: string): string[] {
   try {
     return text
@@ -118,7 +163,11 @@ export function parseCargoToml(text: string): string[] {
     for (const line of lines) {
       const trimmed = line.trim()
 
-      if (trimmed === '[dependencies]' || trimmed === '[dev-dependencies]' || trimmed === '[build-dependencies]') {
+      if (
+        trimmed === '[dependencies]' ||
+        trimmed === '[dev-dependencies]' ||
+        trimmed === '[build-dependencies]'
+      ) {
         inDepsSection = true
         continue
       }

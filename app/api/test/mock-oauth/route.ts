@@ -3,13 +3,14 @@ import { NextResponse } from 'next/server'
 
 const TEST_GITHUB_ID = 999999999
 const TEST_GITHUB_LOGIN = 'test-e2e-user'
-const TEST_EMAIL = `${TEST_GITHUB_LOGIN}@test.devatlas.local`
+const TEST_EMAIL = `${TEST_GITHUB_LOGIN}@test.devastra.local`
 const TEST_PASSWORD = 'test-e2e-password-devonly'
 
 export async function GET(request: Request) {
+  if (process.env.NODE_ENV === 'production') notFound()
+
   // Double-gated: must be non-production AND ALLOW_MOCK_OAUTH must be explicitly set.
   // Both conditions required — a single env var is not sufficient protection.
-  if (process.env.NODE_ENV === 'production') notFound()
   if (process.env.ALLOW_MOCK_OAUTH !== '1') {
     return new NextResponse('Not Found', { status: 404 })
   }

@@ -1,4 +1,5 @@
 'use server'
+import 'server-only'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth/session'
 import { submitMisclassificationFeedback as submit } from './misclassification'

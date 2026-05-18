@@ -26,6 +26,7 @@ vi.mock('@/features/sync/sources/github', () => ({
 }))
 
 import { buildActivityRaw, ALLOWED_RAW_KEYS } from '@/lib/db/queries/activities'
+import { selectManifestPathsForLanguage } from '@/features/sync/initial'
 
 describe('buildActivityRaw', () => {
   it('keeps only allowed keys', () => {
@@ -86,6 +87,27 @@ describe('initial sync — idempotency guard', () => {
   })
 })
 
+describe('initial sync — manifest API budget', () => {
+  it('probes the language-appropriate manifests', () => {
+    expect(selectManifestPathsForLanguage('TypeScript')).toEqual(['package.json'])
+    expect(selectManifestPathsForLanguage('JavaScript')).toEqual(['package.json'])
+    expect(selectManifestPathsForLanguage('Python')).toEqual(['requirements.txt', 'pyproject.toml'])
+    expect(selectManifestPathsForLanguage('Go')).toEqual(['go.mod'])
+    expect(selectManifestPathsForLanguage('Java')).toEqual([
+      'pom.xml',
+      'build.gradle',
+      'build.gradle.kts',
+    ])
+    expect(selectManifestPathsForLanguage('Ruby')).toEqual(['Gemfile'])
+    expect(selectManifestPathsForLanguage('Rust')).toEqual(['Cargo.toml'])
+  })
+
+  it('uses package.json as a cheap fallback for unknown languages', () => {
+    expect(selectManifestPathsForLanguage(null)).toEqual(['package.json'])
+    expect(selectManifestPathsForLanguage('Shell')).toEqual(['package.json'])
+  })
+})
+
 describe('initial sync — stage_changed_at logic', () => {
   it('stage 1 → stage 2 should change stage_changed_at', () => {
     // Simulate the stage-change condition used in denorm.ts
@@ -125,7 +147,10 @@ describe('GitHubClassifier integration', () => {
       {
         parsedPackageJsonDeps: [],
         parsedRequirementsTxtDeps: [],
+        parsedPyprojectTomlDeps: [],
         parsedGoModDeps: [],
+        parsedPomXmlDeps: [],
+        parsedGradleDeps: [],
         parsedGemfileDeps: [],
         parsedCargoTomlDeps: [],
         primaryLanguage: 'TypeScript',
@@ -153,7 +178,10 @@ describe('GitHubClassifier integration', () => {
       {
         parsedPackageJsonDeps: [],
         parsedRequirementsTxtDeps: [],
+        parsedPyprojectTomlDeps: [],
         parsedGoModDeps: [],
+        parsedPomXmlDeps: [],
+        parsedGradleDeps: [],
         parsedGemfileDeps: [],
         parsedCargoTomlDeps: [],
         primaryLanguage: null,
@@ -178,7 +206,10 @@ describe('GitHubClassifier integration', () => {
     const ctx = {
       parsedPackageJsonDeps: [],
       parsedRequirementsTxtDeps: [],
+      parsedPyprojectTomlDeps: [],
       parsedGoModDeps: [],
+      parsedPomXmlDeps: [],
+      parsedGradleDeps: [],
       parsedGemfileDeps: [],
       parsedCargoTomlDeps: [],
       primaryLanguage: null,

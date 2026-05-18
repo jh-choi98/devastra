@@ -35,33 +35,12 @@ export class GitHubGraphQLClient {
       throw new GitHubAuthError('Token is invalid or expired')
     }
 
-    if (response.status === 403) {
-      const retryAfter = response.headers.get('Retry-After')
-      const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : 60_000
-      await sleep(waitMs)
-      const retried = await fetch(GITHUB_GRAPHQL_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
-          'User-Agent': GITHUB_USER_AGENT,
-        },
-        body: JSON.stringify({ query, variables }),
-      })
-      if (retried.status === 401) throw new GitHubAuthError('Token is invalid or expired')
-      if (!retried.ok) throw new GitHubRateLimitError(`GraphQL rate limit: ${retried.status}`)
-      const retryJson = (await retried.json()) as {
-        data?: T
-        errors?: Array<{ message: string }>
-      }
-      if (retryJson.errors?.length) {
-        throw new Error(`GitHub GraphQL errors: ${retryJson.errors.map((e) => e.message).join(', ')}`)
-      }
-      if (!retryJson.data) throw new Error('GitHub GraphQL returned no data')
-      return retryJson.data
-    }
-
     if (!response.ok) {
+      if (response.status === 403) {
+        const retryAfter = response.headers.get('Retry-After')
+        const retryHint = retryAfter ? ` retry-after=${retryAfter}s` : ''
+        throw new GitHubRateLimitError(`GitHub GraphQL rate limited: 403${retryHint}`)
+      }
       throw new Error(`GitHub GraphQL request failed: ${response.status}`)
     }
 
@@ -72,10 +51,6 @@ export class GitHubGraphQLClient {
     if (!json.data) throw new Error('GitHub GraphQL returned no data')
     return json.data
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export type RecentPR = {

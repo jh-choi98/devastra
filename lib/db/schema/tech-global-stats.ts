@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { pgTable, text, integer, numeric, timestamp } from 'drizzle-orm/pg-core'
 
 export const techGlobalStats = pgTable('tech_global_stats', {

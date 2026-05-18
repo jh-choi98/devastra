@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { Html, Head, Preview, Body, Container, Heading, Text, Img, Link, Section } from '@react-email/components'
 import type { HighlightsPayload } from '@/features/recap/slot-builder'
 import { TERRITORIES } from '@/features/territories/registry'

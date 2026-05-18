@@ -3,7 +3,10 @@ import {
   extractFilePaths,
   parsePackageJsonDeps,
   parseRequirementsTxt,
+  parsePyprojectTomlDeps,
   parseGoMod,
+  parsePomXmlDeps,
+  parseGradleDeps,
   parseGemfile,
   parseCargoToml,
 } from '../../features/sync/sources/parsers'
@@ -69,7 +72,9 @@ describe('parsePackageJsonDeps', () => {
   })
 
   it('returns empty array for empty dependencies objects', () => {
-    expect(parsePackageJsonDeps(JSON.stringify({ dependencies: {}, devDependencies: {} }))).toEqual([])
+    expect(parsePackageJsonDeps(JSON.stringify({ dependencies: {}, devDependencies: {} }))).toEqual(
+      [],
+    )
   })
 
   it('returns empty array for non-object JSON', () => {
@@ -134,6 +139,37 @@ describe('parseRequirementsTxt', () => {
 })
 
 // ---------------------------------------------------------------------------
+// parsePyprojectTomlDeps
+// ---------------------------------------------------------------------------
+describe('parsePyprojectTomlDeps', () => {
+  it('parses PEP 621 dependency arrays', () => {
+    const text = `[project]
+dependencies = [
+  "fastapi>=0.110",
+  "pandas",
+  "scikit-learn[extra]",
+]
+`
+    const result = parsePyprojectTomlDeps(text)
+    expect(result).toContain('fastapi')
+    expect(result).toContain('pandas')
+    expect(result).toContain('scikit-learn')
+  })
+
+  it('parses Poetry dependency keys', () => {
+    const text = `[tool.poetry.dependencies]
+python = "^3.12"
+django = "^5"
+sqlalchemy = "^2"
+`
+    const result = parsePyprojectTomlDeps(text)
+    expect(result).toContain('django')
+    expect(result).toContain('sqlalchemy')
+    expect(result).not.toContain('python')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // parseGoMod
 // ---------------------------------------------------------------------------
 describe('parseGoMod', () => {
@@ -184,6 +220,45 @@ require (
 
   it('returns empty array for malformed content', () => {
     expect(parseGoMod('this is not go.mod')).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parsePomXmlDeps
+// ---------------------------------------------------------------------------
+describe('parsePomXmlDeps', () => {
+  it('parses Maven artifact IDs', () => {
+    const text = `<project>
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+    </dependency>
+  </dependencies>
+</project>`
+    const result = parsePomXmlDeps(text)
+    expect(result).toContain('spring-boot-starter-web')
+    expect(result).toContain('junit-jupiter')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseGradleDeps
+// ---------------------------------------------------------------------------
+describe('parseGradleDeps', () => {
+  it('parses Gradle dependency coordinates', () => {
+    const text = `dependencies {
+  implementation "org.springframework.boot:spring-boot-starter-web:3.2.0"
+  testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+}`
+    const result = parseGradleDeps(text)
+    expect(result).toContain('spring-boot-starter-web')
+    expect(result).toContain('org.springframework.boot:spring-boot-starter-web')
+    expect(result).toContain('junit-jupiter')
   })
 })
 

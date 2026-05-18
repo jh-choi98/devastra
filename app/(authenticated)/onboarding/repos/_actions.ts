@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/auth/session'
 import { upsertRepository } from '@/lib/db/queries/repositories'
+import { createSyncJob, failSyncJob } from '@/lib/db/queries/sync-jobs'
 import { inngest } from '@/lib/inngest/client'
 import { EVENTS } from '@/features/sync/events'
 import { captureServerEvent } from '@/lib/posthog-server'
@@ -27,9 +28,10 @@ export async function saveRepoSelectionAndStartSync(input: unknown): Promise<voi
 
   const includedSet = new Set(includedIds)
 
-  const upserted = await Promise.all(
-    repos.map((repo) =>
-      upsertRepository({
+  const upserted = []
+  for (const repo of repos) {
+    upserted.push(
+      await upsertRepository({
         userId: user.id,
         source: 'github',
         externalRepoId: repo.externalRepoId,
@@ -38,8 +40,8 @@ export async function saveRepoSelectionAndStartSync(input: unknown): Promise<voi
         primaryLanguage: repo.primaryLanguage,
         isIncluded: includedSet.has(repo.externalRepoId),
       }),
-    ),
-  )
+    )
+  }
 
   // The initial sync filters by externalRepoId (GitHub node_id), NOT by DB UUID.
   // Sending r.id (UUID) here would silently fail to match anything and trigger the
@@ -48,10 +50,25 @@ export async function saveRepoSelectionAndStartSync(input: unknown): Promise<voi
     .filter((r) => includedSet.has(r.externalRepoId))
     .map((r) => r.externalRepoId)
 
-  await inngest.send({
-    name: EVENTS.SYNC_INITIAL_REQUESTED,
-    data: { userId: user.id, includedExternalRepoIds },
+  const job = await createSyncJob({
+    userId: user.id,
+    kind: 'initial',
+    progress: {
+      repos_analyzed: 0,
+      total: includedExternalRepoIds.length,
+      current_step: 'Starting your constellation build...',
+    },
   })
+
+  try {
+    await inngest.send({
+      name: EVENTS.SYNC_INITIAL_REQUESTED,
+      data: { userId: user.id, includedExternalRepoIds, jobId: job.id },
+    })
+  } catch (err) {
+    await failSyncJob(job.id, err instanceof Error ? err.message : String(err))
+    throw err
+  }
 
   await captureServerEvent(user.id, 'repo_selection.completed', {
     repo_count: repos.length,

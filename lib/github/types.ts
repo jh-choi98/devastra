@@ -18,6 +18,7 @@ export interface GitHubRepoRest {
   private: boolean
   owner: { login: string; id: number }
   language: string | null
+  pushed_at?: string | null
 }
 
 export interface GitHubCommitFileRest {
@@ -103,7 +104,7 @@ export interface PullRequestContributionNode {
       owner: { login: string }
       isPrivate: boolean
     }
-  }
+  } | null
 }
 
 export interface IssueContributionNode {
@@ -118,7 +119,7 @@ export interface IssueContributionNode {
       owner: { login: string }
       isPrivate: boolean
     }
-  }
+  } | null
 }
 
 export interface ContributionsCollectionData {
@@ -127,12 +128,12 @@ export interface ContributionsCollectionData {
     contributionsCollection: {
       commitContributionsByRepository: ContributionsByRepoNode[]
       pullRequestContributions: {
-        nodes: PullRequestContributionNode[]
+        nodes: Array<PullRequestContributionNode | null>
         pageInfo: { hasNextPage: boolean; endCursor: string | null }
         totalCount: number
       }
       issueContributions: {
-        nodes: IssueContributionNode[]
+        nodes: Array<IssueContributionNode | null>
         pageInfo: { hasNextPage: boolean; endCursor: string | null }
         totalCount: number
       }

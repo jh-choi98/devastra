@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { pgTable, uuid, text, boolean, timestamp } from 'drizzle-orm/pg-core'
 
 export const systemMessages = pgTable('system_messages', {

@@ -16,11 +16,11 @@ export function RepoSelector({ repos }: RepoSelectorProps) {
   const [search, setSearch] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  const hasToggled = includedIds.size !== repos.length
-
   const filtered = search
     ? repos.filter((r) => `${r.owner}/${r.name}`.toLowerCase().includes(search.toLowerCase()))
     : repos
+
+  const selectedCount = includedIds.size
 
   function toggleRepo(externalRepoId: string) {
     setIncludedIds((prev) => {
@@ -34,10 +34,18 @@ export function RepoSelector({ repos }: RepoSelectorProps) {
     })
   }
 
-  function handleSubmit() {
+  function selectAllRepos() {
+    setIncludedIds(new Set(repos.map((r) => r.externalRepoId)))
+  }
+
+  function deselectAllRepos() {
+    setIncludedIds(new Set())
+  }
+
+  function handleSubmit(nextIncludedIds = includedIds) {
     startTransition(async () => {
       await saveRepoSelectionAndStartSync({
-        includedIds: Array.from(includedIds),
+        includedIds: Array.from(nextIncludedIds),
         repos: repos.map((r) => ({
           externalRepoId: r.externalRepoId,
           owner: r.owner,
@@ -51,10 +59,39 @@ export function RepoSelector({ repos }: RepoSelectorProps) {
   return (
     <main className="min-h-screen bg-zinc-950 py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-2">Select your repositories</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Pick your repos</h1>
         <p className="text-zinc-400 text-sm mb-6">
-          Choose which repositories count toward your DevAstra. All are included by default.
+          These repositories will shape your constellation. All are included by default.
         </p>
+        <p className="mb-6 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs leading-5 text-zinc-500">
+          Privacy note: selected public repos are analyzed from metadata only: changed file paths,
+          activity dates, additions/deletions, and dependency names. We do not request private repos
+          or store code, diffs, commit messages, or PR bodies.
+        </p>
+
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-zinc-500">
+            Selected {selectedCount} of {repos.length}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={selectAllRepos}
+              disabled={isPending || selectedCount === repos.length}
+              className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Select all
+            </button>
+            <button
+              type="button"
+              onClick={deselectAllRepos}
+              disabled={isPending || selectedCount === 0}
+              className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Deselect all
+            </button>
+          </div>
+        </div>
 
         {repos.length > 20 && (
           <input
@@ -100,19 +137,19 @@ export function RepoSelector({ repos }: RepoSelectorProps) {
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => handleSubmit(new Set())}
             disabled={isPending}
             className="flex-1 py-3 rounded-xl bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
           >
-            Skip &amp; Build
+            Start with empty sky
           </button>
           <button
             type="button"
-            onClick={handleSubmit}
-            disabled={isPending}
+            onClick={() => handleSubmit()}
+            disabled={isPending || selectedCount === 0}
             className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
           >
-            {hasToggled ? 'Build my world' : 'Build my world'}
+            Build my constellation
           </button>
         </div>
       </div>

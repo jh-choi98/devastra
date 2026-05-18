@@ -43,9 +43,21 @@ function errorResponse(status: number, retryAfter?: string): Response {
   return {
     ok: false,
     status,
-    headers: { get: (h: string) => (h === 'Retry-After' ? (retryAfter ?? null) : null) } as unknown as Headers,
+    headers: {
+      get: (h: string) => (h === 'Retry-After' ? (retryAfter ?? null) : null),
+    } as unknown as Headers,
     json: () => Promise.resolve({ message: 'error' }),
   } as unknown as Response
+}
+
+function makeCommitListItem(sha: string, date: string) {
+  return {
+    sha,
+    html_url: `https://github.com/user/repo/commit/${sha}`,
+    commit: {
+      author: { name: 'User', email: 'user@example.com', date },
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -111,15 +123,89 @@ describe('GitHubSourceClient.listAuthoredRepos', () => {
 
   it('returns empty array when all repos are private', async () => {
     mockFetch.mockResolvedValueOnce(
-      okJson([
-        makeRepoResponse({ private: true }),
-        makeRepoResponse({ private: true }),
-      ]),
+      okJson([makeRepoResponse({ private: true }), makeRepoResponse({ private: true })]),
     )
 
     const client = new GitHubSourceClient('test-token', 'user-id')
     const repos = await client.listAuthoredRepos()
     expect(repos).toHaveLength(0)
+  })
+})
+
+describe('GitHubSourceClient.fetchReposByExternalIds', () => {
+  let mockFetch: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it('fetches only requested repositories by GitHub node id', async () => {
+    mockFetch.mockResolvedValueOnce(
+      okJson({
+        data: {
+          nodes: [
+            {
+              id: 'R_two',
+              name: 'two',
+              owner: { login: 'user' },
+              isPrivate: false,
+              primaryLanguage: { name: 'Go' },
+              pushedAt: '2026-05-17T00:00:00Z',
+            },
+            {
+              id: 'R_one',
+              name: 'one',
+              owner: { login: 'user' },
+              isPrivate: false,
+              primaryLanguage: { name: 'TypeScript' },
+              pushedAt: '2026-05-16T00:00:00Z',
+            },
+          ],
+        },
+      }),
+    )
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    const repos = await client.fetchReposByExternalIds(['R_one', 'R_two'])
+
+    expect(repos.map((repo) => repo.externalRepoId)).toEqual(['R_one', 'R_two'])
+    expect(repos[0].primaryLanguage).toBe('TypeScript')
+    expect(repos[0].pushedAt?.toISOString()).toBe('2026-05-16T00:00:00.000Z')
+
+    const [url, init] = mockFetch.mock.calls[0] as [
+      string,
+      RequestInit & { body: string; headers: Record<string, string> },
+    ]
+    expect(url).toBe('https://api.github.com/graphql')
+    expect(JSON.parse(init.body).variables.ids).toEqual(['R_one', 'R_two'])
+  })
+
+  it('filters private repositories from direct node lookup', async () => {
+    mockFetch.mockResolvedValueOnce(
+      okJson({
+        data: {
+          nodes: [
+            {
+              id: 'R_private',
+              name: 'secret',
+              owner: { login: 'user' },
+              isPrivate: true,
+              primaryLanguage: null,
+              pushedAt: '2026-05-17T00:00:00Z',
+            },
+          ],
+        },
+      }),
+    )
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    await expect(client.fetchReposByExternalIds(['R_private'])).resolves.toEqual([])
   })
 })
 
@@ -145,7 +231,10 @@ describe('User-Agent header', () => {
     const client = new GitHubSourceClient('my-token', 'user-id')
     await client.listAuthoredRepos()
 
-    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }]
+    const [, init] = mockFetch.mock.calls[0] as [
+      string,
+      RequestInit & { headers: Record<string, string> },
+    ]
     expect((init.headers as Record<string, string>)['User-Agent']).toBe(GITHUB_USER_AGENT)
   })
 
@@ -155,69 +244,46 @@ describe('User-Agent header', () => {
     const client = new GitHubSourceClient('my-secret-token', 'user-id')
     await client.listAuthoredRepos()
 
-    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit & { headers: Record<string, string> }]
+    const [, init] = mockFetch.mock.calls[0] as [
+      string,
+      RequestInit & { headers: Record<string, string> },
+    ]
     expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer my-secret-token')
   })
 })
 
 // ---------------------------------------------------------------------------
-// 403 secondary rate-limit retry
+// 403 secondary rate-limit handling
 // ---------------------------------------------------------------------------
-describe('retry on 403', () => {
+describe('rate limit on 403', () => {
   let mockFetch: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    vi.useFakeTimers()
     mockFetch = vi.fn()
     vi.stubGlobal('fetch', mockFetch)
   })
 
   afterEach(() => {
-    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.clearAllMocks()
   })
 
-  it('retries once after 403 with Retry-After header', async () => {
-    mockFetch
-      .mockResolvedValueOnce(errorResponse(403, '2')) // 2-second retry-after
-      .mockResolvedValueOnce(okJson([]))
+  it('throws immediately after 403 with Retry-After header', async () => {
+    mockFetch.mockResolvedValueOnce(errorResponse(403, '2'))
 
     const client = new GitHubSourceClient('test-token', 'user-id')
-    const promise = client.listAuthoredRepos()
-    await vi.runAllTimersAsync()
-    const result = await promise
+    await expect(client.listAuthoredRepos()).rejects.toThrow(/rate limited/)
 
-    expect(mockFetch).toHaveBeenCalledTimes(2)
-    expect(result).toEqual([])
+    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('retries once after 403 with no Retry-After (defaults to 60s)', async () => {
-    mockFetch
-      .mockResolvedValueOnce(errorResponse(403)) // no Retry-After
-      .mockResolvedValueOnce(okJson([]))
+  it('throws immediately after 403 with no Retry-After', async () => {
+    mockFetch.mockResolvedValueOnce(errorResponse(403))
 
     const client = new GitHubSourceClient('test-token', 'user-id')
-    const promise = client.listAuthoredRepos()
-    await vi.runAllTimersAsync()
-    const result = await promise
+    await expect(client.listAuthoredRepos()).rejects.toThrow(/rate limited/)
 
-    expect(mockFetch).toHaveBeenCalledTimes(2)
-    expect(result).toEqual([])
-  })
-
-  it('throws if still failing after retry', async () => {
-    mockFetch
-      .mockResolvedValueOnce(errorResponse(403))
-      .mockResolvedValueOnce(errorResponse(403))
-
-    const client = new GitHubSourceClient('test-token', 'user-id')
-    // Attach catch immediately to avoid unhandled rejection warning
-    const catchPromise = client.listAuthoredRepos().catch((e: unknown) => e)
-    await vi.runAllTimersAsync()
-    const err = await catchPromise
-    expect(err).toBeInstanceOf(Error)
-    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -240,8 +306,8 @@ describe('401 refresh path', () => {
 
   it('calls refreshTokenIfNeeded on 401 and retries', async () => {
     mockFetch
-      .mockResolvedValueOnce(errorResponse(401))  // first call: 401
-      .mockResolvedValueOnce(okJson([]))           // second call: success
+      .mockResolvedValueOnce(errorResponse(401)) // first call: 401
+      .mockResolvedValueOnce(okJson([])) // second call: success
 
     const client = new GitHubSourceClient('old-token', 'user-id')
     const repos = await client.listAuthoredRepos()
@@ -252,9 +318,7 @@ describe('401 refresh path', () => {
   })
 
   it('second call uses the refreshed token', async () => {
-    mockFetch
-      .mockResolvedValueOnce(errorResponse(401))
-      .mockResolvedValueOnce(okJson([]))
+    mockFetch.mockResolvedValueOnce(errorResponse(401)).mockResolvedValueOnce(okJson([]))
 
     const client = new GitHubSourceClient('old-token', 'user-id')
     await client.listAuthoredRepos()
@@ -269,9 +333,7 @@ describe('401 refresh path', () => {
   })
 
   it('throws if still failing after token refresh', async () => {
-    mockFetch
-      .mockResolvedValueOnce(errorResponse(401))
-      .mockResolvedValueOnce(errorResponse(401))
+    mockFetch.mockResolvedValueOnce(errorResponse(401)).mockResolvedValueOnce(errorResponse(401))
 
     const client = new GitHubSourceClient('old-token', 'user-id')
     await expect(client.listAuthoredRepos()).rejects.toThrow()
@@ -327,5 +389,251 @@ describe('GitHubSourceClient.fetchCommitFiles', () => {
     expect(result.file_paths).toEqual([])
     expect(result.additions).toBe(0)
     expect(result.deletions).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// fetchFileContent — missing file vs real API failure
+// ---------------------------------------------------------------------------
+describe('GitHubSourceClient.fetchFileContent', () => {
+  let mockFetch: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it('returns null when the manifest file is not present', async () => {
+    mockFetch.mockResolvedValueOnce(errorResponse(404))
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    await expect(client.fetchFileContent('owner', 'repo', 'package.json')).resolves.toBeNull()
+  })
+
+  it('throws rate-limit errors instead of treating manifests as absent', async () => {
+    mockFetch.mockResolvedValueOnce(errorResponse(403, '2'))
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    await expect(client.fetchFileContent('owner', 'repo', 'package.json')).rejects.toThrow(
+      /rate limited/,
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// listAuthoredActivities — nullable contribution nodes
+// ---------------------------------------------------------------------------
+describe('GitHubSourceClient.listAuthoredActivities', () => {
+  let mockFetch: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it('skips null PR and issue contribution targets', async () => {
+    mockFetch.mockResolvedValueOnce(
+      okJson({
+        data: {
+          viewer: {
+            login: 'user',
+            contributionsCollection: {
+              commitContributionsByRepository: [],
+              pullRequestContributions: {
+                nodes: [
+                  null,
+                  { pullRequest: null },
+                  {
+                    pullRequest: {
+                      id: 'PR_1',
+                      number: 1,
+                      url: 'https://github.com/user/repo/pull/1',
+                      createdAt: '2026-01-01T00:00:00Z',
+                      repository: {
+                        id: 'R_public',
+                        name: 'repo',
+                        owner: { login: 'user' },
+                        isPrivate: false,
+                      },
+                    },
+                  },
+                ],
+                pageInfo: { hasNextPage: false, endCursor: null },
+                totalCount: 2,
+              },
+              issueContributions: {
+                nodes: [
+                  null,
+                  { issue: null },
+                  {
+                    issue: {
+                      id: 'I_1',
+                      number: 2,
+                      url: 'https://github.com/user/repo/issues/2',
+                      createdAt: '2026-01-02T00:00:00Z',
+                      repository: {
+                        id: 'R_public',
+                        name: 'repo',
+                        owner: { login: 'user' },
+                        isPrivate: false,
+                      },
+                    },
+                  },
+                ],
+                pageInfo: { hasNextPage: false, endCursor: null },
+                totalCount: 2,
+              },
+            },
+          },
+        },
+      }),
+    )
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    const activities = await client.listAuthoredActivities({
+      repoExternalIds: ['R_public'],
+      since: new Date('2025-01-01T00:00:00Z'),
+    })
+
+    expect(activities.map((activity) => activity.externalId)).toEqual(['PR_1', 'I_1'])
+  })
+
+  it('fetches commit lists only for repos selected by commit cache invalidation', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        okJson({
+          data: {
+            viewer: {
+              login: 'user',
+              contributionsCollection: {
+                commitContributionsByRepository: [
+                  {
+                    repository: {
+                      id: 'R_changed',
+                      name: 'changed',
+                      owner: { login: 'user' },
+                      isPrivate: false,
+                      primaryLanguage: { name: 'TypeScript' },
+                    },
+                    contributions: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+                  },
+                  {
+                    repository: {
+                      id: 'R_cached',
+                      name: 'cached',
+                      owner: { login: 'user' },
+                      isPrivate: false,
+                      primaryLanguage: { name: 'Go' },
+                    },
+                    contributions: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+                  },
+                ],
+                pullRequestContributions: {
+                  nodes: [],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                  totalCount: 0,
+                },
+                issueContributions: {
+                  nodes: [],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                  totalCount: 0,
+                },
+              },
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(okJson([makeCommitListItem('sha-changed', '2026-01-01T00:00:00Z')]))
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    const result = await client.listAuthoredActivitiesWithFetchMetadata({
+      repoExternalIds: ['R_changed', 'R_cached'],
+      commitRepoExternalIds: ['R_changed'],
+      since: new Date('2025-01-01T00:00:00Z'),
+    })
+
+    expect(result.activities.map((activity) => activity.externalId)).toEqual(['sha-changed'])
+    expect(result.commitFetchedRepoExternalIds).toEqual(['R_changed'])
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(String(mockFetch.mock.calls[1][0])).toContain('/repos/user/changed/commits')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// listHistoricalAuthoredActivities — bounded old-repo bootstrap
+// ---------------------------------------------------------------------------
+describe('GitHubSourceClient.listHistoricalAuthoredActivities', () => {
+  let mockFetch: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it('fetches authored commits without a since cutoff for selected repos', async () => {
+    mockFetch
+      .mockResolvedValueOnce(okJson({ login: 'user' }))
+      .mockResolvedValueOnce(
+        okJson([
+          makeCommitListItem('old-1', '2020-01-01T00:00:00Z'),
+          makeCommitListItem('old-2', '2019-01-01T00:00:00Z'),
+        ]),
+      )
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    const activities = await client.listHistoricalAuthoredActivities({
+      repos: [{ externalRepoId: 'R_old', owner: 'user', name: 'repo' }],
+      maxRepos: 1,
+      maxCommitsPerRepo: 10,
+      maxPagesPerRepo: 1,
+    })
+
+    expect(activities.map((activity) => activity.externalId)).toEqual(['old-1', 'old-2'])
+    expect(activities.every((activity) => activity.repoExternalId === 'R_old')).toBe(true)
+
+    const [commitUrl] = mockFetch.mock.calls[1] as [string, RequestInit]
+    expect(commitUrl).toContain('/repos/user/repo/commits')
+    expect(commitUrl).toContain('author=user')
+    expect(commitUrl).not.toContain('since=')
+  })
+
+  it('honors repo and commit caps', async () => {
+    mockFetch
+      .mockResolvedValueOnce(okJson({ login: 'user' }))
+      .mockResolvedValueOnce(
+        okJson([
+          makeCommitListItem('old-1', '2020-01-01T00:00:00Z'),
+          makeCommitListItem('old-2', '2019-01-01T00:00:00Z'),
+        ]),
+      )
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    const activities = await client.listHistoricalAuthoredActivities({
+      repos: [
+        { externalRepoId: 'R_old_1', owner: 'user', name: 'repo-one' },
+        { externalRepoId: 'R_old_2', owner: 'user', name: 'repo-two' },
+      ],
+      maxRepos: 1,
+      maxCommitsPerRepo: 1,
+      maxPagesPerRepo: 3,
+    })
+
+    expect(activities.map((activity) => activity.externalId)).toEqual(['old-1'])
+    expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 })

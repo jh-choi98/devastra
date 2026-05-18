@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { eq, isNotNull } from 'drizzle-orm'
+import { eq, isNotNull, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema/users'
 import { repositories } from '@/lib/db/schema/repositories'
@@ -12,7 +12,9 @@ export async function getUserById(id: string): Promise<DbUser | null> {
   return user ?? null
 }
 
-export async function getUsersWithTokens(): Promise<Pick<DbUser, 'id' | 'githubLogin' | 'lastEventId' | 'lastIncrementalSyncAt'>[]> {
+export async function getUsersWithTokens(): Promise<
+  Pick<DbUser, 'id' | 'githubLogin' | 'lastEventId' | 'lastIncrementalSyncAt'>[]
+> {
   return db
     .select({
       id: users.id,
@@ -71,6 +73,26 @@ export type DbRepositoryRow = {
   name: string
   primaryLanguage: string | null
   isIncluded: boolean
+}
+
+export type UserRepoSummary = {
+  totalCount: number
+  includedCount: number
+}
+
+export async function getUserRepoSummary(userId: string): Promise<UserRepoSummary> {
+  const [summary] = await db
+    .select({
+      totalCount: sql<number>`count(*)::int`,
+      includedCount: sql<number>`count(*) filter (where ${repositories.isIncluded})::int`,
+    })
+    .from(repositories)
+    .where(eq(repositories.userId, userId))
+
+  return {
+    totalCount: Number(summary?.totalCount ?? 0),
+    includedCount: Number(summary?.includedCount ?? 0),
+  }
 }
 
 export async function listUserRepos(userId: string): Promise<DbRepositoryRow[]> {

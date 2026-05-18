@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { Html, Head, Preview, Body, Container, Text, Img, Link, Section } from '@react-email/components'
 
 type Props = {
