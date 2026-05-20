@@ -17,7 +17,7 @@ export function PrivateProfile({ username }: { username: string }): JSX.Element 
     >
       <header className="px-4 py-3 shrink-0">
         <Link href="/" className="text-slate-300 text-sm font-semibold">
-          ⭐ DevAstra
+          DevAstra
         </Link>
       </header>
 
