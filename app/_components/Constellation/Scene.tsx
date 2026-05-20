@@ -20,11 +20,14 @@ import { ParallaxRig } from './camera/ParallaxRig'
 import { SparkSequence } from './cinematics/SparkSequence'
 import { StageUpRipple } from './cinematics/StageUpRipple'
 import { useDataDiff } from './hooks/useDataDiff'
+import type { SemanticConstellationScaleProfile } from './semantic-scale-profile'
 import type { SparseConstellationView } from './sparse-mode'
 import type { ConstellationProps, LayerOverrides } from './types'
 
 interface SceneProps extends Omit<ConstellationProps, 'renderer'> {
   sparseView: SparseConstellationView
+  semanticProfile: SemanticConstellationScaleProfile
+  canvasSize: { width: number | null; height: number | null }
 }
 
 /**
@@ -73,7 +76,14 @@ function CameraFit({ sparseView }: { sparseView: SparseConstellationView }) {
   return null
 }
 
-export default function Scene({ data, layerOverrides, sparseView, onMount }: SceneProps) {
+export default function Scene({
+  data,
+  layerOverrides,
+  sparseView,
+  semanticProfile,
+  canvasSize,
+  onMount,
+}: SceneProps) {
   const viewport = data.viewport ?? 'desktop'
   const isMobile = viewport === 'mobile'
   const { profile } = sparseView
@@ -131,9 +141,23 @@ export default function Scene({ data, layerOverrides, sparseView, onMount }: Sce
           <UnlitAnchors data={data} viewport={viewport} opacity={profile.unlitAnchorOpacity} />
         )}
         {show('connections') && <Connections data={data} viewport={viewport} />}
-        {show('techstars') && <TechStars data={data} viewport={viewport} sparseProfile={profile} />}
+        {show('techstars') && (
+          <TechStars
+            data={data}
+            viewport={viewport}
+            sparseProfile={profile}
+            semanticProfile={semanticProfile}
+          />
+        )}
         {show('aura') && <ClusterAura viewport={viewport} />}
-        {show('labels') && <Labels data={data} viewport={viewport} />}
+        {show('labels') && (
+          <Labels
+            data={data}
+            viewport={viewport}
+            semanticProfile={semanticProfile}
+            canvasSize={canvasSize}
+          />
+        )}
         <SparkSequence newlyLitLandmarks={newlyLit} viewport={viewport} />
         <StageUpRipple stagedUpClusters={stagedUp} viewport={viewport} />
       </Suspense>

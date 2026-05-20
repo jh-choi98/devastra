@@ -49,18 +49,25 @@ export default async function SettingsPage() {
     <main className="min-h-screen bg-[#0b1020] px-4 py-10">
       <div className="mx-auto max-w-[800px]">
         {/* Header */}
-        <div className="mb-10 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm text-zinc-400 transition-colors hover:text-zinc-200">
+        <div className="mb-10 flex items-start justify-between gap-4 lg:items-center">
+          <div className="relative min-w-0">
+            <Link
+              href="/"
+              className="mb-3 inline-flex whitespace-nowrap text-sm text-zinc-400 transition-colors hover:text-zinc-200 lg:absolute lg:right-full lg:top-1/2 lg:mb-0 lg:mr-8 lg:-translate-y-1/2"
+            >
               ← Back
             </Link>
-            <h1 className="text-lg font-semibold text-white">Settings</h1>
+            <h1 className="text-2xl font-bold text-white sm:text-3xl">Settings</h1>
           </div>
           {user.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatarUrl} alt={user.displayUsername} className="h-8 w-8 rounded-full" />
+            <img
+              src={user.avatarUrl}
+              alt={user.displayUsername}
+              className="mt-8 h-8 w-8 rounded-full lg:mt-0"
+            />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs text-zinc-200">
+            <div className="mt-8 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs text-zinc-200 lg:mt-0">
               {user.displayUsername[0]?.toUpperCase()}
             </div>
           )}

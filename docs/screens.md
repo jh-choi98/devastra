@@ -142,7 +142,9 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 
 ### Header (top bar)
 
-- **Left:** Logo (star icon + `DevAstra` text; icon-only on narrow mobile) · `Last synced 2h ago` (relative; hover/long-press shows absolute timestamp).
+- **Placement:** floating overlay above the full-viewport constellation, not a reserved layout row. It must never crop or push the star field down; the constellation remains the primary first-viewport object.
+- **Style:** separate low-opacity glass controls (`bg-slate-950/40`, subtle border/backdrop blur), no hard full-width divider line between header and sky. Header elements are `pointer-events-auto`; the surrounding overlay frame is non-blocking.
+- **Left:** text brand (`DevAstra`; compact but still readable on mobile). The constellation mark is reserved for the browser/app icon, not repeated in the in-app header.
 - **Right:** Refresh button · Share button · Avatar dropdown (`Settings · My public profile (if is_public) · Sign out`).
 
 **Refresh button states:**
@@ -165,13 +167,13 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 **Layers (back to front):**
 
 - **Sky background.** Pure near-black (`#020207` zenith → `#050307` edges). No vertical gradient toward a warm horizon and no warm nebulosity wash in the default product canvas.
-- **Milky Way nebulosity.** Disabled in the default web renderer by final visual decision: the canvas should read as a clean observational star atlas, not a nebula illustration. The component and texture assets may remain for OG / historical experiments, but the live steady-state Scene does not render the Milky Way layer.
+- **Milky Way nebulosity.** Disabled in the default web renderer and share/OG renderer by final visual decision: the canvas should read as a clean observational star atlas, not a nebula illustration. Texture assets may remain for historical experiments, but the active product surface does not render the Milky Way layer.
 - **Atmospheric haze.** A very faint cool blue-gray additive layer between sky and stars, capped at ~5% peak alpha. It gives depth without becoming a colored aura or warm nebula. Its low-frequency drift is disabled under `prefers-reduced-motion: reduce`.
-- **Field stars** (~2000 desktop / ~1000 mobile). Deterministic seed; density biased toward a diagonal star-field band, not a rendered Milky Way texture. Spectral palette weighted 70% white / 20% blue-white / 7% yellow-white / 3% orange-red. Sizes: 80% 1px / 15% 2px / 5% with visible halo. Per-star bounded twinkle (±10% intensity, 4–8s phases). No labels, no hover, no click. Sparse constellations may dim field/mid stars by at most ~10–12% so lit tech stars read as the foreground; density, color, and twinkle character do not change.
-- **Mid-depth stars** (~420 desktop / ~220 mobile). Deterministic, slightly larger than field stars, and slightly stronger in parallax response. They sit between field stars and tech stars to restore depth without increasing semantic star count.
+- **Field stars** (2000 desktop / 1000 mobile baseline; 1500 OG). Deterministic seed; density biased toward a diagonal star-field band, not a rendered Milky Way texture. Spectral palette weighted 70% white / 20% blue-white / 7% yellow-white / 3% orange-red. Sizes: 80% 1px / 15% 2px / 5% with visible halo, with the current background-star size profile enlarged 10% from the original baseline. The renderer generates a larger deterministic pool and uses viewport-aware draw ranges, opacity, spread, and size scale: small canvases get a quieter sky so tech stars remain foreground; wide canvases get more fill without adding semantic work. Per-star bounded twinkle stays within the profile cap. No labels, no hover, no click. Sparse constellations may dim field/mid stars by at most ~10–12% so lit tech stars read as the foreground; density, color, and twinkle character do not change.
+- **Mid-depth stars** (420 desktop baseline / lower on small mobile / 280 OG). Deterministic, slightly larger than field stars, and slightly stronger in parallax response. They sit between field stars and tech stars to restore depth without increasing semantic star count. Like field stars, this tier is pool-backed and viewport-adaptive.
 - **Territory boundary lines.** Six Voronoi cells computed at render time from the cluster anchors (see `docs/adr.md` ADR-63). Always visible. Thin (~10% opacity) muted blue-gray polygonal strokes. Fixed regardless of which stars are lit. This is the persistent "map layer" that establishes cluster regions without color.
-- **Connection lines.** MST among lit stars per cluster. Muted blue-gray (not cluster color), rendered as thin tapered quad strips with a narrow blue-white core and a very soft shader-local halo. The line should read like a real sky chart thread: more legible than a 1px stroke, but never like a bright game-UI overlay or cluster-color route line.
-- **Tech stars.** Positions come from `tech-catalog.md` (deterministic per-`tech_key` `{x, y}` within cluster anchor + jitter). Spectral colors from the same palette as field stars (deterministic mapping by tech_key — see `features/constellation/render/palette.ts`). Airy disk core + soft shader-local halo. Visible 4-spike diffraction cross (vertical + horizontal) only for the current top-brightness tier. Brightness scales with `landmarks.weight` via the logarithmic magnitude curve in `features/constellation/render/magnitude.ts`: newly lit stars remain pinpoints, mid-weight stars gain visible halo, and heavy hitters gain larger cores plus longer diffraction spikes. Sparse constellations gently boost tech star scale/intensity/spike length (bounded, data-preserving) so a small number of lit stars still feels intentional. Tech stars have NO ambient motion — identity is preserved.
+- **Connection lines.** MST among lit stars per cluster. Muted blue-gray (not cluster color), rendered as thin tapered quad strips with a narrow blue-white core and a very soft shader-local halo. The line should read like a real sky chart thread: more legible than a 1px stroke, but never like a bright game-UI overlay or cluster-color route line. Web tuning keeps the same MST geometry while modestly lifting core/glow visibility on dense dark skies. Share/OG uses a separate stronger static stroke profile because the 1200×630 image is commonly downscaled in previews.
+- **Tech stars.** Positions come from `tech-catalog.md` (deterministic per-`tech_key` `{x, y}` within cluster anchor + jitter). Spectral colors from the same palette as field stars (deterministic mapping by tech_key — see `features/constellation/render/palette.ts`). Airy disk core + soft shader-local halo. Visible 4-spike diffraction cross (vertical + horizontal) only for bright-or-stronger stars in the current top-brightness tier. Brightness scales with `landmarks.weight` via the logarithmic magnitude curve in `features/constellation/render/magnitude.ts`: newly lit stars remain pinpoints, steady stars gain a visible halo, and heavy hitters gain larger cores plus longer diffraction spikes. Sparse constellations gently boost tech star scale/intensity/spike length (bounded, data-preserving) so a small number of lit stars still feels intentional. Small viewports reduce tech-star core/spike intensity and label scale together so mobile constellations stay readable without changing generation accuracy or layout topology. Tech stars have NO ambient motion — identity is preserved.
 - **Cluster aura (event-only).** Steady state: OFF. Cluster color appears only on these triggers, in priority order: `cinematic/stage-up > drawer-selected > hover > none`. Only one aura is active at a time. Hover region is the boundary polygon interior; star hover and label hover also count as cluster hover. While the drawer is open with cluster X selected, X's aura stays on; hovering another cluster Y highlights Y's boundary line but does NOT activate Y's aura. Fade in/out ~200ms; additive blend; does not depend on full-screen bloom.
 - **Labels.** Small blue-white sans-serif, Stellarium typography. NOT cluster color, NOT caps, NOT letter-spaced.
   - Cluster labels: always visible, one per cluster (e.g. `Backend`). The inline `· STAGE N` suffix is removed; stage information lives in the drawer / strip instead.
@@ -187,17 +189,17 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 
 **First paint / fallback:** `Skeleton` (HTML/SVG: background + boundary lines + cluster labels, ≈3KB) is the dynamic loading fallback and the WebGL-unsupported / Scene-crash fallback. In the normal WebGL path, the Skeleton is removed once the WebGL wrapper and Scene mount; the Scene then fades in over 300–500ms. This avoids keeping duplicate map layers under the canvas during steady state.
 
-**Viewport:** full viewport below the header. No scroll. User pan/zoom disabled (the constellation is identity, not a map); sparse-mode system framing is the only zoom/pan-like adjustment.
+**Viewport:** full viewport behind the floating header. No scroll. User pan/zoom disabled (the constellation is identity, not a map); sparse-mode system framing is the only zoom/pan-like adjustment. Star position resolution applies a viewport-safe edge inset so lit tech stars do not drift out of frame on wider aspect ratios.
 
 **Mobile:**
 
-- Header: logo icon + avatar. Refresh/share become floating actions (top-right of canvas).
+- Header: logo + avatar/actions remain floating over the canvas with safe-area-aware padding; controls stay compact and do not reserve vertical space above the constellation.
 - Constellation: viewport-aware cluster center positions (separate set from desktop, hardcoded in renderer config).
 - Cluster labels: scaled down (no abbreviation — semantic meaning preserved).
 - Star tap targets: enlarged invisible coarse-pointer hit areas, tuned to stay at or above the 44px mobile target size on common viewports.
 - Pull-to-refresh enabled on main constellation only.
 - Safe-area-insets respected (notch / nav bar).
-- **Adaptive quality:** field stars 1000 (vs 2000 desktop), mid-depth stars 220 (vs 420 desktop), DPR cap `Math.min(devicePixelRatio, 2)`. Postprocessing remains default-off; if manually enabled, it uses a low-resolution render target.
+- **Adaptive quality:** background star counts, opacity, spread, and size are derived from the real canvas area; tech-star size, spike length, and label scale shrink together on small screens. DPR cap `Math.min(devicePixelRatio, 2)`. Postprocessing remains default-off; if manually enabled, it uses a low-resolution render target.
 
 **Reduced motion (`prefers-reduced-motion: reduce`):** field/mid-star twinkle off, background-layer parallax off, haze drift off, spark / ripple / aura fade replaced by instant final-state swap. Postprocessing is default-off; if explicitly enabled, it remains static composition.
 
@@ -208,7 +210,7 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 ### Star tooltip (desktop hover)
 
 - Trigger: hover 200ms.
-- Content: `React · brightest · since Mar 12` (tech name · brightness descriptor · first lit date in product language).
+- Content: `React · radiant · since Mar 12` (tech name · brightness descriptor · first lit date in product language).
 - Position: above the star; auto-flips at edges.
 - Dismissal: mouse leave → immediate hide.
 - Mobile: not used (tap → drawer).
@@ -216,9 +218,9 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 ### Brightness scale
 
 - Location: bottom-right of the constellation viewport by default. It sits below drawer/scrim layers and is hidden during first-reveal/build overlays to avoid competing with transient status copy.
-- Compact state: a vertical Stellarium-style signal scale with tick marks at 5, 10, 30, 80, and 200+ signal. It uses muted amber map ink and no cluster color.
-- Expanded state: hover, focus, or tap reveals a concise explanation: stars light at 5 signal; brightness follows the logarithmic magnitude curve in `features/constellation/render/magnitude.ts`; classification signal comes from selected public repo file paths, dependencies, and repo language; activity signal weights are commit = 1, issue = 2, PR = 5 before confidence splitting.
-- If the user has lit stars, the expanded state also summarizes the current lit-star count, strongest star signal, and the current top-20% threshold used for diffraction spikes.
+- Compact state: a small, low-opacity Stellarium-style brightness ladder. It shows five star samples plus their signal thresholds (`5`, `10`, `30`, `80`, `200+`) instead of long text, so it does not compete with the constellation.
+- Expanded state: hover, focus, or tap reveals a concise table for `faint → emerging → steady → bright → radiant`, with each row showing the star sample and signal range. Below the table, a compact signal rule explains the user-visible scoring model: matched commits add `+1`, issues add `+2`, and PRs add `+5`; if one activity matches multiple techs, signal is split across those stars. Avoid paragraph copy and renderer-internal terms in this overlay.
+- If the user has lit stars, the expanded state summarizes only the current lit-star count.
 - Mobile: the same compact scale is tappable and expands upward so it does not cover the main star field more than necessary.
 
 ### Initial page load
@@ -247,8 +249,8 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 **Body (top to bottom):**
 
 1. **Cluster summary** — brief stats: `12 stars lit · 4 brightened this week`. Stage info as small footer text: `Stage 2`.
-2. **Lit stars list** — each row: star icon (color, size matched to canvas), tech name, brightness descriptor (`brightest` / `bright` / `dim` mapped from weight quintiles), first-lit date, top contributing repo (`from juho/my-app`). Row is clickable → toggles inline `Why is this lit?` expansion. Recently unlocked/brightened rows are visually marked.
-3. **`Why is this lit?` expansion (per star, on click)** — detection-rule summary (e.g. `Lit from TypeScript files and React-related paths`), contributing repos list (1–3 repos with the most matches), activity breakdown (`12 commits · 3 PRs`). Inside the expansion: a small `This doesn't look right` button → opens misclassification modal (Sub-flow D).
+2. **Lit stars list** — each row: star icon (color, size matched to canvas), tech name, brightness descriptor (`faint` / `emerging` / `steady` / `bright` / `radiant` mapped from landmark weight), first-lit date, top contributing repo (`from juho/my-app`). Row is clickable → toggles inline `Why is this lit?` expansion. Recently unlocked/brightened rows are visually marked.
+3. **`Why is this lit?` expansion (per star, on click)** — detection-rule summary (e.g. `Lit from TypeScript files and React-related paths`), contributing repos list (1–3 repos with the most matches), activity breakdown (`12 commits · 3 PRs`). It does not include inline correction links; the drawer should stay focused on explanation and exploration.
 4. **Recent PRs** — up to 3 recent PR rows (title + repo + relative time). Titles fetched from GitHub API on drawer open; loading state shows skeleton rows. `See more on GitHub →` link.
 5. **(Visitor view only) CTA footer** — `Want to see yours? Create yours, free →`.
 
@@ -264,12 +266,12 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 
 **Layout (top to bottom):**
 
-1. **Header:** `Share your sky` + close X.
-2. **OG preview** — rendered preview of `/api/og/profile/{username}` at 1200×630 ratio.
+1. **Header:** `Share your DevAstra` + close X.
+2. **OG preview** — rendered preview of `/api/og/profile/{username}` at 1200×630 ratio. The preview uses the current dark-sky OG renderer: deterministic field/mid-star layers, current lit tech stars, current labels, current background, and static connection strokes tuned for downscaled share cards.
 3. **Public toggle row** — `Make your constellation public at devastra.app/{username}` + toggle.
    - OFF state: share buttons below are disabled (visually grayed).
    - ON state: toggle expansion below — `Your constellation is public · devastra.app/{username} [Copy] [Preview →]`.
-4. **Share targets row** — Twitter · LinkedIn · Copy link · Download PNG · (mobile) Native share. Twitter pre-filled tweet: `My GitHub activity, as a constellation. {url}`. Download PNG: filename `devastra-{username}-{date}.png`, dimensions 1200×630, watermark in bottom-right.
+4. **Share targets row** — Copy link · X (icon-only, accessible label `Share on X`) · LinkedIn (with `in` logo) · Download PNG · (mobile) Native share. X pre-filled post: `My GitHub activity, as a constellation. {url}`. Download PNG: filename `devastra-{username}-{date}.png`, dimensions 1200×630, watermark in bottom-right.
 
 **Feedback after a share button click:** modal closes + brief toast `Shared!`.
 
@@ -307,7 +309,7 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 
 ### E.3 — Misclassification feedback modal
 
-- **Trigger:** `This doesn't look right` inside drawer's `Why is this lit?` expansion (D.1).
+- **Trigger:** not exposed in the drawer UI while the correction entrypoint is being redesigned. The backend action and modal remain available for a future low-friction feedback surface.
 - **Heading:** `Help us understand. What looks off?`
 - **Form:**
   - Category select: `Wrong category` / `Shouldn't be lit` / `Activity not mine` / `Other`
@@ -324,7 +326,7 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 
 **Layout:**
 
-- Header: `← Back` link · `Settings` title · avatar dropdown (right).
+- Header: `Settings` title · avatar (right) with a `← Back` link. On `lg` and wider screens, Back sits in the left gutter, vertically centered to the title; below `lg`, Back stacks above the title so it never overlaps or clips on narrow browser widths.
 - Max width 800px, centered.
 - Single long page, divider lines between sections (no card backgrounds).
 - Mobile: single column scroll.
@@ -362,7 +364,7 @@ Three render variations: visitor (unauthenticated or other user), owner self-vie
 
 ### G.1 — Visitor view (unauthenticated)
 
-- **Header:** logo only (minimal, no actions).
+- **Header:** text brand only (minimal, no actions; no repeated mark).
 - **Top-left compact block:** avatar + `@username` + stats line `12 stars lit · 4 clusters active`.
 - **Header text below:** `Viewing {username}'s constellation`
 - **Constellation:** identical interactive rendering as owner view; tap/click opens drawer.
@@ -420,7 +422,7 @@ All banners apply over the main constellation, never block it. Multi-banner prio
 
 ### H.3 — System status banner
 
-- **Location:** top strip (below header).
+- **Location:** top strip below the floating header controls, over the constellation but outside the main star focus area.
 - **Default copy:** `Sync is delayed right now. Your constellation is safe.` Admin may override the `system_messages.message` for specific incidents.
 - **Dismissible** for the session; reappears in new sessions until `active = false`.
 

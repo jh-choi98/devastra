@@ -5,6 +5,7 @@ export const TWINKLE_VERT = /* glsl */ `
   uniform float uTime;
   uniform float uTwinkleAmplitude;
   uniform float uTwinkleEnabled;
+  uniform float uSizeScale;
   varying vec3 vColor;
   varying float vIntensity;
 
@@ -25,7 +26,7 @@ export const TWINKLE_VERT = /* glsl */ `
     float twinkle = 1.0 + sin(t) * uTwinkleAmplitude * uTwinkleEnabled;
 
     // Point size scales by aSize; perspective-correct attenuation
-    gl_PointSize = aSize * twinkle * 1.65;
+    gl_PointSize = aSize * twinkle * 1.65 * uSizeScale;
     vColor = aColor;
     vIntensity = twinkle;
   }

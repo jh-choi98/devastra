@@ -66,8 +66,6 @@ export function ClusterDrawer(props: {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
-  const hideFeedback = variant === 'visitor'
-
   return (
     <AnimatePresence>
       <motion.div
@@ -167,9 +165,6 @@ export function ClusterDrawer(props: {
                         brightnessDescriptor={brightnessDescriptor(star.weight)}
                         highlighted={focusedTechKey === star.tech_key}
                         expandedByDefault={focusedTechKey === star.tech_key}
-                        ownerUserId={userId}
-                        territoryType={data.type}
-                        hideFeedback={hideFeedback}
                         matchedRuleKinds={star.matchedRuleKinds}
                         contributingRepos={star.contributingRepos}
                         activity={star.activity}

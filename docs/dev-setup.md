@@ -66,6 +66,14 @@ Populate `.env.local` with the values below. All secrets are server-side unless 
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `OG_RENDER_VERSION` | String tag, e.g. `devastra-1`. Bump on any global renderer / product-language change to invalidate cached OG images (`docs/adr.md` ADR-52). |
 
+For local visual checks, the profile OG route exposes a mock constellation outside production:
+
+```bash
+open "http://localhost:3000/api/og/profile/demo?test=1"
+```
+
+Use this after changes to the share modal or `lib/og/ConstellationImage.tsx` to confirm the static 1200×630 share image still follows the current dark-sky constellation style.
+
 ### Constellation renderer (ADR-62, ADR-63)
 
 | Variable                 | Where to get it                                                                                                                                                                                                                                                                     |
@@ -209,6 +217,24 @@ Two specs:
 - `constellation-render.spec.ts` — screenshot diff of the steady-state main page against a committed baseline image.
 
 Set `BASE_URL` in the environment to point at the target URL (Vercel preview deploy URL) before running.
+
+## Dev constellation map
+
+`/dev/map` is guarded by `ENABLE_DEV_MAP=1` so production deployments keep it hidden. To open it locally:
+
+```bash
+ENABLE_DEV_MAP=1 npm run dev
+```
+
+Then visit:
+
+- `http://localhost:3000/dev/map` — dense default constellation
+- `http://localhost:3000/dev/map?scenario=brightness` — five-step brightness ladder (`faint → emerging → steady → bright → radiant`) for star and edge visual review
+- `http://localhost:3000/dev/map?scenario=sparse` — sparse user framing
+- `http://localhost:3000/dev/map?scenario=stage-up` — stage-up cinematic preset
+- `http://localhost:3000/dev/map?scenario=first-ever` — first-star cinematic preset
+
+Use `layers=` to isolate rendering layers, e.g. `?scenario=brightness&layers=sky,haze,fieldstars,midstars,connections,techstars,labels`.
 
 ## Previewing React Email templates
 

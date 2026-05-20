@@ -13,7 +13,7 @@ This is not a GitHub analytics tool, not a skill ranking, not a developer evalua
 Every implementation decision is checked against these. See `memory/project_devastra_compass.md`.
 
 1. **Growth feeling** — Users see _what brightened_, not _how many commits_. "React grew. Testing lit for the first time. Docker is new this week."
-2. **Portfolio value** — A constellation is a better share artifact than a contribution graph. Fits LinkedIn / Twitter / Discord / personal-site embed without feeling game-like.
+2. **Portfolio value** — A constellation is a better share artifact than a contribution graph. Fits LinkedIn / X / Discord / personal-site embed without feeling game-like.
 3. **Motivation through collection** — Lighting new stars, brightening dim ones, filling empty clusters, this week's new stars. Drives the "I want to do a bit more" feeling _without numeric rankings_.
 4. **Self-understanding** — "I write more docs than I thought." "My backend is bigger than my frontend." "Testing is empty — maybe try Playwright next." Helps users see their actual habits.
 
@@ -34,7 +34,7 @@ If the constellation is **pretty but disconnected from meaning**, the user react
 | Attribute            | Detail                                                                                                                                                             |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Segment              | Students, interns, junior developers, portfolio builders                                                                                                           |
-| Geography (initial)  | English-speaking developers globally; beta seeded via founder's network + Twitter/Discord developer circles                                                        |
+| Geography (initial)  | English-speaking developers globally; beta seeded via founder's network + X/Discord developer circles                                                              |
 | Current workaround   | GitHub profile contribution graph + hand-curated portfolio site + LinkedIn                                                                                         |
 | Pain                 | Static portfolios don't capture growth over time; contribution graph treats every commit equally; nothing celebrates "you became a backend developer this quarter" |
 | Willingness to share | High — these users _already_ share GitHub profiles, ProductHunt launches, side projects                                                                            |
@@ -52,8 +52,8 @@ If the constellation is **pretty but disconnected from meaning**, the user react
 - **Public profile** — opt-in `/{username}` page with identical interactive constellation + sticky `Create yours, free →` CTA
 - **Weekly recap email** — Sunday delivery in user's local timezone; three variants (active week / empty week / first week); subject line uses constellation language
 - **Welcome-back overlay** — appears after ≥4 weeks of absence
-- **Misclassification feedback** — per-star `This doesn't look right` channel with category select + optional note
-- **Static OG image generation** — same constellation rendering for `/api/og/profile/[username]` and `/api/og/recap/[recap_id]`
+- **Misclassification feedback plumbing** — per-star correction modal and rate-limited storage are prepared, but the drawer entrypoint is hidden while a lower-friction feedback surface is redesigned
+- **Static OG image generation** — dark-sky share image for `/api/og/profile/[username]` and `/api/og/recap/[recap_id]`, aligned with the live constellation's current stars/background while remaining an SVG-only static renderer
 - **Settings** — public toggle, disconnect GitHub, delete account, email preferences, timezone, username change, included repos
 - **Username history with permanent redirect** — old `/{username}` URLs forward to new ones forever
 
@@ -79,13 +79,13 @@ Decision rule for "MVP succeeded, build v0.2":
 | Activation rate  | ≥60% of OAuth-completed users reach first-reveal                       | PostHog funnel: `landing_view` → `first_reveal_complete` |
 | Share rate       | ≥20% of activated users toggle profile to public                       | PostHog event: `public_toggle_on`                        |
 | Return rate      | ≥40% of activated users click weekly recap email at least once         | PostHog event: `recap_email_clicked`                     |
-| Qualitative      | ≥3 unsolicited social shares (Twitter / LinkedIn) of own constellation | Founder manual count                                     |
+| Qualitative      | ≥3 unsolicited social shares (X / LinkedIn) of own constellation       | Founder manual count                                     |
 
 If activation < 60%, fix onboarding before scaling. If share rate < 20%, the constellation isn't compelling enough — iterate viz, not features.
 
 ## Launch strategy
 
-Closed beta, 1–2 weeks, 50–100 invites from founder network + Twitter/Discord. Funnel measured via PostHog. Public launch (ProductHunt) deferred until beta success criteria met. See `docs/adr.md` ADR-24.
+Closed beta, 1–2 weeks, 50–100 invites from founder network + X/Discord. Funnel measured via PostHog. Public launch (ProductHunt) deferred until beta success criteria met. See `docs/adr.md` ADR-24.
 
 ## Open-source posture
 

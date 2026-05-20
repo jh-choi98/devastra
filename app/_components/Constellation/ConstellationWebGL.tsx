@@ -10,14 +10,18 @@ import { TooltipHost } from './overlay/TooltipHost'
 import { ConstellationContext } from './state'
 import { sparseViewForData } from './sparse-mode'
 import { useReducedMotion } from './hooks/useReducedMotion'
+import { useResponsiveConstellationEnvironment } from './use-responsive-constellation-environment'
 import { Skeleton } from './Skeleton'
 import type { ConstellationProps } from './types'
+import type { SemanticConstellationScaleProfile } from './semantic-scale-profile'
 import type { TerritoryType } from '@/features/territories/registry'
 import type { CinematicMode } from './state'
 
 function StaticFallbackView(props: {
   data: ConstellationProps['data']
   viewport: 'desktop' | 'mobile' | 'og'
+  semanticProfile: SemanticConstellationScaleProfile
+  canvasSize: { width: number | null; height: number | null }
   svgTransform?: string
   onClusterClick?: ConstellationProps['onClusterClick']
   onStarClick?: ConstellationProps['onStarClick']
@@ -28,6 +32,8 @@ function StaticFallbackView(props: {
       <A11yOverlay
         data={props.data}
         viewport={props.viewport}
+        semanticProfile={props.semanticProfile}
+        canvasSize={props.canvasSize}
         svgTransform={props.svgTransform}
         onClusterClick={props.onClusterClick}
         onStarClick={props.onStarClick}
@@ -71,7 +77,13 @@ function WebGLCrashBanner() {
 
 export function ConstellationWebGL(props: Omit<ConstellationProps, 'renderer'>) {
   const webglOK = useWebGLDetect()
-  const viewport = props.data.viewport ?? 'desktop'
+  const { containerRef, viewport, semanticProfile, size } = useResponsiveConstellationEnvironment(
+    props.data.viewport,
+  )
+  const responsiveData = useMemo(
+    () => (props.data.viewport === viewport ? props.data : { ...props.data, viewport }),
+    [props.data, viewport],
+  )
   const reducedMotion = useReducedMotion()
 
   const [hovered, setHovered] = useState<TerritoryType | null>(null)
@@ -80,7 +92,10 @@ export function ConstellationWebGL(props: Omit<ConstellationProps, 'renderer'>) 
   const [sceneMounted, setSceneMounted] = useState(false)
 
   useConstellationTelemetry({ webglSupported: webglOK, sceneMounted })
-  const sparseView = useMemo(() => sparseViewForData(props.data, viewport), [props.data, viewport])
+  const sparseView = useMemo(
+    () => sparseViewForData(responsiveData, viewport),
+    [responsiveData, viewport],
+  )
 
   const ctxValue = useMemo(
     () => ({
@@ -98,14 +113,16 @@ export function ConstellationWebGL(props: Omit<ConstellationProps, 'renderer'>) 
 
   return (
     <ConstellationContext.Provider value={ctxValue}>
-      <div className="relative h-full w-full bg-[#010102]">
+      <div ref={containerRef} className="relative h-full w-full bg-[#010102]">
         {webglOK ? (
           <SceneErrorBoundary
             fallback={
               <>
                 <StaticFallbackView
-                  data={props.data}
+                  data={responsiveData}
                   viewport={viewport}
+                  semanticProfile={semanticProfile}
+                  canvasSize={size}
                   svgTransform={sparseView.svgTransform}
                   onClusterClick={props.onClusterClick}
                   onStarClick={props.onStarClick}
@@ -114,21 +131,32 @@ export function ConstellationWebGL(props: Omit<ConstellationProps, 'renderer'>) 
               </>
             }
           >
-            <Scene {...props} sparseView={sparseView} onMount={() => setSceneMounted(true)} />
+            <Scene
+              {...props}
+              data={responsiveData}
+              sparseView={sparseView}
+              semanticProfile={semanticProfile}
+              canvasSize={size}
+              onMount={() => setSceneMounted(true)}
+            />
             <A11yOverlay
-              data={props.data}
+              data={responsiveData}
               viewport={viewport}
+              semanticProfile={semanticProfile}
+              canvasSize={size}
               svgTransform={sparseView.svgTransform}
               onClusterClick={props.onClusterClick}
               onStarClick={props.onStarClick}
             />
-            <TooltipHost data={props.data} />
+            <TooltipHost data={responsiveData} />
           </SceneErrorBoundary>
         ) : (
           <>
             <StaticFallbackView
-              data={props.data}
+              data={responsiveData}
               viewport={viewport}
+              semanticProfile={semanticProfile}
+              canvasSize={size}
               svgTransform={sparseView.svgTransform}
               onClusterClick={props.onClusterClick}
               onStarClick={props.onStarClick}

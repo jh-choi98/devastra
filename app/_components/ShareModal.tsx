@@ -111,9 +111,10 @@ export function ShareModal({
               <a
                 href={
                   publicState
-                    ? `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(profileUrl)}`
+                    ? `https://x.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(profileUrl)}`
                     : '#'
                 }
+                aria-label="Share on X"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => !publicState && e.preventDefault()}
@@ -123,7 +124,9 @@ export function ShareModal({
                     : 'bg-slate-700 opacity-40 cursor-not-allowed text-slate-300'
                 }`}
               >
-                𝕏 Twitter
+                <span aria-hidden="true" className="text-xl font-semibold leading-none">
+                  𝕏
+                </span>
               </a>
 
               <a
@@ -141,6 +144,7 @@ export function ShareModal({
                     : 'bg-slate-700 opacity-40 cursor-not-allowed text-slate-300'
                 }`}
               >
+                <LinkedInLogo className="h-4 w-4" />
                 LinkedIn
               </a>
 
@@ -156,5 +160,19 @@ export function ShareModal({
         </div>
       </div>
     </>
+  )
+}
+
+function LinkedInLogo({ className }: { className?: string }): JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M5.2 8.9h3.3v10.6H5.2V8.9ZM6.9 4a1.9 1.9 0 1 1 0 3.8A1.9 1.9 0 0 1 6.9 4ZM10.6 8.9h3.1v1.5h.1c.4-.8 1.5-1.8 3.1-1.8 3.3 0 3.9 2.2 3.9 5v5.8h-3.3v-5.1c0-1.2 0-2.8-1.7-2.8s-1.9 1.3-1.9 2.7v5.2h-3.3V8.9Z" />
+    </svg>
   )
 }

@@ -76,7 +76,7 @@ export default async function PublicProfilePage({ params }: PageParams) {
       {/* Header */}
       <header className="relative z-20 flex items-center justify-between px-4 py-3 shrink-0">
         <Link href="/" className="flex items-center gap-2 text-slate-100 font-semibold text-sm">
-          ⭐ DevAstra
+          DevAstra
         </Link>
         {variant === 'logged_in_visitor' && (
           <Link

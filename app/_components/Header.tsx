@@ -29,12 +29,15 @@ export function Header({
 
   return (
     <>
-      <header className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-700 shrink-0">
-        <Link href="/" className="text-slate-100 font-bold text-lg hover:text-white transition-colors">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-[45] flex items-start justify-between px-3 pt-3 sm:px-5 sm:pt-4">
+        <Link
+          href="/"
+          className="pointer-events-auto flex items-center gap-2 rounded-md bg-slate-950/40 px-2.5 py-2 text-base font-bold text-slate-100 shadow-xl shadow-black/20 backdrop-blur-md transition-colors hover:bg-slate-950/60 hover:text-white sm:text-lg"
+        >
           DevAstra
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="pointer-events-auto flex items-center gap-2 rounded-md bg-slate-950/40 p-1.5 shadow-xl shadow-black/20 backdrop-blur-md sm:gap-3">
           <RefreshButton
             userId={user.id}
             lastSyncStartedAt={lastSyncStartedAt}
@@ -47,7 +50,7 @@ export function Header({
               captureClientEvent('share.clicked', { distinctId: user.id })
               setShareModalOpen(true)
             }}
-            className="px-3 py-1.5 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+            className="rounded bg-indigo-500/90 px-3 py-1.5 text-sm text-white transition-colors hover:bg-indigo-400"
           >
             Share
           </button>
@@ -55,7 +58,7 @@ export function Header({
           <div className="relative">
             <button
               onClick={() => setDropdownOpen((o) => !o)}
-              className="flex items-center gap-2 rounded hover:bg-slate-700 p-1.5 transition-colors"
+              className="flex items-center gap-2 rounded p-1.5 transition-colors hover:bg-white/10"
             >
               {user.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -75,7 +78,7 @@ export function Header({
             {dropdownOpen && (
               <>
                 <div
-                  className="fixed inset-0 z-40"
+                  className="pointer-events-auto fixed inset-0 z-40"
                   onClick={() => setDropdownOpen(false)}
                 />
                 <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-slate-800 border border-slate-700 rounded shadow-xl">

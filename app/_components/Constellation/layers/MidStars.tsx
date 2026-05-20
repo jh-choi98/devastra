@@ -1,9 +1,10 @@
 'use client'
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { spectralHex } from '@/features/constellation/render/palette'
 import { viewBoxToWorld } from '@/features/constellation/render/coords'
+import { backgroundStarProfileForCanvas } from '../background-star-profile'
 import { useConstellationState } from '../state'
 
 interface MidStarsProps {
@@ -15,8 +16,8 @@ interface MidStarsProps {
 // Slightly fewer / slightly bigger than FieldStars, with a stronger mouse
 // parallax (~3px) so the front-to-back gradient is felt.
 const COUNTS: Record<'desktop' | 'mobile' | 'og', number> = {
-  desktop: 420,
-  mobile: 220,
+  desktop: 680,
+  mobile: 360,
   og: 280,
 }
 
@@ -52,6 +53,7 @@ const MID_VERT = /* glsl */ `
   attribute float aPhase;
   uniform float uTime;
   uniform float uTwinkleEnabled;
+  uniform float uSizeScale;
   varying vec3 vColor;
   varying float vIntensity;
   void main() {
@@ -59,7 +61,7 @@ const MID_VERT = /* glsl */ `
     gl_Position = projectionMatrix * mv;
     float t = uTime * 0.4 + aPhase * 6.2831853;
     float twinkle = 1.0 + sin(t) * 0.06 * uTwinkleEnabled;
-    gl_PointSize = aSize * 3.0 * twinkle;
+    gl_PointSize = aSize * 3.0 * twinkle * uSizeScale;
     vColor = aColor;
     vIntensity = twinkle;
   }
@@ -82,6 +84,11 @@ const MID_FRAG = /* glsl */ `
 
 export function MidStars({ viewport = 'desktop', opacity = 1 }: MidStarsProps) {
   const { reducedMotion } = useConstellationState()
+  const { size } = useThree()
+  const profile = useMemo(
+    () => backgroundStarProfileForCanvas(size.width, size.height, viewport),
+    [size.width, size.height, viewport],
+  )
   const groupRef = useRef<THREE.Group>(null)
 
   const data = useMemo(() => {
@@ -125,12 +132,17 @@ export function MidStars({ viewport = 'desktop', opacity = 1 }: MidStarsProps) {
     return g
   }, [viewport])
 
+  useLayoutEffect(() => {
+    data.setDrawRange(0, Math.min(profile.midCount, COUNTS[viewport]))
+  }, [data, profile.midCount, viewport])
+
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
         uniforms: {
           uTime: { value: 0 },
           uTwinkleEnabled: { value: 1.0 },
+          uSizeScale: { value: 1.0 },
           uOpacity: { value: 1.0 },
         },
         vertexShader: MID_VERT,
@@ -145,8 +157,12 @@ export function MidStars({ viewport = 'desktop', opacity = 1 }: MidStarsProps) {
   useFrame(({ mouse, clock }, dt) => {
     material.uniforms.uTime.value = clock.elapsedTime
     material.uniforms.uTwinkleEnabled.value = reducedMotion ? 0.0 : 1.0
-    material.uniforms.uOpacity.value = opacity
+    material.uniforms.uSizeScale.value = profile.midSizeScale
+    material.uniforms.uOpacity.value = opacity * profile.midOpacity
     if (groupRef.current) {
+      groupRef.current.scale.x = profile.fieldSpreadX
+      groupRef.current.scale.y = profile.fieldSpreadY
+
       if (reducedMotion) {
         groupRef.current.position.x = 0
         groupRef.current.position.y = 0

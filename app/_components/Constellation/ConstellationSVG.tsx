@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import type { TerritoryType } from '@/features/territories/registry'
 import { TERRITORIES, ALL_TERRITORY_TYPES } from '@/features/territories/registry'
 import { Star } from './Star'
-import { getClientStarPositions } from './star-positions'
+import { resolveStarViewBoxPosition } from './star-positions'
 import type { ConstellationData } from './types'
 
 type Anchor = { cx: number; cy: number; spread: number }
@@ -64,19 +64,6 @@ const BG_STARS: BgStar[] = (() => {
   return out
 })()
 
-// Diagonal jitter inside the cluster's spread, deterministic per tech_key,
-// nudges stars off any visible grid pattern from the catalog positions.
-function jitter(tech_key: string): { dx: number; dy: number } {
-  let h = 2166136261 >>> 0
-  for (let i = 0; i < tech_key.length; i++) {
-    h ^= tech_key.charCodeAt(i)
-    h = Math.imul(h, 16777619)
-  }
-  const a = ((h >>> 0) % 1000) / 1000
-  const b = ((h >>> 10) % 1000) / 1000
-  return { dx: (a - 0.5) * 28, dy: (b - 0.5) * 28 }
-}
-
 export function ConstellationSVG({
   data,
   onClusterClick,
@@ -92,7 +79,6 @@ export function ConstellationSVG({
 
   // Resolve a global (cx, cy) on the 1000×700 canvas for every lit star.
   const placedByCluster = useMemo(() => {
-    const allPositions = getClientStarPositions()
     const out = new Map<
       TerritoryType,
       Array<{
@@ -107,16 +93,11 @@ export function ConstellationSVG({
 
     for (const lm of data.landmarks) {
       if (lm.firstUnlockedAt === null) continue
-      const anchor = anchors[lm.territory]
-      const pos = allPositions.find((p) => p.tech_key === lm.tech_key)
-      if (!anchor || !pos) continue
-      const j = jitter(lm.tech_key)
-      const x = anchor.cx + (pos.x - 0.5) * anchor.spread * 2 + j.dx
-      const y = anchor.cy + (pos.y - 0.5) * anchor.spread * 2 + j.dy
+      const { x, y } = resolveStarViewBoxPosition(lm.tech_key, lm.territory, viewport)
       out.get(lm.territory)?.push({ ...lm, x, y })
     }
     return out
-  }, [anchors, data.landmarks])
+  }, [data.landmarks, viewport])
 
   // MST connection edges per cluster, using global coords.
   const edgesByCluster = useMemo(() => {
@@ -163,7 +144,7 @@ export function ConstellationSVG({
       <svg
         data-testid="constellation-canvas"
         viewBox="0 0 1000 700"
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio="xMidYMid meet"
         className="w-full h-full"
         role="img"
         aria-label={`Constellation with ${totalLit} stars lit across ${activeClusters} clusters`}

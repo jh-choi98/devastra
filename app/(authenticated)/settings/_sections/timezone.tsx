@@ -49,18 +49,34 @@ export function TimezoneSection({
   return (
     <section>
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">Timezone</h2>
-      <select
-        value={timezone}
-        onChange={(e) => handleChange(e.target.value)}
-        disabled={isPending}
-        className="w-full rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-      >
-        {timezones.map((tz) => (
-          <option key={tz} value={tz}>
-            {tz}
-          </option>
-        ))}
-      </select>
+      <div className="relative">
+        <select
+          value={timezone}
+          onChange={(e) => handleChange(e.target.value)}
+          disabled={isPending}
+          className="w-full appearance-none rounded-lg border border-zinc-600 bg-zinc-800 px-4 py-2 pr-11 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+        >
+          {timezones.map((tz) => (
+            <option key={tz} value={tz}>
+              {tz}
+            </option>
+          ))}
+        </select>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white"
+        >
+          <path
+            d="M5 7.5L10 12.5L15 7.5"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      </div>
       <p className="mt-2 text-xs text-zinc-500">{previewLine}</p>
     </section>
   )

@@ -11,6 +11,10 @@ import { magnitudeFor, topQuintileThreshold } from '@/features/constellation/ren
 import { viewBoxToWorld } from '@/features/constellation/render/coords'
 import { resolveStarViewBoxPosition } from '@/app/_components/Constellation/star-positions'
 import { useConstellationState } from '../state'
+import {
+  DEFAULT_SEMANTIC_SCALE_PROFILE,
+  type SemanticConstellationScaleProfile,
+} from '../semantic-scale-profile'
 import type { SparseConstellationProfile } from '@/features/constellation/render/sparse-profile'
 import type { ConstellationData } from '../types'
 
@@ -18,6 +22,7 @@ interface TechStarsProps {
   data: ConstellationData
   viewport?: 'desktop' | 'mobile' | 'og'
   sparseProfile?: SparseConstellationProfile
+  semanticProfile?: SemanticConstellationScaleProfile
 }
 
 const REVEAL_DURATION_SECONDS = 1.2
@@ -43,7 +48,12 @@ function zFor(tech_key: string): number {
   return (h >>> 0) / 4294967296 - 0.5
 }
 
-export function TechStars({ data, viewport = 'desktop', sparseProfile }: TechStarsProps) {
+export function TechStars({
+  data,
+  viewport = 'desktop',
+  sparseProfile,
+  semanticProfile = DEFAULT_SEMANTIC_SCALE_PROFILE,
+}: TechStarsProps) {
   const { reducedMotion } = useConstellationState()
   const initializedRef = useRef(false)
   const revealByTechKey = useRef(new Map<string, number>())
@@ -123,7 +133,10 @@ export function TechStars({ data, viewport = 'desktop', sparseProfile }: TechSta
   const coreMaterial = useMemo(
     () =>
       new THREE.ShaderMaterial({
-        uniforms: {},
+        uniforms: {
+          uPointScale: { value: 1 },
+          uIntensityScale: { value: 1 },
+        },
         vertexShader: AIRY_DISK_VERT,
         fragmentShader: AIRY_DISK_FRAG,
         transparent: true,
@@ -165,7 +178,41 @@ export function TechStars({ data, viewport = 'desktop', sparseProfile }: TechSta
     return g
   }, [spikeStars])
 
+  const spikeMaterial = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uPointScale: { value: 1 },
+          uIntensityScale: { value: 1 },
+        },
+        vertexShader: DIFFRACTION_SPIKE_VERT,
+        fragmentShader: DIFFRACTION_SPIKE_FRAG,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    [],
+  )
+
+  useEffect(() => {
+    coreMaterial.uniforms.uPointScale.value = semanticProfile.techCoreScale
+    coreMaterial.uniforms.uIntensityScale.value = semanticProfile.techIntensityScale
+    spikeMaterial.uniforms.uPointScale.value = semanticProfile.techSpikeScale
+    spikeMaterial.uniforms.uIntensityScale.value = semanticProfile.techIntensityScale
+  }, [
+    coreMaterial,
+    semanticProfile.techCoreScale,
+    semanticProfile.techIntensityScale,
+    semanticProfile.techSpikeScale,
+    spikeMaterial,
+  ])
+
   useFrame((_, delta) => {
+    coreMaterial.uniforms.uPointScale.value = semanticProfile.techCoreScale
+    coreMaterial.uniforms.uIntensityScale.value = semanticProfile.techIntensityScale
+    spikeMaterial.uniforms.uPointScale.value = semanticProfile.techSpikeScale
+    spikeMaterial.uniforms.uIntensityScale.value = semanticProfile.techIntensityScale
+
     if (reducedMotion) return
     let changed = false
     for (const [key, age] of Array.from(revealByTechKey.current.entries())) {
@@ -195,19 +242,6 @@ export function TechStars({ data, viewport = 'desktop', sparseProfile }: TechSta
       spikeRevealAttr.needsUpdate = true
     }
   })
-
-  const spikeMaterial = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        uniforms: {},
-        vertexShader: DIFFRACTION_SPIKE_VERT,
-        fragmentShader: DIFFRACTION_SPIKE_FRAG,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }),
-    [],
-  )
 
   return (
     <group renderOrder={10}>

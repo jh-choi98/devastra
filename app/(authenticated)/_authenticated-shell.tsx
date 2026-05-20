@@ -36,16 +36,16 @@ export function AuthenticatedShell({
   map,
 }: AuthenticatedShellProps) {
   return (
-    <div className="flex h-screen flex-col bg-slate-900">
+    <div className="relative h-screen overflow-hidden bg-[#020207]">
       <PosthogIdentifier userId={user.id} />
+      <div className="absolute inset-0">
+        <LivingMapContainer {...map} />
+      </div>
       <Header
         user={user}
         lastSyncStartedAt={lastSyncStartedAt ? new Date(lastSyncStartedAt) : null}
         initialSyncing={initialSyncing}
       />
-      <div className="flex-1 overflow-hidden">
-        <LivingMapContainer {...map} />
-      </div>
     </div>
   )
 }

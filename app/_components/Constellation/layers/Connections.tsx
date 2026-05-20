@@ -61,8 +61,8 @@ const CONNECTION_FRAG = /* glsl */ `
     float startFade = smoothstep(0.0, 0.035, vAlong);
     float endFade = 1.0 - smoothstep(0.965, 1.0, vAlong);
     float endpoint = mix(0.78, 1.0, startFade * endFade);
-    float alpha = (center * 0.2 + core * 0.34 + glow * 0.12) * endpoint * vStrength;
-    vec3 color = mix(uColor, vec3(0.88, 0.95, 1.0), center * 0.28 + core * 0.1);
+    float alpha = (center * 0.238 + core * 0.4 + glow * 0.141) * endpoint * vStrength * 1.1;
+    vec3 color = mix(uColor, vec3(0.88, 0.95, 1.0), center * 0.335 + core * 0.12);
     gl_FragColor = vec4(color, alpha);
   }
 `

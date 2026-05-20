@@ -2,27 +2,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { PointerEvent } from 'react'
 import { voronoiCells } from '@/features/constellation/render/voronoi'
-import { selectPersistentLabels } from '@/features/constellation/render/labels'
 import { brightnessDescriptor } from '@/features/constellation/render/magnitude'
-import { resolveStarViewBoxPosition } from '../star-positions'
-import {
-  estimateTechLabelWidth,
-  resolveTechLabelViewBoxPosition,
-  techLabelFontSize,
-} from '../label-position'
 import { getPublicTech } from '@/features/territories/tech-catalog-public'
+import { CLUSTER_LABELS } from '../cluster-labels'
 import { useConstellationState } from '../state'
+import { resolveTechLabelLayouts } from '../label-layout'
+import {
+  DEFAULT_SEMANTIC_SCALE_PROFILE,
+  type SemanticConstellationScaleProfile,
+} from '../semantic-scale-profile'
 import type { ConstellationData } from '../types'
 import type { TerritoryType } from '@/features/territories/registry'
-
-const CLUSTER_DISPLAY_NAMES: Record<TerritoryType, string> = {
-  frontend_land: 'Frontend',
-  backend_fortress: 'Backend',
-  data_pipeline_zone: 'Data',
-  testing_lab: 'Testing',
-  devops_harbor: 'DevOps',
-  docs_library: 'Docs',
-}
 
 const STAR_HIT_RADIUS_BY_VIEWPORT: Record<'desktop' | 'mobile' | 'og', number> = {
   desktop: 14,
@@ -43,7 +33,7 @@ function ariaForCluster(type: TerritoryType, data: ConstellationData): string {
   const stars = data.landmarks.filter(
     (l) => l.territory === type && l.firstUnlockedAt !== null && l.weight >= 5,
   ).length
-  return `${CLUSTER_DISPLAY_NAMES[type]} cluster — ${stars} stars lit, stage ${t?.stage ?? 1}`
+  return `${CLUSTER_LABELS[type]} cluster — ${stars} stars lit, stage ${t?.stage ?? 1}`
 }
 
 function ariaForStar(l: ConstellationData['landmarks'][number]): string {
@@ -54,6 +44,8 @@ function ariaForStar(l: ConstellationData['landmarks'][number]): string {
 interface A11yOverlayProps {
   data: ConstellationData
   viewport?: 'desktop' | 'mobile' | 'og'
+  semanticProfile?: SemanticConstellationScaleProfile
+  canvasSize?: { width: number | null; height: number | null }
   svgTransform?: string
   onClusterClick?: (type: TerritoryType) => void
   onStarClick?: (territory: TerritoryType, tech_key: string) => void
@@ -62,6 +54,8 @@ interface A11yOverlayProps {
 export function A11yOverlay({
   data,
   viewport = 'desktop',
+  semanticProfile = DEFAULT_SEMANTIC_SCALE_PROFILE,
+  canvasSize,
   svgTransform,
   onClusterClick,
   onStarClick,
@@ -80,17 +74,10 @@ export function A11yOverlay({
 
   const cells = useMemo(() => voronoiCells(viewport), [viewport])
 
-  const labeledStars = useMemo(() => {
-    const persistent = selectPersistentLabels({
-      landmarks: data.landmarks,
-      territories: data.territories,
-    })
-    return data.landmarks
-      .filter(
-        (l) => persistent.persistent.has(l.tech_key) && l.firstUnlockedAt !== null && l.weight >= 5,
-      )
-      .sort((a, b) => b.weight - a.weight || a.tech_key.localeCompare(b.tech_key))
-  }, [data])
+  const labelLayouts = useMemo(
+    () => resolveTechLabelLayouts({ data, viewport, semanticProfile, canvasSize }),
+    [canvasSize, data, semanticProfile, viewport],
+  )
 
   const showStarTooltip = (
     landmark: ConstellationData['landmarks'][number],
@@ -152,30 +139,26 @@ export function A11yOverlay({
           ))}
 
           {/* Labeled star buttons - every lit tech star is visible and interactive. */}
-          {labeledStars.map((l) => {
-            const pos = resolveStarViewBoxPosition(l.tech_key, l.territory, viewport)
-            const labelPos = resolveTechLabelViewBoxPosition(l.tech_key, l.territory, viewport)
-            const label = techDisplayName(l.tech_key)
-            const labelWidth = estimateTechLabelWidth(label, techLabelFontSize(l.weight, viewport))
+          {labelLayouts.map((layout) => {
             return (
-              <g key={l.tech_key}>
+              <g key={layout.tech_key}>
                 <circle
-                  cx={pos.x}
-                  cy={pos.y}
+                  cx={layout.star.x}
+                  cy={layout.star.y}
                   r={starHitRadius}
                   fill="transparent"
                   tabIndex={0}
                   role="button"
-                  aria-label={ariaForStar(l)}
+                  aria-label={ariaForStar(layout.landmark)}
                   className="pointer-events-auto cursor-pointer focus:outline-none focus-visible:stroke-sky-300/70 focus-visible:stroke-1"
-                  onPointerEnter={(e) => showStarTooltip(l, e)}
-                  onPointerMove={(e) => showStarTooltip(l, e)}
+                  onPointerEnter={(e) => showStarTooltip(layout.landmark, e)}
+                  onPointerMove={(e) => showStarTooltip(layout.landmark, e)}
                   onPointerLeave={hideStarTooltip}
-                  onClick={() => onStarClick?.(l.territory, l.tech_key)}
+                  onClick={() => onStarClick?.(layout.landmark.territory, layout.tech_key)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
-                      onStarClick?.(l.territory, l.tech_key)
+                      onStarClick?.(layout.landmark.territory, layout.tech_key)
                     }
                   }}
                 />
@@ -185,17 +168,17 @@ export function A11yOverlay({
                   hovering the text itself trigger the same label brightening
                   without adding a second keyboard focus stop. */}
                 <rect
-                  x={labelPos.x - labelWidth / 2}
-                  y={labelPos.y - 10}
-                  width={labelWidth}
-                  height={20}
+                  x={layout.rect.x}
+                  y={layout.rect.y}
+                  width={layout.rect.width}
+                  height={layout.rect.height}
                   rx={5}
                   fill="transparent"
                   aria-hidden="true"
                   className="pointer-events-auto cursor-pointer"
-                  onPointerEnter={() => showTechLabelHover(l.tech_key)}
+                  onPointerEnter={() => showTechLabelHover(layout.tech_key)}
                   onPointerLeave={hideTechLabelHover}
-                  onClick={() => onStarClick?.(l.territory, l.tech_key)}
+                  onClick={() => onStarClick?.(layout.landmark.territory, layout.tech_key)}
                 />
               </g>
             )
