@@ -61,7 +61,7 @@ export function BannerStack(props: {
   return (
     <>
       {topBanner && (
-        <div className="absolute top-0 inset-x-0 z-40">
+        <div className="absolute inset-x-0 top-16 z-40 sm:top-20">
           {topBanner}
         </div>
       )}
