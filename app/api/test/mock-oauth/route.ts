@@ -15,10 +15,10 @@ export async function GET(request: Request) {
     return new NextResponse('Not Found', { status: 404 })
   }
 
+  const { createClient } = await import('@supabase/supabase-js')
   const { createAdminClient } = await import('@/lib/auth/supabase-server')
   const { db } = await import('@/lib/db/client')
   const { users } = await import('@/lib/db/schema/users')
-  const { createBrowserClient } = await import('@/lib/auth/supabase-browser')
 
   const adminClient = createAdminClient()
 
@@ -27,20 +27,52 @@ export async function GET(request: Request) {
   const existingAuthUser = listData?.users?.find((u) => u.email === TEST_EMAIL)
 
   if (!existingAuthUser) {
-    await adminClient.auth.admin.createUser({
+    const { error: createError } = await adminClient.auth.admin.createUser({
       email: TEST_EMAIL,
       password: TEST_PASSWORD,
       email_confirm: true,
+      user_metadata: {
+        provider_id: String(TEST_GITHUB_ID),
+        user_name: TEST_GITHUB_LOGIN,
+        avatar_url: null,
+      },
     })
-  } else if (!existingAuthUser.email_confirmed_at) {
-    await adminClient.auth.admin.updateUserById(existingAuthUser.id, {
-      email_confirm: true,
-      password: TEST_PASSWORD,
-    })
+    if (createError) {
+      return new NextResponse(`Failed to create test user: ${createError.message}`, {
+        status: 500,
+      })
+    }
+  } else {
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(
+      existingAuthUser.id,
+      {
+        email_confirm: true,
+        password: TEST_PASSWORD,
+        user_metadata: {
+          provider_id: String(TEST_GITHUB_ID),
+          user_name: TEST_GITHUB_LOGIN,
+          avatar_url: null,
+        },
+      },
+    )
+    if (updateError) {
+      return new NextResponse(`Failed to update test user: ${updateError.message}`, {
+        status: 500,
+      })
+    }
   }
 
   // Sign in to get a session token
-  const anonClient = createBrowserClient()
+  const anonClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    },
+  )
   const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({
     email: TEST_EMAIL,
     password: TEST_PASSWORD,
@@ -74,7 +106,8 @@ export async function GET(request: Request) {
   const response = NextResponse.redirect(redirectUrl)
 
   // Supabase SSR uses these cookie names
-  const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.match(/https:\/\/([^.]+)/)?.[1] ?? 'local'
+  const projectRef =
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.match(/https:\/\/([^.]+)/)?.[1] ?? 'local'
   response.cookies.set(`sb-${projectRef}-auth-token`, JSON.stringify(signInData.session), {
     httpOnly: true,
     secure: false,
