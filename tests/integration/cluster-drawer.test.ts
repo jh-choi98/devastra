@@ -5,6 +5,7 @@ vi.mock('@/lib/db/client', () => ({ db: {} }))
 
 import { TERRITORIES } from '@/features/territories/registry'
 import { getPublicTech } from '@/features/territories/tech-catalog-public'
+import { brightnessDescriptor } from '@/features/constellation/render/magnitude'
 import { buildClusterDrawerLitStars, type ActivityAttributionRow } from '@/lib/db/queries/drawer'
 
 // ── Pure unit: registry + catalog parity ────────────────────────────────────
@@ -45,34 +46,38 @@ describe('cluster-drawer — displayName resolution', () => {
 function computeBrightnessDescriptor(
   stars: Array<{ tech_key: string; weight: number }>,
   techKey: string,
-): 'brightest' | 'bright' | 'dim' {
-  const sorted = [...stars].sort((a, b) => b.weight - a.weight)
-  const idx = sorted.findIndex((s) => s.tech_key === techKey)
-  if (idx === 0) return 'brightest'
-  const topWeight = sorted[0]?.weight ?? 0
-  const weight = sorted[idx]?.weight ?? 0
-  return weight >= topWeight * 0.5 ? 'bright' : 'dim'
+) {
+  const weight = stars.find((s) => s.tech_key === techKey)?.weight ?? 0
+  return brightnessDescriptor(weight)
 }
 
 describe('cluster-drawer — brightness ordering', () => {
   const stars = [
-    { tech_key: 'react', weight: 80 },
-    { tech_key: 'nextjs', weight: 50 },
+    { tech_key: 'react', weight: 200 },
+    { tech_key: 'nextjs', weight: 80 },
+    { tech_key: 'typescript', weight: 30 },
     { tech_key: 'css', weight: 10 },
+    { tech_key: 'tailwind', weight: 5 },
   ]
 
-  it('highest-weight star is brightest', () => {
-    expect(computeBrightnessDescriptor(stars, 'react')).toBe('brightest')
+  it('maps heavy stars to radiant', () => {
+    expect(computeBrightnessDescriptor(stars, 'react')).toBe('radiant')
   })
 
-  it('star with weight ≥ 50% of top is bright', () => {
-    // nextjs=50 / react=80 = 62.5% ≥ 50%
+  it('maps strong stars to bright', () => {
     expect(computeBrightnessDescriptor(stars, 'nextjs')).toBe('bright')
   })
 
-  it('star with weight < 50% of top is dim', () => {
-    // css=10 / react=80 = 12.5% < 50%
-    expect(computeBrightnessDescriptor(stars, 'css')).toBe('dim')
+  it('maps established stars to steady', () => {
+    expect(computeBrightnessDescriptor(stars, 'typescript')).toBe('steady')
+  })
+
+  it('maps growing stars to emerging', () => {
+    expect(computeBrightnessDescriptor(stars, 'css')).toBe('emerging')
+  })
+
+  it('maps newly lit stars to faint', () => {
+    expect(computeBrightnessDescriptor(stars, 'tailwind')).toBe('faint')
   })
 })
 

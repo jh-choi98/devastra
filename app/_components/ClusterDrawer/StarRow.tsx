@@ -18,9 +18,6 @@ export function StarRow(props: {
   brightnessDescriptor: BrightnessDescriptor
   highlighted: boolean
   expandedByDefault: boolean
-  ownerUserId: string
-  territoryType: string
-  hideFeedback: boolean
   // WhyExpansion data
   matchedRuleKinds: string[]
   contributingRepos: Array<{ owner: string; name: string; repoId: string; matchCount: number }>
@@ -37,11 +34,11 @@ export function StarRow(props: {
   }, [props.highlighted])
 
   const descriptorColor: Record<BrightnessDescriptor, string> = {
-    brightest: 'text-yellow-300',
+    radiant: 'text-yellow-300',
     bright: 'text-slate-200',
-    mid: 'text-slate-300',
-    dim: 'text-slate-400',
-    'very dim': 'text-slate-500',
+    steady: 'text-slate-300',
+    emerging: 'text-slate-400',
+    faint: 'text-slate-500',
   }
 
   return (
@@ -84,15 +81,9 @@ export function StarRow(props: {
 
       {expanded && (
         <WhyExpansion
-          tech_key={props.tech_key}
-          displayName={props.displayName}
           matchedRuleKinds={props.matchedRuleKinds}
           contributingRepos={props.contributingRepos}
           activity={props.activity}
-          hideFeedback={props.hideFeedback}
-          ownerUserId={props.ownerUserId}
-          territoryType={props.territoryType}
-          primaryRepoId={props.topContributingRepo?.repoId ?? null}
         />
       )}
     </div>

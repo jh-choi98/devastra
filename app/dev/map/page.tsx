@@ -49,6 +49,45 @@ const SPARSE_DATA: ConstellationData = {
   ],
 }
 
+const BRIGHTNESS_LADDER_DATA: ConstellationData = {
+  userId: 'dev-user',
+  territories: [
+    { type: 'frontend_land', stage: 4, totalWeight: 325, growth30d: 65, stageChangedAt: null },
+  ],
+  landmarks: [
+    {
+      tech_key: 'typescript',
+      territory: 'frontend_land',
+      weight: 200,
+      firstUnlockedAt: '2026-01-01T00:00:00Z',
+    },
+    {
+      tech_key: 'react',
+      territory: 'frontend_land',
+      weight: 80,
+      firstUnlockedAt: '2026-01-10T00:00:00Z',
+    },
+    {
+      tech_key: 'nextjs',
+      territory: 'frontend_land',
+      weight: 30,
+      firstUnlockedAt: '2026-01-15T00:00:00Z',
+    },
+    {
+      tech_key: 'tailwind',
+      territory: 'frontend_land',
+      weight: 10,
+      firstUnlockedAt: '2026-02-01T00:00:00Z',
+    },
+    {
+      tech_key: 'css',
+      territory: 'frontend_land',
+      weight: 5,
+      firstUnlockedAt: '2026-02-10T00:00:00Z',
+    },
+  ],
+}
+
 const DENSE_DATA: ConstellationData = {
   userId: 'dev-user',
   territories: [
@@ -285,6 +324,7 @@ type ScenarioConfig = {
 const SCENARIOS: Record<string, ScenarioConfig> = {
   empty: { data: EMPTY_DATA },
   sparse: { data: SPARSE_DATA },
+  brightness: { data: BRIGHTNESS_LADDER_DATA },
   dense: { data: DENSE_DATA },
   'stage-up': { data: DENSE_DATA, cinematic: 'stage-up' },
   'first-ever': { data: FIRST_EVER_DATA, cinematic: 'spark', techKeys: ['typescript', 'react'] },
