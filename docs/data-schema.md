@@ -150,7 +150,7 @@ A user's _lit_star_count_ is `COUNT(*) WHERE user_id = X AND first_unlocked_at I
 | error        | text        | yes      | when status → `'failed'`                                         |
 | created_at   | timestamptz | no       | default `now()`                                                  |
 
-A cron auto-fails rows stuck in `'running'` for >30 minutes (`docs/adr.md` ADR-19). 5-minute manual refresh cooldown enforced via `MAX(started_at)` check per user.
+A cron auto-fails rows stuck in `'pending'` or `'running'` for >30 minutes (`docs/adr.md` ADR-19). User-facing sync reads repair stale active rows before reporting an in-progress state. 5-minute manual refresh cooldown enforced via `MAX(started_at)` check per user.
 
 ### Weekly_Recaps
 

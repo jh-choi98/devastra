@@ -26,12 +26,12 @@ import { recomputeUserDenorm } from './denorm'
 import { getPreviousLitCount, markFirstStarCinematicIfApplicable } from './cinematic-detection'
 import { toSyncDate, toSyncDateOrNull } from './dates'
 import { mapWithConcurrency } from './concurrency'
+import { MANUAL_REFRESH_COOLDOWN_MS } from './manual-refresh-gate'
 import type { GetStepTools } from 'inngest'
 import type { inngest } from '@/lib/inngest/client'
 
 type StepTools = GetStepTools<typeof inngest>
 
-const COOLDOWN_MS = 5 * 60 * 1000
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000
 const MAX_MANUAL_COMMIT_DETAILS = 50
@@ -75,22 +75,34 @@ async function enrichCommitActivities(
 }
 
 export async function run(
-  event: { data: { userId: string } },
+  event: { data: { userId: string; jobId?: string } },
   step: StepTools,
 ): Promise<{ skipped?: boolean; reason?: string }> {
-  const { userId } = event.data
+  const { userId, jobId: existingJobId } = event.data
 
   // Cooldown check — fast DB query, done inline before any steps
   const recent = await getLatestStartedSyncJobForUser(userId)
   const recentStartedAt = toSyncDateOrNull(recent?.startedAt)
-  if (recentStartedAt && Date.now() - recentStartedAt.getTime() < COOLDOWN_MS) {
+  if (
+    recent?.id !== existingJobId &&
+    recentStartedAt &&
+    Date.now() - recentStartedAt.getTime() < MANUAL_REFRESH_COOLDOWN_MS
+  ) {
+    if (existingJobId) await failSyncJob(existingJobId, 'cooldown')
     return { skipped: true, reason: 'cooldown' }
   }
 
   const user = await getUserById(userId)
-  if (!user) return { skipped: true, reason: 'user-not-found' }
+  if (!user) {
+    if (existingJobId) await failSyncJob(existingJobId, 'user-not-found')
+    return { skipped: true, reason: 'user-not-found' }
+  }
 
-  const jobId = await step.run('create-job', async () => {
+  const jobId = await step.run(existingJobId ? 'start-job' : 'create-job', async () => {
+    if (existingJobId) {
+      await startSyncJob(existingJobId)
+      return existingJobId
+    }
     const j = await createSyncJob({ userId, kind: 'manual' })
     await startSyncJob(j.id)
     return j.id

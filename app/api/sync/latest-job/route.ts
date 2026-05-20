@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server'
 import { requireUser } from '@/lib/auth/session'
 import { getLatestSyncJobForUser } from '@/lib/db/queries/sync-jobs'
+import { failStaleActiveSyncJobsForUser, isStaleActiveSyncJob } from '@/features/sync/stale-jobs'
 
 export async function GET(): Promise<NextResponse> {
   const user = await requireUser()
-  const job = await getLatestSyncJobForUser(user.id)
+  let job = await getLatestSyncJobForUser(user.id)
+  if (job && isStaleActiveSyncJob(job)) {
+    await failStaleActiveSyncJobsForUser(user.id)
+    job = await getLatestSyncJobForUser(user.id)
+  }
   if (!job) return NextResponse.json(null)
 
   const rawProgress = job.progress
@@ -25,6 +30,7 @@ export async function GET(): Promise<NextResponse> {
     kind: job.kind,
     status: job.status,
     progress,
+    startedAt: job.startedAt?.toISOString() ?? null,
     createdAt: job.createdAt.toISOString(),
   })
 }

@@ -18,10 +18,12 @@ interface HeaderUser {
 export function Header({
   user,
   lastSyncStartedAt,
+  initialSyncKind = null,
   initialSyncing = false,
 }: {
   user: HeaderUser
   lastSyncStartedAt: Date | null
+  initialSyncKind?: string | null
   initialSyncing?: boolean
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -41,6 +43,7 @@ export function Header({
           <RefreshButton
             userId={user.id}
             lastSyncStartedAt={lastSyncStartedAt}
+            initialSyncKind={initialSyncKind}
             initialSyncing={initialSyncing}
           />
 
