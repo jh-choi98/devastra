@@ -26,7 +26,7 @@ These emerged from 117 flow + sub-flow decisions and govern every implementation
 5. **Initial sync trigger** — A `sync_jobs` row is created synchronously in `pending` state, then Inngest event `sync/initial.requested` fires with `user_id` + selected repo IDs. Initial sync refreshes selected repo metadata by GitHub node ID, fetches the last 1 year of activity, then runs a bounded historical bootstrap for selected repos with no recent activity so older-but-important repos can still seed the first constellation. Page fade-transitions to `/`, where the constellation shows a build-in-progress overlay until the job completes.
 6. **First reveal** — Starts only after the initial sync job completes. Six cluster outlines fade in (dim). Counter bottom-right: `47 commits analyzed in 12 repos`. Bottom strip: `Lit: Frontend · Backend · Testing` (active clusters only). Stars appear in Realtime insert order with 0.1s stagger, each rendered as a _spark_ (small dot → brief plus-shape flash → settle). Connection lines (MST per cluster, neutral gray, low opacity) fade in after both endpoints are lit. Cluster labels fade in when each cluster's first star lights. Minimum total reveal duration: 12s. Maximum: 30s, after which remaining stars batch fade-in over 0.5s. Settling pulse on all stars + gentle attention cue (pulse + label highlight) on the brightest cluster, then a one-time `Click to explore` hint anchored to that cluster's label, auto-dismissed after 5s. Users may click stars or cluster labels during the reveal — the animation continues in the background.
 7. **Post-reveal exploration** — Clicking a cluster label opens the cluster drawer (`docs/screens.md` §Cluster drawer). Clicking a star opens the same drawer with that star's row highlighted, auto-scrolled, and its `Why is this lit?` expansion automatically opened. Star hover (desktop only, 200ms delay) shows a tooltip: `tech name · brightness · first lit date`. The `cluster_click_hint_seen` flag is set when the user opens any drawer.
-8. **First share moment** — After the first drawer close, the top-right Share button pulses once (`share_hint_seen` flag set after this pulse). Click opens the Share modal (`docs/screens.md` §Share modal): OG preview → public toggle + URL/copy/preview → share targets (Twitter / LinkedIn / Copy link / Download PNG + native share on mobile). Twitter pre-filled tweet: `My GitHub activity, as a constellation. {url}`. Share buttons are disabled while `is_public = false`; toggling on inlines the URL + Copy + Preview affordance. On share click: modal closes + brief toast `Shared!`.
+8. **First share moment** — After the first drawer close, the top-right Share button pulses once (`share_hint_seen` flag set after this pulse). Click opens the Share modal (`docs/screens.md` §Share modal): current dark-sky OG preview → public toggle + URL/copy/preview → share targets (X / LinkedIn / Copy link / Download PNG + native share on mobile). X pre-filled post: `My GitHub activity, as a constellation. {url}`. Share buttons are disabled while `is_public = false`; toggling on inlines the URL + Copy + Preview affordance. On share click: modal closes + brief toast `Shared!`.
 
 **Failure branches:**
 
@@ -67,7 +67,7 @@ These emerged from 117 flow + sub-flow decisions and govern every implementation
 
 **Entry trigger:** unauthenticated visitor clicks `devastra.app/{username}` link from social media. Most traffic is mobile.
 
-1. **Profile page (`/{username}`)** — Resolved server-side: first check current `users.display_username`; if absent, check `username_history.old_username` → 301 redirect to current. ISR 1h revalidation + on-demand revalidate on sync completion, public toggle, username change, and `OG_RENDER_VERSION` bump. Layout: dim sky background, constellation as hero, top-left compact identity block (avatar / `@username` / `12 stars lit · 4 clusters active`). A small header text `Viewing {username}'s constellation` denotes visitor mode. Top header is minimal (logo only, no actions). On visitor's first time per session, a 3–5s short reveal of the constellation plays.
+1. **Profile page (`/{username}`)** — Resolved server-side: first check current `users.display_username`; if absent, check `username_history.old_username` → 301 redirect to current. ISR 1h revalidation + on-demand revalidate on sync completion, public toggle, username change, and `OG_RENDER_VERSION` bump. Layout: dim sky background, constellation as hero, top-left compact identity block (avatar / `@username` / `12 stars lit · 4 clusters active`). A small header text `Viewing {username}'s constellation` denotes visitor mode. Top header is minimal (text brand only, no actions). On visitor's first time per session, a 3–5s short reveal of the constellation plays.
 2. **Sticky bottom CTA** — Always visible, full-width bar: `Create yours, free →`. Pulses once after the visitor opens their first drawer.
 3. **Star / cluster interaction** — Identical drawer to owner view (cluster summary → lit stars → `Why is this lit?` per star → recent PRs → visitor footer `Want to see yours? Create yours, free →`). Star tooltip on hover shows product language only (`brightness`, `first lit`), never raw weight. Repo / PR links in drawer open in new tab.
 4. **Owner self-view** — When the owner visits their own public URL, a narrow strip below the header reads `This is how others see your constellation` + `← Back to my private view`. Sticky CTA is hidden. The constellation is shown identically to visitors.
@@ -162,7 +162,7 @@ Triggered when `NOW() - users.last_login_at > 28 days` on the next authenticated
 
 ## Sub-flow D — Misclassification feedback
 
-Trigger: user clicks `This doesn't look right` button inside the per-star `Why is this lit?` expansion in the cluster drawer.
+Trigger: currently hidden from the cluster drawer while the correction entrypoint is being redesigned. The backend action and modal flow remain available for a future low-friction feedback surface.
 
 1. **Modal overlay** opens on top of the drawer. Heading: `Help us understand. What looks off?`
 2. **Form fields:** category select (`Wrong category` / `Shouldn't be lit` / `Activity not mine` / `Other`) + optional textarea.
@@ -192,17 +192,17 @@ Hint dismissal is by _action_, not by X button — there is no manual dismiss UI
 
 Triggered when an admin (founder) inserts a row into `system_messages` table with `active = true`. No UI for admin write — `system_messages` is written via Supabase dashboard SQL.
 
-- **Banner location:** below header, same strip area as welcome-back and disconnected banners.
+- **Banner location:** top overlay strip below the floating header controls, same strip area as welcome-back and disconnected banners.
 - **Default copy:** `Sync is delayed right now. Your constellation is safe.` Admin may override the message column for incident-specific copy.
 - **Dismissible.** User-dismissed for the session only; reappears in new sessions until the row is set `active = false`.
 - **Multi-banner priority** (top strip): `disconnected` > `system status` > `welcome back` > `this-week diff`. Only the highest-priority strip is shown; the bottom sync-failed banner is a separate region and may co-exist.
 
 ## Sub-flow H — Watermark / share artifacts
 
-- **OG image (1200×630)** carries a small `⭐ devastra.app/{username}` watermark in the bottom-right corner. Style: light gray, low-contrast, single line.
+- **OG image (1200×630)** uses the current dark-sky static renderer, not a captured WebGL screenshot: deterministic field/mid-star layers, current lit tech stars, current labels, current background, and share-tuned static connection strokes. It carries a small `devastra.app/{username}` watermark in the bottom-right corner. Style: light gray, low-contrast, single line.
 - **Public profile** does NOT add additional watermark — the sticky CTA serves that role.
 - **Download PNG** is 1200×630 with the same watermark, filename `devastra-{username}-{date}.png`.
-- **Landing/demo OG** (when no username is involved) shows `⭐ devastra.app` only.
+- **Landing/demo OG** (when no username is involved) shows `devastra.app` only.
 
 ## Sub-flow I — Persona walkthroughs
 

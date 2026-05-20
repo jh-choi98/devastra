@@ -179,7 +179,7 @@
 **Decision:** Territory and landmark weights only grow. They never decrease. "Recent activity" is signaled visually (glow, spark, "+18% this week" badge) but cumulative state is preserved.
 **Alternatives:**
 
-- Decay model with exponential or step decay — rejected: a user who shared their constellation on Twitter, then took a coding break, would feel betrayed when growth disappeared.
+- Decay model with exponential or step decay — rejected: a user who shared their constellation on X, then took a coding break, would feel betrayed when growth disappeared.
 - Dual view (lifetime + recent) — rejected: doubles UI complexity for marginal product gain.
   **Consequences:** `territories.stage` is monotonically non-decreasing. Backfill jobs (ADR-22) preserve this invariant. Visual recency is computed from `growth_30d` and `stage_changed_at`, not from current size.
 
@@ -286,7 +286,7 @@
 
 **Date:** 2026-05-13
 **Status:** accepted
-**Context:** Public profile pages will receive viral spikes (Twitter, LinkedIn). Hitting Supabase on every request is expensive. But fresh data after the owner pushes a commit is part of the value.
+**Context:** Public profile pages will receive viral spikes (X, LinkedIn). Hitting Supabase on every request is expensive. But fresh data after the owner pushes a commit is part of the value.
 **Decision:** Render `/{username}` with ISR 1-hour revalidation. Additionally call `revalidatePath('/${username}')` on (a) sync completion, (b) public toggle, (c) username change. This bounds staleness to "1 hour unless an action invalidates sooner."
 **Alternatives:**
 
@@ -347,7 +347,7 @@
 **Date:** 2026-05-13
 **Status:** accepted
 **Context:** Public ProductHunt launch on day 1 risks a bug-amplified bad first impression and capacity surprises.
-**Decision:** Closed beta for 1-2 weeks with 50-100 invited users (founder network, Twitter/Discord developer circles). Funnel measured via PostHog. Bug-fix and iteration before broader launch.
+**Decision:** Closed beta for 1-2 weeks with 50-100 invited users (founder network, X/Discord developer circles). Funnel measured via PostHog. Bug-fix and iteration before broader launch.
 **Alternatives:**
 
 - Public launch — rejected: high blast radius for any bug.
@@ -579,7 +579,7 @@
 **Date:** 2026-05-14
 **Status:** accepted
 **Context:** Classifier output may surprise users ("Why is my Frontend brightest? I'm a backend person."). Without explanation, this damages credibility. Without a feedback channel, our classifier never improves.
-**Decision:** Cluster drawer has a per-star expansion (`Why is this lit?`) that translates detection rules into product language (e.g. `Lit from TypeScript files and React-related paths`), shows top contributing repos, and shows activity breakdown (commits / PRs counts). A `This doesn't look right` button opens a misclassification feedback modal with a category select + optional note. Feedback rows are stored in `misclassification_feedback` (forward-only audit log; user cannot read their own back). Rate limit: 5 per user per 24h.
+**Decision:** Cluster drawer has a per-star expansion (`Why is this lit?`) that translates detection rules into product language (e.g. `Lit from TypeScript files and React-related paths`), shows top contributing repos, and shows activity breakdown (commits / PRs counts). The original inline `This doesn't look right` correction link is hidden from the drawer while a lower-friction feedback entrypoint is redesigned; the modal and server action remain available as backend plumbing. Feedback rows are stored in `misclassification_feedback` (forward-only audit log; user cannot read their own back). Rate limit: 5 per user per 24h.
 **Alternatives:**
 
 - Allow user override of classification — rejected: complexity + maintenance burden for MVP.
@@ -940,12 +940,12 @@ Tracked via Vercel Speed Insights. Initial JS bundle budget: < 250KB gzipped (Ne
 **Decision:**
 
 - **Web stack:** React Three Fiber + `@react-three/drei`; `@react-three/postprocessing` remains installed for an optional low-resolution Bloom + Vignette layer, but default steady-state glow is shader-local. Three.js as transitive peer. WebGL canvas mounts client-side only via `dynamic(() => import('./Scene'), { ssr: false })`.
-- **Steady-state shader budget:** Tech-star Airy disks, top-tier diffraction spikes, and MST connection lines are all rendered with local point/strip shaders. Connection lines use tapered quad strips with a narrow core plus soft halo, and star grade differences come from the shared logarithmic magnitude curve (`features/constellation/render/magnitude.ts`). Full-screen bloom is not required to make edges or brightness grades legible.
-- **OG renderer remains SVG-only** (`lib/og/ConstellationImage.tsx`). Defined as a "Stellarium-inspired static poster" at ≈80% visual fidelity to the web renderer — not a pixel-accurate screenshot. Polish: improved SVG glow approximation + Voronoi boundary paths; legacy Milky Way texture assets may remain OG-only until a separate OG design pass. Both web and OG renderers import shared math from `features/constellation/render/*` so palette / anchors / Voronoi / magnitude / label-selection stay in lockstep.
+- **Steady-state shader budget:** Tech-star Airy disks, bright-or-stronger top-tier diffraction spikes, and MST connection lines are all rendered with local point/strip shaders. Connection lines use tapered quad strips with a narrow blue-white core plus soft halo, and star grade differences come from the shared logarithmic magnitude curve (`features/constellation/render/magnitude.ts`). The current five descriptor labels are `faint → emerging → steady → bright → radiant`; the labels are UI language only and do not change the underlying `landmarks.weight` contract. Full-screen bloom is not required to make edges or brightness grades legible.
+- **OG renderer remains SVG-only** (`lib/og/ConstellationImage.tsx`). Defined as a "Stellarium-inspired static poster" at ≈80% visual fidelity to the web renderer — not a pixel-accurate screenshot. It mirrors the current dark-sky visual contract: deterministic field/mid-star layers, no Milky Way texture, meet-mode framing so the full semantic constellation stays visible, Voronoi boundary paths, shared tech-star palette/magnitude math, and a stronger static connection-stroke profile because social cards and the share modal downscale the image. Both web and OG renderers import shared math from `features/constellation/render/*` so palette / anchors / Voronoi / magnitude / label-selection stay in lockstep.
 - **Feature flag:** server-side env var `CONSTELLATION_RENDERER=webgl|svg` (default `webgl`). Read in server components, passed as prop. NOT `NEXT_PUBLIC_*` — that would inline at build time and require redeploy for rollback. Server-side read gives instant rollback via Vercel env-var change.
 - **First-paint strategy:** the wrapper component uses a lightweight HTML/SVG **Skeleton** (background + boundary lines + cluster labels, ≈3KB inline) as the dynamic loading fallback and as the WebGL-unsupported / Scene-crash fallback. The normal WebGL path removes the Skeleton after the wrapper and Scene mount, then fades the Scene in over 300–500ms to avoid duplicate steady-state layers.
 - **Fallback when WebGL is unavailable** (old browsers, in-app browsers, organization disables): Skeleton stays mounted, no Scene is created, a small banner reads "Your browser doesn't support advanced graphics; using simplified view."
-- **Adaptive quality for mobile:** field stars 1000 (vs 2000 desktop); mid-depth stars 220 (vs 420 desktop); DPR cap 2; optional postprocessing stays default-off and uses a low-resolution render target if manually enabled; reduced-motion path disables twinkle/parallax/spark.
+- **Adaptive quality for mobile:** field/mid stars are generated from deterministic pools and drawn via viewport-aware draw ranges, opacity, spread, and size scales. Small canvases get quieter background density and reduced semantic star/label scale; wide canvases get more fill without changing tech-star positions or MST topology. DPR is capped at 2; optional postprocessing stays default-off and uses a low-resolution render target if manually enabled; reduced-motion path disables twinkle/parallax/spark.
 - **Rollout retire:** after ~2 weeks of stable rollout, a separate PR removes `ConstellationSVG.tsx`, the env-var read, and the renderer prop. Web becomes WebGL-only; OG remains divergent SVG.
   **Alternatives:**
 - `NEXT_PUBLIC_CONSTELLATION_RENDERER` — rejected: build-time inline forces rebuild on rollback.

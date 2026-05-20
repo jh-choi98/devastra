@@ -40,6 +40,11 @@
 │       │   ├── ConstellationSVG.tsx    # Legacy SVG renderer (kept during rollout; retired in follow-up PR)
 │       │   ├── ConstellationWebGL.tsx  # WebGL wrapper: feature-detect → Scene + overlay OR Skeleton + banner
 │       │   ├── BrightnessScale.tsx     # Compact signal scale + hover/tap explanation for star brightness
+│       │   ├── background-star-profile.ts # Viewport-aware field/mid-star density, opacity, spread, and size profile
+│       │   ├── semantic-scale-profile.ts  # Viewport-aware tech-star and label scale profile
+│       │   ├── responsive-viewport.ts     # Width → desktop/mobile/og viewport classification
+│       │   ├── label-layout.ts         # Collision-aware tech-label layout shared by visual/a11y overlays
+│       │   ├── cluster-labels.ts       # Cluster-label style/positioning constants
 │       │   ├── Skeleton.tsx            # HTML/SVG loading/fallback: background + boundary lines + cluster labels
 │       │   ├── Scene.tsx               # R3F <Canvas> root; dynamic({ ssr: false })
 │       │   ├── state.ts                # ConstellationContext (selected/hover/cinematic/reducedMotion)
@@ -100,7 +105,7 @@
 │   │       ├── WeeklyRecapEmpty.tsx
 │   │       └── WeeklyRecapFirstWeek.tsx
 │   ├── og/
-│   │   ├── ConstellationImage.tsx      # @vercel/og component (layered-circles glow)
+│   │   ├── ConstellationImage.tsx      # @vercel/og dark-sky SVG poster using shared render math
 │   │   ├── ProfileImage.tsx            # Wraps ConstellationImage for profile share
 │   │   ├── RecapImage.tsx              # Wraps ConstellationImage with weekly diff overlay
 │   │   ├── shared.tsx                  # Edge-safe palette + types
@@ -300,9 +305,10 @@ Generic languages such as JavaScript, TypeScript, Python, Shell, and SQL may cla
 - Integration tests under `tests/integration/`, named after the flow under test (`initial-sync.test.ts`, `rls-isolation.test.ts`, `public-profile-visibility.test.ts`, `email-templates.test.ts`).
 - Email template snapshot tests render React Email to HTML and diff against a committed snapshot.
 - One Playwright E2E in `tests/e2e/signup-to-reveal.spec.ts` runs against a Vercel preview deploy of a feature branch.
-- **Visual regression for the constellation:** Playwright screenshots against `/dev/map` mock scenarios (empty / sparse / dense / stage-up / first-ever), diffed at 3% threshold against committed baselines in `tests/visual/baseline/`. Requires `ENABLE_DEV_MAP=1` on the test environment.
+- **Visual regression for the constellation:** Playwright screenshots against `/dev/map` mock scenarios (empty / sparse / dense / brightness / stage-up / first-ever), diffed at 3% threshold against committed baselines in `tests/visual/baseline/`. Requires `ENABLE_DEV_MAP=1` on the test environment. The `brightness` scenario exists specifically to review the five star-brightness grades and connection-line readability without auth.
 - **A11y for the constellation:** `@axe-core/playwright` runs against `/dev/map` and verifies the DOM overlay buttons (cluster cells + hero lit stars) are keyboard-focusable and have ARIA labels — see `docs/adr.md` ADR-63.
 - **Pure render math tests:** every module under `features/constellation/render/*` has co-located unit tests verifying determinism (`palette.test.ts`, `voronoi.test.ts`, `labels.test.ts`, `mst.test.ts`, `magnitude.test.ts`, `field-stars.test.ts`, `sparse-profile.test.ts`).
+- **Client constellation helper tests:** viewport-sensitive UI helpers under `app/_components/Constellation/` have co-located tests for background-star profiles, responsive viewport selection, semantic scale profiles, and collision-aware label layout.
 - Vitest config uses `vitest --pool=forks` for integration tests that need a real Supabase dev project. The dev project's `.env.test` is git-ignored.
 
 ## External dependencies (justification per dep)
@@ -321,8 +327,8 @@ Generic languages such as JavaScript, TypeScript, Python, Shell, and SQL may cla
 | `three`                                   | WebGL 3D math + GL context for constellation Scene (ADR-62)                                                                         |
 | `@react-three/fiber`                      | React reconciler for three.js; lifecycle + hooks integration (ADR-62)                                                               |
 | `@react-three/drei`                       | R3F helpers — `<Html>` overlay for labels, useTexture, perf helpers (ADR-62)                                                        |
-| `@react-three/postprocessing`             | Optional low-resolution Bloom + Vignette stack; default steady-state renderer uses shader-local glow (ADR-62)                        |
-| `simplex-noise`                           | Procedural noise for dormant Milky Way experiments + Voronoi jitter (already installed)                                               |
+| `@react-three/postprocessing`             | Optional low-resolution Bloom + Vignette stack; default steady-state renderer uses shader-local glow (ADR-62)                       |
+| `simplex-noise`                           | Procedural noise for dormant Milky Way experiments + Voronoi jitter (already installed)                                             |
 | `d3-voronoi`                              | Optional; 6-cell boundary polygon computation (may be replaced by ~50 lines hand-rolled — see ADR-63)                               |
 | `@axe-core/playwright`                    | a11y automated tests against `/dev/map` and main constellation (ADR-63)                                                             |
 | `size-limit` (or `@next/bundle-analyzer`) | CI gate on `/` page JS chunk ≤ 350KB gz (ADR-62 budget)                                                                             |
