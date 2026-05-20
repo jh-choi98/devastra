@@ -4,6 +4,8 @@ export const AIRY_DISK_VERT = /* glsl */ `
   attribute float aIntensity;
   attribute float aZ;
   attribute float aReveal;
+  uniform float uPointScale;
+  uniform float uIntensityScale;
   varying vec3 vColor;
   varying float vIntensity;
   varying float vZ;
@@ -16,9 +18,9 @@ export const AIRY_DISK_VERT = /* glsl */ `
     // weight-driven magnitude curve.
     float zScale = 1.0 + aZ * 0.24;
     float revealScale = 0.35 + smoothstep(0.0, 1.0, aReveal) * 0.65;
-    gl_PointSize = aSize * 5.9 * zScale * revealScale;
+    gl_PointSize = aSize * 5.9 * zScale * revealScale * uPointScale;
     vColor = aColor;
-    vIntensity = aIntensity;
+    vIntensity = aIntensity * uIntensityScale;
     vZ = aZ;
     vReveal = smoothstep(0.0, 1.0, aReveal);
   }

@@ -37,9 +37,9 @@ export function sparseProfileForLitStars(
     cameraZoom: 1 + intensity * (mobile ? 0.06 : 0.1),
     fieldStarOpacity: 1 - intensity * 0.1,
     midStarOpacity: 1 - intensity * 0.12,
-    techStarScale: 1 + intensity * (mobile ? 0.14 : 0.18),
+    techStarScale: 1 + intensity * (mobile ? 0.07 : 0.18),
     techStarIntensity: 1 + intensity * 0.16,
-    spikeScale: 1 + intensity * 0.22,
+    spikeScale: 1 + intensity * (mobile ? 0.12 : 0.22),
     unlitAnchorOpacity: 1 + intensity * 0.25,
   }
 }

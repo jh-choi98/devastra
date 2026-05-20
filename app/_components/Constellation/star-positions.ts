@@ -34,6 +34,14 @@ function cyrb53(str: string): number {
 const SAFE_MIN = 0.15
 const SAFE_MAX = 0.85
 const SAFE_RANGE = SAFE_MAX - SAFE_MIN
+const VIEWBOX_EDGE_INSET: Record<
+  Viewport,
+  { minX: number; maxX: number; minY: number; maxY: number }
+> = {
+  desktop: { minX: 34, maxX: 966, minY: 70, maxY: 658 },
+  mobile: { minX: 58, maxX: 942, minY: 64, maxY: 646 },
+  og: { minX: 34, maxX: 966, minY: 42, maxY: 664 },
+}
 
 function fallbackPosition(tech_key: string): { x: number; y: number } {
   const rng = mulberry32(cyrb53(tech_key))
@@ -179,6 +187,17 @@ function jitter(tech_key: string): { dx: number; dy: number } {
   return { dx: (a - 0.5) * 28, dy: (b - 0.5) * 28 }
 }
 
+function clampToViewBoxSafeArea(
+  point: { x: number; y: number },
+  viewport: Viewport,
+): { x: number; y: number } {
+  const inset = VIEWBOX_EDGE_INSET[viewport]
+  return {
+    x: Math.min(inset.maxX, Math.max(inset.minX, point.x)),
+    y: Math.min(inset.maxY, Math.max(inset.minY, point.y)),
+  }
+}
+
 /** Returns a viewBox-space {x, y} position for a tech star (1000x700 canvas). */
 export function resolveStarViewBoxPosition(
   tech_key: string,
@@ -190,8 +209,8 @@ export function resolveStarViewBoxPosition(
   const j = jitter(tech_key)
   const nx = pos?.x ?? 0.5
   const ny = pos?.y ?? 0.5
-  return {
+  return clampToViewBoxSafeArea({
     x: anchor.x + (nx - 0.5) * anchor.spread * 2 + j.dx,
     y: anchor.y + (ny - 0.5) * anchor.spread * 2 + j.dy,
-  }
+  }, viewport)
 }

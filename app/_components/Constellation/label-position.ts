@@ -23,6 +23,7 @@ export function resolveTechLabelViewBoxPosition(
   techKey: string,
   territory: TerritoryType,
   viewport: Viewport,
+  distanceScale = 1,
 ): { x: number; y: number } {
   const star = resolveStarViewBoxPosition(techKey, territory, viewport)
   const anchor = anchorFor(viewport, territory)
@@ -32,8 +33,8 @@ export function resolveTechLabelViewBoxPosition(
   const direction = len > 0.001
     ? { x: dx / len, y: dy / len }
     : fallbackDirection(techKey)
-  const distance = viewport === 'mobile' ? 18 : 22
-  const verticalBias = viewport === 'mobile' ? -7 : -9
+  const distance = (viewport === 'mobile' ? 18 : 22) * distanceScale
+  const verticalBias = (viewport === 'mobile' ? -7 : -9) * distanceScale
   const minX = viewport === 'mobile' ? 78 : 34
   const maxX = viewport === 'mobile' ? 922 : 966
 
@@ -43,11 +44,11 @@ export function resolveTechLabelViewBoxPosition(
   }
 }
 
-export function techLabelFontSize(weight: number, viewport: Viewport): number {
+export function techLabelFontSize(weight: number, viewport: Viewport, scale = 1): number {
   const t = clamp(Math.log(Math.max(5, weight) / 5) / Math.log(100), 0, 1)
   const base = viewport === 'mobile' ? 7.6 : 8.8
   const range = viewport === 'mobile' ? 1.5 : 1.8
-  return base + t * range
+  return (base + t * range) * scale
 }
 
 export function techLabelOpacity(weight: number): number {

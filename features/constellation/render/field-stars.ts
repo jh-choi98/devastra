@@ -3,8 +3,14 @@ import type { FieldStar, Viewport, SpectralColor } from './types'
 
 const COUNTS: Record<Viewport, number> = {
   desktop: 2000,
-  mobile:  1000,
-  og:      1500,
+  mobile: 1000,
+  og: 1500,
+}
+
+const POOL_COUNTS: Record<Viewport, number> = {
+  desktop: 3200,
+  mobile: 1800,
+  og: 1500,
 }
 
 // Generation extends beyond the nominal 1000x700 viewBox so wide / portrait
@@ -19,7 +25,8 @@ const GEN_H = GEN_Y_MAX - GEN_Y_MIN
 
 // cyrb53 hash for seeding
 function cyrb53(str: string): number {
-  let h1 = 0xdeadbeef, h2 = 0x41c6ce57
+  let h1 = 0xdeadbeef,
+    h2 = 0x41c6ce57
   for (let i = 0; i < str.length; i++) {
     const ch = str.charCodeAt(i)
     h1 = Math.imul(h1 ^ ch, 2654435761)
@@ -75,7 +82,7 @@ function pickColor(v: number): SpectralColor {
 }
 
 function pickSize(v: number): 1 | 2 | 3 {
-  if (v < 0.80) return 1
+  if (v < 0.8) return 1
   if (v < 0.95) return 2
   return 3
 }
@@ -91,7 +98,14 @@ function pickSize(v: number): 1 | 2 | 3 {
  *   density: ~1.7x denser inside the Milky Way mask region
  */
 export function generateFieldStars(viewport: Viewport): FieldStar[] {
-  const count = COUNTS[viewport]
+  return generateFieldStarsWithCount(viewport, COUNTS[viewport])
+}
+
+export function generateFieldStarPool(viewport: Viewport): FieldStar[] {
+  return generateFieldStarsWithCount(viewport, POOL_COUNTS[viewport])
+}
+
+function generateFieldStarsWithCount(viewport: Viewport, count: number): FieldStar[] {
   const seed = cyrb53(`devastra:field-stars:v1:${viewport}`)
   const rng = mulberry32(seed >>> 0)
 

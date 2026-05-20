@@ -32,4 +32,12 @@ describe('sparseProfileForLitStars', () => {
       sparseProfileForLitStars(2, 'mobile').cameraZoom,
     )
   })
+
+  it('uses gentler foreground boosts on mobile', () => {
+    const desktop = sparseProfileForLitStars(2, 'desktop')
+    const mobile = sparseProfileForLitStars(2, 'mobile')
+
+    expect(desktop.techStarScale).toBeGreaterThan(mobile.techStarScale)
+    expect(desktop.spikeScale).toBeGreaterThan(mobile.spikeScale)
+  })
 })

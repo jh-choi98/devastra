@@ -1,10 +1,11 @@
 'use client'
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { useFrame } from '@react-three/fiber'
-import { generateFieldStars } from '@/features/constellation/render/field-stars'
+import { useFrame, useThree } from '@react-three/fiber'
+import { generateFieldStarPool } from '@/features/constellation/render/field-stars'
 import { spectralHex } from '@/features/constellation/render/palette'
 import { viewBoxToWorld } from '@/features/constellation/render/coords'
+import { backgroundStarProfileForCanvas } from '../background-star-profile'
 import { TWINKLE_VERT } from '../shaders/twinkle.vert'
 import { TWINKLE_FRAG } from '../shaders/twinkle.frag'
 import { useConstellationState } from '../state'
@@ -22,7 +23,12 @@ const PARALLAX_BG = 0.002
 
 export function FieldStars({ viewport = 'desktop', opacity = 1 }: FieldStarsProps) {
   const { reducedMotion } = useConstellationState()
-  const stars = useMemo(() => generateFieldStars(viewport), [viewport])
+  const { size } = useThree()
+  const profile = useMemo(
+    () => backgroundStarProfileForCanvas(size.width, size.height, viewport),
+    [size.width, size.height, viewport],
+  )
+  const stars = useMemo(() => generateFieldStarPool(viewport), [viewport])
   const groupRef = useRef<THREE.Group>(null)
 
   const geom = useMemo(() => {
@@ -50,6 +56,10 @@ export function FieldStars({ viewport = 'desktop', opacity = 1 }: FieldStarsProp
     return g
   }, [stars])
 
+  useLayoutEffect(() => {
+    geom.setDrawRange(0, Math.min(profile.fieldCount, stars.length))
+  }, [geom, profile.fieldCount, stars.length])
+
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -57,6 +67,7 @@ export function FieldStars({ viewport = 'desktop', opacity = 1 }: FieldStarsProp
           uTime: { value: 0 },
           uTwinkleAmplitude: { value: 0.1 },
           uTwinkleEnabled: { value: 1.0 },
+          uSizeScale: { value: 1.0 },
           uOpacity: { value: 1.0 },
         },
         vertexShader: TWINKLE_VERT,
@@ -74,9 +85,14 @@ export function FieldStars({ viewport = 'desktop', opacity = 1 }: FieldStarsProp
   useFrame(({ mouse, clock }, dt) => {
     matRef.current.uniforms.uTime.value = clock.elapsedTime
     matRef.current.uniforms.uTwinkleEnabled.value = reducedMotion ? 0.0 : 1.0
-    matRef.current.uniforms.uOpacity.value = opacity
+    matRef.current.uniforms.uTwinkleAmplitude.value = profile.twinkleAmplitude
+    matRef.current.uniforms.uSizeScale.value = profile.fieldSizeScale
+    matRef.current.uniforms.uOpacity.value = opacity * profile.fieldOpacity
 
     if (groupRef.current) {
+      groupRef.current.scale.x = profile.fieldSpreadX
+      groupRef.current.scale.y = profile.fieldSpreadY
+
       if (reducedMotion) {
         groupRef.current.position.x = 0
         groupRef.current.position.y = 0
