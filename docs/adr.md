@@ -272,8 +272,8 @@
 
 **Date:** 2026-05-13
 **Status:** accepted
-**Context:** Worker crashes mid-sync leave `sync_jobs.status = 'running'` forever. Subsequent manual refresh attempts then see "in progress" indefinitely.
-**Decision:** Enforce the FSM `pending → running → completed | failed` in application code. A cron runs every 5 minutes and transitions any row stuck in `'running'` for >30 minutes to `'failed'` with `error = 'timeout'`.
+**Context:** Worker crashes mid-sync leave `sync_jobs.status = 'running'` forever. Event dispatch or worker startup failures can also leave a row in `'pending'` forever. Subsequent manual refresh attempts then see "in progress" indefinitely.
+**Decision:** Enforce the FSM `pending → running → completed | failed` in application code. A cron runs every 5 minutes and transitions any active row stuck in `'pending'` or `'running'` for >30 minutes to `'failed'` with `error = 'timeout'`. User-facing sync reads also repair stale active rows before deciding whether a refresh is already in progress.
 **Alternatives:**
 
 - Rely on Inngest's own retry semantics — partial; Inngest retries the _step_ but the parent `sync_jobs` row may still be marked running if the job orchestration code never updates it.

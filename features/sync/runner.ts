@@ -38,7 +38,8 @@ export const manualRefresh = inngest.createFunction(
     concurrency: { key: 'event.data.userId', limit: 1 },
   },
   { event: EVENTS.SYNC_MANUAL_REQUESTED },
-  async ({ event, step }) => manual.run(event as { data: { userId: string } }, step),
+  async ({ event, step }) =>
+    manual.run(event as { data: { userId: string; jobId?: string } }, step),
 )
 
 export const syncCleanup = inngest.createFunction(

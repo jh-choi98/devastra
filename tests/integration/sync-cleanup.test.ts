@@ -24,18 +24,18 @@ vi.mock('@/lib/db/client', () => {
 
 import { db } from '@/lib/db/client'
 import { buildActivityRaw, ALLOWED_RAW_KEYS } from '@/lib/db/queries/activities'
+import { isStaleActiveSyncJob, SYNC_JOB_TIMEOUT_MS } from '@/features/sync/stale-jobs'
 
 describe('sync-cleanup — stuck job detection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('marks running jobs older than 30 min as failed', async () => {
+  it('marks active jobs older than 30 min as failed', async () => {
     // Re-setup mock after clearAllMocks
-    const mockReturning = vi.fn().mockResolvedValue([
-      { id: 'stuck-job-id-1' },
-      { id: 'stuck-job-id-2' },
-    ])
+    const mockReturning = vi
+      .fn()
+      .mockResolvedValue([{ id: 'stuck-job-id-1' }, { id: 'stuck-job-id-2' }])
     const mockWhere = vi.fn().mockReturnValue({ returning: mockReturning })
     const mockSet = vi.fn().mockReturnValue({ where: mockWhere })
     ;(db.update as ReturnType<typeof vi.fn>).mockReturnValue({ set: mockSet })
@@ -72,6 +72,53 @@ describe('sync-cleanup — stuck job detection', () => {
     // A job started 31 min ago should be cleaned up
     const thirtyOneMinutesAgo = new Date(now - 31 * 60 * 1000)
     expect(thirtyOneMinutesAgo.getTime()).toBeLessThan(thirtyMinutesAgo.getTime())
+  })
+
+  it('treats old pending and running jobs as stale, but not completed jobs', () => {
+    const now = new Date('2026-05-20T20:00:00.000Z')
+    const staleCreatedAt = new Date(now.getTime() - SYNC_JOB_TIMEOUT_MS - 1)
+    const freshCreatedAt = new Date(now.getTime() - SYNC_JOB_TIMEOUT_MS + 1)
+
+    expect(
+      isStaleActiveSyncJob(
+        {
+          status: 'pending',
+          startedAt: null,
+          createdAt: staleCreatedAt,
+        },
+        now,
+      ),
+    ).toBe(true)
+    expect(
+      isStaleActiveSyncJob(
+        {
+          status: 'running',
+          startedAt: staleCreatedAt,
+          createdAt: freshCreatedAt,
+        },
+        now,
+      ),
+    ).toBe(true)
+    expect(
+      isStaleActiveSyncJob(
+        {
+          status: 'running',
+          startedAt: freshCreatedAt,
+          createdAt: staleCreatedAt,
+        },
+        now,
+      ),
+    ).toBe(false)
+    expect(
+      isStaleActiveSyncJob(
+        {
+          status: 'completed',
+          startedAt: staleCreatedAt,
+          createdAt: staleCreatedAt,
+        },
+        now,
+      ),
+    ).toBe(false)
   })
 })
 

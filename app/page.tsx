@@ -6,6 +6,7 @@ import { getLatestSyncJobForUser } from '@/lib/db/queries/sync-jobs'
 import { getSinceLastVisitDiff } from '@/lib/db/queries/since-last-visit-diff'
 import { getActiveSystemMessage } from '@/lib/db/queries/system-messages'
 import { getLandingDemoData } from '@/lib/db/queries/landing-demo'
+import { failStaleActiveSyncJobsForUser, isStaleActiveSyncJob } from '@/features/sync/stale-jobs'
 import { LandingHero } from '@/app/_components/LandingHero'
 import { SampleProfilesGallery } from '@/app/_components/SampleProfilesGallery'
 import { LandingFooter } from '@/app/_components/LandingFooter'
@@ -93,8 +94,8 @@ export default async function RootPage() {
   }
 
   // Fetch data in parallel; updateLastLoginAt runs concurrently.
-  const [initialData, , latestSyncJob, sinceLastVisitDiff, activeSystemMessage] = await Promise.all(
-    [
+  const [initialData, , initialLatestSyncJob, sinceLastVisitDiff, activeSystemMessage] =
+    await Promise.all([
       getMapDataForUser(user.id, prevLastLoginAt),
       updateLastLoginAt(user.id),
       getLatestSyncJobForUser(user.id),
@@ -102,8 +103,12 @@ export default async function RootPage() {
         ? getSinceLastVisitDiff({ userId: user.id, lastLoginAt: prevLastLoginAt })
         : Promise.resolve(null),
       getActiveSystemMessage(),
-    ],
-  )
+    ])
+  let latestSyncJob = initialLatestSyncJob
+  if (latestSyncJob && isStaleActiveSyncJob(latestSyncJob)) {
+    await failStaleActiveSyncJobsForUser(user.id)
+    latestSyncJob = await getLatestSyncJobForUser(user.id)
+  }
 
   // Build banner state
   const bannerState: BannerState = {}
@@ -145,6 +150,7 @@ export default async function RootPage() {
           isPublic: user.isPublic,
         }}
         lastSyncStartedAt={latestSyncJob?.startedAt?.toISOString() ?? null}
+        initialSyncKind={latestSyncJob?.kind ?? null}
         initialSyncing={latestSyncJob?.status === 'pending' || latestSyncJob?.status === 'running'}
         map={{
           userId: user.id,
@@ -152,16 +158,16 @@ export default async function RootPage() {
           firstReveal: isFirstReveal,
           bannerState,
           renderer,
-          initialSyncJob:
-            latestSyncJob
-              ? {
-                  id: latestSyncJob.id,
-                  kind: latestSyncJob.kind,
-                  status: latestSyncJob.status,
-                  progress: normalizeSyncJobProgress(latestSyncJob.progress),
-                  createdAt: latestSyncJob.createdAt.toISOString(),
-                }
-              : null,
+          initialSyncJob: latestSyncJob
+            ? {
+                id: latestSyncJob.id,
+                kind: latestSyncJob.kind,
+                status: latestSyncJob.status,
+                progress: normalizeSyncJobProgress(latestSyncJob.progress),
+                startedAt: latestSyncJob.startedAt?.toISOString() ?? null,
+                createdAt: latestSyncJob.createdAt.toISOString(),
+              }
+            : null,
           firstStarCinematicPending: user.firstStarCinematicPending,
           firstStarCinematicSeen: user.firstStarCinematicSeen,
           hintFlags: {

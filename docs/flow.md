@@ -184,7 +184,7 @@ Hint dismissal is by _action_, not by X button — there is no manual dismiss UI
 
 ## Sub-flow F — Cross-device / multi-tab
 
-- **Concurrent sync prevention:** `sync_jobs.status = 'running'` row blocks duplicate dispatches. Second tab's refresh button shows `Already syncing in another tab` instead of starting a new job.
+- **Concurrent sync prevention:** `sync_jobs.status = 'pending' | 'running'` row blocks duplicate dispatches. Second tab's refresh button reflects the existing queued/running job instead of starting a duplicate. Stale active jobs older than 30 minutes are failed before the refresh gate is evaluated.
 - **Settings change propagation:** changes apply on next page load / next Realtime event on the relevant tables. Live cross-device propagation is v0.2.
 - **Sensitive state (public toggle, disconnect, delete):** server-side authoritative; subsequent reads from any tab see the new state immediately.
 

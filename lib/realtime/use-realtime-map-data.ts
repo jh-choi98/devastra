@@ -16,6 +16,7 @@ export type SyncJobUpdate = {
   kind: 'initial' | 'incremental' | 'manual' | 'backfill' | string
   status: string
   progress: SyncJobProgress | null
+  startedAt?: string | null
   createdAt: string | null
 }
 
@@ -151,13 +152,14 @@ export function useRealtimeMapData(
           const id = String(row['id'] ?? '')
           const kind = String(row['kind'] ?? '')
           const status = String(row['status'] ?? '')
+          const startedAt = row['started_at'] ? String(row['started_at']) : null
           const createdAt = row['created_at'] ? String(row['created_at']) : null
           const rawProgress = row['progress']
           const progress =
             rawProgress && typeof rawProgress === 'object' && !Array.isArray(rawProgress)
               ? (rawProgress as SyncJobProgress)
               : null
-          onSyncJobUpdateRef.current?.({ id, kind, status, progress, createdAt })
+          onSyncJobUpdateRef.current?.({ id, kind, status, progress, startedAt, createdAt })
         },
       )
       .subscribe()

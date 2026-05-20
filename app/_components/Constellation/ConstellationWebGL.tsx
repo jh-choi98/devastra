@@ -42,7 +42,7 @@ function StaticFallbackView(props: {
   )
 }
 
-const Scene = dynamic(() => import(/* webpackChunkName: "constellation-scene" */ './Scene'), {
+const Scene = dynamic(() => import('./Scene'), {
   ssr: false,
   loading: () => null,
 })

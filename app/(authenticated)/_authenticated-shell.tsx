@@ -25,6 +25,7 @@ interface AuthenticatedShellProps {
     isPublic: boolean
   }
   lastSyncStartedAt: string | null
+  initialSyncKind: string | null
   initialSyncing: boolean
   map: LivingMapContainerProps
 }
@@ -32,6 +33,7 @@ interface AuthenticatedShellProps {
 export function AuthenticatedShell({
   user,
   lastSyncStartedAt,
+  initialSyncKind,
   initialSyncing,
   map,
 }: AuthenticatedShellProps) {
@@ -44,6 +46,7 @@ export function AuthenticatedShell({
       <Header
         user={user}
         lastSyncStartedAt={lastSyncStartedAt ? new Date(lastSyncStartedAt) : null}
+        initialSyncKind={initialSyncKind}
         initialSyncing={initialSyncing}
       />
     </div>
