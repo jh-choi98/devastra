@@ -71,7 +71,7 @@ describe('RecentPRs request cache', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
-  it('uses a short-lived success cache and refreshes after expiry', async () => {
+  it('uses a few-minute success cache and refreshes after expiry', async () => {
     const baseTime = new Date('2026-05-21T00:00:00.000Z')
     vi.setSystemTime(baseTime)
     const fetchMock = vi
@@ -87,6 +87,10 @@ describe('RecentPRs request cache', () => {
     await fetchRecentPRs('user-1', 'frontend_land')
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps successful drawer reopens cached for five minutes', () => {
+    expect(RECENT_PRS_CACHE_TTL_MS).toBe(5 * 60_000)
   })
 
   it('treats empty PR responses as successful data', async () => {

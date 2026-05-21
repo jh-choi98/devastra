@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 type PR = { number: number; title: string; repo: string; url: string; updated_at: string }
 type RecentPRsResponse = { prs: PR[] }
 
-export const RECENT_PRS_CACHE_TTL_MS = 30_000
+export const RECENT_PRS_CACHE_TTL_MS = 5 * 60_000
 
 const recentPRsCache = new Map<
   string,
