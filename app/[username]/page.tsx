@@ -9,6 +9,7 @@ import { PrivateProfile } from '@/app/_components/PrivateProfile'
 import { PublicProfileMap } from './_public-profile-map'
 import { VisitorReveal } from './_components/VisitorReveal'
 import { ogVersionParam } from '@/lib/og/version'
+import { publicUrl } from '@/lib/utils/public-base-url'
 
 export const revalidate = 3600
 
@@ -16,17 +17,28 @@ type PageParams = { params: { username: string } }
 
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
   const username = params.username.toLowerCase()
-  const ogUrl = `/api/og/profile/${encodeURIComponent(username)}?${ogVersionParam()}`
+  const encodedUsername = encodeURIComponent(username)
+  const profileUrl = publicUrl(`/${encodedUsername}`)
+  const ogUrl = publicUrl(`/api/og/profile/${encodedUsername}?${ogVersionParam()}`)
   return {
     title: `${username} on DevAstra`,
     description: 'A developer skill constellation that lights up as you code.',
     openGraph: {
-      images: [{ url: ogUrl, width: 1200, height: 630 }],
+      type: 'profile',
+      url: profileUrl,
+      images: [
+        {
+          url: ogUrl,
+          width: 1200,
+          height: 630,
+          alt: `${username}'s DevAstra constellation`,
+        },
+      ],
       siteName: 'DevAstra',
     },
     twitter: {
       card: 'summary_large_image',
-      images: [ogUrl],
+      images: [{ url: ogUrl, alt: `${username}'s DevAstra constellation` }],
     },
     alternates: {
       canonical: `/${username}`,

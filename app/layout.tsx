@@ -2,9 +2,11 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { Toaster } from 'sonner'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { getPublicBaseUrl } from '@/lib/utils/public-base-url'
 import './globals.css'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getPublicBaseUrl()),
   title: 'DevAstra',
   description: 'A developer skill constellation that lights up as you code.',
 }

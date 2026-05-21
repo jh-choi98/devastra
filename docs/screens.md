@@ -269,11 +269,11 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 **Layout (top to bottom):**
 
 1. **Header:** `Share your DevAstra` + close X.
-2. **OG preview** — rendered preview of `/api/og/profile/{username}` at 1200×630 ratio. The preview uses the current dark-sky OG renderer: deterministic field/mid-star layers, current lit tech stars, current labels, current background, and static connection strokes tuned for downscaled share cards.
+2. **OG preview** — rendered preview of `/api/og/profile/{username}` at 1200×630 ratio. The modal shows the standard render immediately, then swaps in the high-resolution 2× render for crisp Retina display while preserving the same composition. The preview uses the current dark-sky OG renderer: deterministic field/mid-star layers, current lit tech stars, current labels, current background, and static connection strokes tuned for downscaled share cards.
 3. **Public toggle row** — `Make your constellation public at devastra.app/{username}` + toggle.
    - OFF state: share buttons below are disabled (visually grayed).
    - ON state: toggle expansion below — `Your constellation is public · devastra.app/{username} [Copy] [Preview →]`.
-4. **Share targets row** — Copy link · X (icon-only, accessible label `Share on X`) · LinkedIn (with `in` logo) · Download PNG · (mobile) Native share. X pre-filled post: `My GitHub activity, as a constellation. {url}`. Download PNG: filename `devastra-{username}-{date}.png`, dimensions 1200×630, watermark in bottom-right.
+4. **Share targets row** — Copy link · X (icon-only, accessible label `Share on X`) · LinkedIn (with `in` logo) · Download PNG · (mobile) Native share. X pre-filled post: `My GitHub activity, as a constellation. {url}`. X and LinkedIn open native share composers with the public profile URL; the generated image appears as a platform link preview card only when the public URL and `og:image` are crawlable, not as an uploaded image attachment. Download PNG: filename `devastra-{username}-{date}.png`, dimensions 2400×1260, watermark in bottom-right.
 
 **Feedback after a share button click:** modal closes + brief toast `Shared!`.
 
