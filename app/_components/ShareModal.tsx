@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { publicUrl } from '@/lib/utils/public-base-url'
 
 interface ShareModalProps {
   open: boolean
@@ -21,10 +22,30 @@ export function ShareModal({
   const [toggling, setToggling] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const profileUrl = `https://devastra.app/${username}`
-  const tweetText = encodeURIComponent(
-    `My GitHub activity, as a constellation.`,
-  )
+  const encodedUsername = encodeURIComponent(username)
+  const profileUrl = publicUrl(`/${encodedUsername}`)
+  const previewImageUrl = `/api/og/profile/${encodedUsername}?preview=1`
+  const highResolutionPreviewImageUrl = `/api/og/profile/${encodedUsername}?preview=1&scale=2`
+  const downloadImageUrl = `/api/og/profile/${encodedUsername}?download=1&scale=2`
+  const tweetText = encodeURIComponent(`My GitHub activity, as a constellation.`)
+  const [previewSrc, setPreviewSrc] = useState(previewImageUrl)
+
+  useEffect(() => {
+    if (!open) return
+
+    let cancelled = false
+    setPreviewSrc(previewImageUrl)
+
+    const img = new Image()
+    img.onload = () => {
+      if (!cancelled) setPreviewSrc(highResolutionPreviewImageUrl)
+    }
+    img.src = highResolutionPreviewImageUrl
+
+    return () => {
+      cancelled = true
+    }
+  }, [highResolutionPreviewImageUrl, open, previewImageUrl])
 
   async function handleToggle() {
     const next = !publicState
@@ -44,7 +65,7 @@ export function ShareModal({
   }
 
   async function handleDownload() {
-    const res = await fetch(`/api/og/profile/${username}`)
+    const res = await fetch(downloadImageUrl)
     const blob = await res.blob()
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -58,41 +79,45 @@ export function ShareModal({
   return (
     <>
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-lg pointer-events-auto"
+          className="pointer-events-auto w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between p-5 border-b border-slate-700">
+          <div className="flex items-center justify-between border-b border-slate-700 p-5">
             <h2 className="text-lg font-semibold text-slate-100">Share your DevAstra</h2>
             <button
               onClick={onClose}
               aria-label="Close"
-              className="p-1.5 rounded hover:bg-slate-700 transition-colors text-slate-400"
+              className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-700"
             >
               ✕
             </button>
           </div>
 
-          <div className="p-5 space-y-4">
+          <div className="space-y-4 p-5">
             {/* OG image preview */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`/api/og/profile/${username}?preview=1`}
+              src={previewSrc}
               alt="Your DevAstra preview"
-              className="w-full rounded-lg border border-slate-700 aspect-[1200/630] object-cover bg-slate-800"
+              width={1200}
+              height={630}
+              className="aspect-[1200/630] w-full rounded-lg border border-slate-700 bg-slate-800 object-cover"
             />
 
             {!publicState && (
-              <div className="flex items-center justify-between bg-slate-800 rounded-lg p-4 border border-slate-600">
+              <div className="flex items-center justify-between rounded-lg border border-slate-600 bg-slate-800 p-4">
                 <div>
-                  <p className="text-slate-200 text-sm font-medium">Your DevAstra is private</p>
-                  <p className="text-slate-400 text-xs mt-0.5">Make it public to share with others</p>
+                  <p className="text-sm font-medium text-slate-200">Your DevAstra is private</p>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    Make it public to share with others
+                  </p>
                 </div>
                 <button
                   onClick={handleToggle}
                   disabled={toggling}
-                  className="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50"
+                  className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm text-white transition-colors hover:bg-indigo-500 disabled:opacity-50"
                 >
                   {toggling ? 'Saving...' : 'Make public'}
                 </button>
@@ -103,7 +128,7 @@ export function ShareModal({
               <button
                 onClick={handleCopy}
                 disabled={!publicState}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 text-sm rounded-lg transition-colors"
+                className="flex items-center justify-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm text-slate-100 transition-colors hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {copied ? '✓ Copied!' : '🔗 Copy link'}
               </button>
@@ -118,10 +143,10 @@ export function ShareModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => !publicState && e.preventDefault()}
-                className={`flex items-center justify-center gap-2 px-4 py-2.5 text-sm rounded-lg transition-colors ${
+                className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm transition-colors ${
                   publicState
-                    ? 'bg-[#1DA1F2] hover:bg-[#1a8fd1] text-white'
-                    : 'bg-slate-700 opacity-40 cursor-not-allowed text-slate-300'
+                    ? 'bg-[#1DA1F2] text-white hover:bg-[#1a8fd1]'
+                    : 'cursor-not-allowed bg-slate-700 text-slate-300 opacity-40'
                 }`}
               >
                 <span aria-hidden="true" className="text-xl font-semibold leading-none">
@@ -138,10 +163,10 @@ export function ShareModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => !publicState && e.preventDefault()}
-                className={`flex items-center justify-center gap-2 px-4 py-2.5 text-sm rounded-lg transition-colors ${
+                className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm transition-colors ${
                   publicState
-                    ? 'bg-[#0A66C2] hover:bg-[#0958a8] text-white'
-                    : 'bg-slate-700 opacity-40 cursor-not-allowed text-slate-300'
+                    ? 'bg-[#0A66C2] text-white hover:bg-[#0958a8]'
+                    : 'cursor-not-allowed bg-slate-700 text-slate-300 opacity-40'
                 }`}
               >
                 <LinkedInLogo className="h-4 w-4" />
@@ -151,7 +176,7 @@ export function ShareModal({
               <button
                 onClick={handleDownload}
                 disabled={!publicState}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-100 text-sm rounded-lg transition-colors"
+                className="flex items-center justify-center gap-2 rounded-lg bg-slate-700 px-4 py-2.5 text-sm text-slate-100 transition-colors hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ↓ Download PNG
               </button>

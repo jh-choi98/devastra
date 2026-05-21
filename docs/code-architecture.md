@@ -354,6 +354,8 @@ All secrets live in Vercel environment variables. Local development uses `.env.l
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_BASE_URL                  # public origin for sitemap, robots, canonical, and social metadata
+NEXT_PUBLIC_APP_URL                   # public origin for user-facing share links; falls back to NEXT_PUBLIC_BASE_URL
 SUPABASE_SERVICE_ROLE_KEY              # server-only
 DATABASE_URL                            # Drizzle runtime — transaction-mode pooler (:6543)
 DIRECT_URL                              # Drizzle Kit migrations only — direct (:5432)

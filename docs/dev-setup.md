@@ -35,6 +35,8 @@ Populate `.env.local` with the values below. All secrets are server-side unless 
 | `SUPABASE_SERVICE_ROLE_KEY`     | Supabase dashboard → Project Settings → API → `service_role` key                                                                               |
 | `DATABASE_URL`                  | Supabase dashboard → Project Settings → Database → Connection string, **Transaction-mode pooler** (port `6543`). Runtime queries use this.     |
 | `DIRECT_URL`                    | Supabase dashboard → Project Settings → Database → Connection string, **Direct connection** (port `5432`). Used only by `drizzle-kit migrate`. |
+| `NEXT_PUBLIC_BASE_URL`          | Public app origin used for sitemap, robots, canonical links, and social metadata. Production: `https://devastra.app` or the active deploy URL. |
+| `NEXT_PUBLIC_APP_URL`           | Public app origin used for user-facing share links. Defaults to `NEXT_PUBLIC_BASE_URL` when unset.                                              |
 
 ### GitHub OAuth
 
@@ -73,6 +75,8 @@ open "http://localhost:3000/api/og/profile/demo?test=1"
 ```
 
 Use this after changes to the share modal or `lib/og/ConstellationImage.tsx` to confirm the static 1200×630 share image still follows the current dark-sky constellation style.
+
+For X / LinkedIn preview-card checks, make sure `NEXT_PUBLIC_APP_URL` or `NEXT_PUBLIC_BASE_URL` points at an externally reachable origin. Social platforms scrape the public profile page and its absolute `og:image`; they do not receive the downloaded 2400×1260 PNG as an uploaded attachment from the share URL. After deploys that change OG metadata or imagery, refresh LinkedIn's cache with Post Inspector and X's cache with Card Validator.
 
 ### Constellation renderer (ADR-62, ADR-63)
 
