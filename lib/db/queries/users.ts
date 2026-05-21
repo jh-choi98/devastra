@@ -1,9 +1,10 @@
 import 'server-only'
 
-import { eq, isNotNull, sql } from 'drizzle-orm'
+import { and, eq, isNotNull, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { users } from '@/lib/db/schema/users'
 import { repositories } from '@/lib/db/schema/repositories'
+import { withUserScope } from './_helpers'
 
 export type DbUser = typeof users.$inferSelect
 
@@ -78,6 +79,60 @@ export type DbRepositoryRow = {
 export type UserRepoSummary = {
   totalCount: number
   includedCount: number
+}
+
+export type SettingsPageData = Pick<
+  DbUser,
+  | 'id'
+  | 'displayUsername'
+  | 'email'
+  | 'avatarUrl'
+  | 'isPublic'
+  | 'emailRecapEnabled'
+  | 'timezone'
+  | 'githubLogin'
+> &
+  UserRepoSummary
+
+export async function getSettingsPageData(userId: string): Promise<SettingsPageData | null> {
+  const [row] = await db
+    .select({
+      id: users.id,
+      displayUsername: users.displayUsername,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+      isPublic: users.isPublic,
+      emailRecapEnabled: users.emailRecapEnabled,
+      timezone: users.timezone,
+      githubLogin: users.githubLogin,
+      totalCount: sql<number>`count(${repositories.id})::int`,
+      includedCount: sql<number>`count(*) filter (where ${repositories.isIncluded})::int`,
+    })
+    .from(users)
+    .leftJoin(
+      repositories,
+      and(eq(repositories.userId, users.id), withUserScope(userId, repositories.userId)),
+    )
+    .where(eq(users.id, userId))
+    .groupBy(
+      users.id,
+      users.displayUsername,
+      users.email,
+      users.avatarUrl,
+      users.isPublic,
+      users.emailRecapEnabled,
+      users.timezone,
+      users.githubLogin,
+    )
+    .limit(1)
+
+  if (!row) return null
+
+  return {
+    ...row,
+    totalCount: Number(row.totalCount ?? 0),
+    includedCount: Number(row.includedCount ?? 0),
+  }
 }
 
 export async function getUserRepoSummary(userId: string): Promise<UserRepoSummary> {

@@ -237,6 +237,8 @@ The `server-only` package is imported at the top of every file under `lib/db/`, 
 
 Public-facing reads use the `users_public_view`, which filters `is_public = true` and is created with `security_invoker = true` so the view does not silently run with owner privileges.
 
+Settings initial page data is fetched through a focused server-side projection (`getSettingsPageData`) that selects only the fields rendered above the fold plus the included/total repository counts. The repository count aggregate keeps the `withUserScope(userId, repositories.userId)` guard in the `LEFT JOIN` condition so users with zero repositories still render while the RLS-bypass filter remains explicit. The full repository list remains lazy-loaded only when the Included repos editor expands (see `docs/flow.md` Flow 5 and `docs/screens.md` §F).
+
 ## Open-source module boundaries
 
 The following modules carry an `SPDX-License-Identifier: MIT` header as the first line (ADR-27, ADR-55, ADR-62):

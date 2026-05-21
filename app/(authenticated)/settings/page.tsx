@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { requireUser } from '@/lib/auth/session'
-import { getUserRepoSummary } from '@/lib/db/queries/users'
+import { redirect } from 'next/navigation'
+import { createServerClient } from '@/lib/auth/supabase-server'
+import { getSettingsPageData } from '@/lib/db/queries/users'
 import { AccountInfoSection } from './_sections/account-info'
 import { PublicProfileSection } from './_sections/public-profile'
 import { EmailRecapSection } from './_sections/email-recap'
@@ -38,8 +39,14 @@ function getTimezonePreviewLine(tz: string): string {
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://devastra.app'
 
 export default async function SettingsPage() {
-  const user = await requireUser()
-  const repoSummary = await getUserRepoSummary(user.id)
+  const supabase = createServerClient()
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser()
+  if (!authUser) redirect('/')
+
+  const user = await getSettingsPageData(authUser.id)
+  if (!user) redirect('/')
 
   const nextRecapDate = getNextSunday()
   const timezonePreview = getTimezonePreviewLine(user.timezone)
@@ -114,8 +121,8 @@ export default async function SettingsPage() {
           <hr className="border-zinc-800" />
 
           <IncludedReposSection
-            initialIncludedCount={repoSummary.includedCount}
-            totalCount={repoSummary.totalCount}
+            initialIncludedCount={user.includedCount}
+            totalCount={user.totalCount}
           />
 
           <hr className="border-zinc-800" />
