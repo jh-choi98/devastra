@@ -133,12 +133,12 @@
 **Date:** 2026-05-13
 **Status:** accepted
 **Context:** Storing GitHub data has two PII/secrets risks: (a) commit messages, diffs, or PR bodies can contain accidentally committed secrets (API keys, internal URLs); (b) breach surface is larger if we mirror more data than we need.
-**Decision:** `activities.raw` JSONB stores only `file_paths`, `additions`, `deletions`, `github_url`. Never commit messages, diffs, PR titles, PR bodies. PR titles needed for the cluster drawer are fetched on-demand from GitHub at view time and cached client-side for the session.
+**Decision:** `activities.raw` JSONB stores only `file_paths`, `additions`, `deletions`, `github_url`. Never commit messages, diffs, PR titles, PR bodies. PR titles needed for the cluster drawer are fetched on-demand from GitHub at view time. The `RecentPRs` client dedupes in-flight requests by `userId + cluster` and keeps only a short-lived success cache to absorb Strict Mode remounts and immediate drawer reopens; failed requests are not cached.
 **Alternatives:**
 
 - Store PR titles too — rejected: low-value vs medium-risk; users sometimes put credentials in titles.
 - Store everything as a cache layer — rejected: turns DevAstra into a GitHub data leak target.
-  **Consequences:** Drawer pays a ~3-call GitHub API cost per open (acceptable; ~0.1% of per-user 5k/hr limit). Classifier and scoring depend only on file paths and counts, which is fine for the rule-based design. If we ever want to display commit messages, that decision is made deliberately, not accidentally inherited.
+  **Consequences:** Drawer pays at most one recent-PR route execution per user/cluster within the short client cache window, and that route may still perform DB, token, and GitHub GraphQL work. Classifier and scoring depend only on file paths and counts, which is fine for the rule-based design. If we ever want to display commit messages, that decision is made deliberately, not accidentally inherited.
 
 ---
 
