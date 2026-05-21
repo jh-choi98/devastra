@@ -85,7 +85,7 @@ Composite UNIQUE `(user_id, source, external_repo_id)`.
 }
 ```
 
-`raw` MUST NOT contain commit messages, diffs, PR titles, PR bodies, or any prose user content. PR titles for the drawer are fetched on-demand from GitHub.
+`raw` MUST NOT contain commit messages, diffs, PR titles, PR bodies, or any prose user content. PR titles for the drawer are fetched on-demand from GitHub. They may live only in short-lived in-memory request caches keyed by user id + cluster, never in database storage.
 
 Composite UNIQUE `(user_id, source, external_id)`.
 
