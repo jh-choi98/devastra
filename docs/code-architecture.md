@@ -63,7 +63,7 @@
 │       │   ├── StarRow.tsx
 │       │   ├── WhyExpansion.tsx        # "Why is this lit?" per-star detail
 │       │   ├── MisclassificationModal.tsx
-│       │   └── RecentPRs.tsx           # GitHub on-demand fetch
+│       │   └── RecentPRs.tsx           # Deduped GitHub on-demand fetch
 │       ├── StateBanners/
 │       │   ├── SyncFailedBanner.tsx
 │       │   ├── SystemStatusBanner.tsx
@@ -287,6 +287,7 @@ GitHub API calls are a constrained product budget, not an implementation detail 
 - A quiet repo's historical bootstrap result is treated as reusable only when the latest source `pushed_at` matches `historical_bootstrap_source_pushed_at`. This lets unchanged old repos skip repeat commit-list scans without hiding changes.
 - Settings backfill skips repeated recent commit-list REST calls only when the latest source `pushed_at` exactly matches `commits_fetched_source_pushed_at`. The marker is advanced only after activity rows are cached successfully, so a failed fetch cannot make a repo look complete.
 - When a sync already has selected GitHub node IDs, repository metadata is refreshed with GraphQL `nodes(ids: ...)` batches instead of listing every repository owned by the user.
+- Cluster drawer recent PR titles are fetched on demand, not persisted. The `RecentPRs` client must dedupe in-flight `/api/drawer/recent-prs` calls by user/cluster and keep any success cache short-lived so drawer remounts do not double DB/token/GitHub route work.
 - Settings backfill is split into checkpointed Inngest steps for repo metadata, manifest parsing, recent activity, historical activity, commit-detail enrichment, activity caching, and reclassification. Do not collapse these into one long SDK request; local/dev SDK connections can close during multi-minute rebuilds.
 - Runtime database traffic uses the transaction-mode pooler (`DATABASE_URL`, port `6543`) with a small `postgres-js` pool. Direct connections (`DIRECT_URL`, port `5432`) are for migrations and one-off schema checks only.
 

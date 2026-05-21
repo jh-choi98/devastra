@@ -253,7 +253,7 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 1. **Cluster summary** — brief stats: `12 stars lit · 4 brightened this week`. Stage info as small footer text: `Stage 2`.
 2. **Lit stars list** — each row: star icon (color, size matched to canvas), tech name, brightness descriptor (`faint` / `emerging` / `steady` / `bright` / `radiant` mapped from landmark weight), first-lit date, top contributing repo (`from juho/my-app`). Row is clickable → toggles inline `Why is this lit?` expansion. Recently unlocked/brightened rows are visually marked.
 3. **`Why is this lit?` expansion (per star, on click)** — detection-rule summary (e.g. `Lit from TypeScript files and React-related paths`), contributing repos list (1–3 repos with the most matches), activity breakdown (`12 commits · 3 PRs`). It does not include inline correction links; the drawer should stay focused on explanation and exploration.
-4. **Recent PRs** — up to 3 recent PR rows (title + repo + relative time). Titles fetched from GitHub API on drawer open; loading state shows skeleton rows. `See more on GitHub →` link.
+4. **Recent PRs** — up to 3 recent PR rows (title + repo + relative time). Titles fetched from GitHub API on drawer open; the client dedupes in-flight requests for the same user/cluster and may reuse a short-lived success result for immediate reopens. Loading state shows skeleton rows. `See more on GitHub →` link.
 5. **(Visitor view only) CTA footer** — `Want to see yours? Create yours, free →`.
 
 **Star focus from canvas star click:** the matching star row is highlighted (subtle background tint), auto-scrolled into view, and its `Why is this lit?` expansion is auto-opened.

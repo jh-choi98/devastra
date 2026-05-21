@@ -2,6 +2,68 @@
 import { useEffect, useState } from 'react'
 
 type PR = { number: number; title: string; repo: string; url: string; updated_at: string }
+type RecentPRsResponse = { prs: PR[] }
+
+export const RECENT_PRS_CACHE_TTL_MS = 30_000
+
+const recentPRsCache = new Map<
+  string,
+  { promise?: Promise<RecentPRsResponse>; data?: RecentPRsResponse; expiresAt?: number }
+>()
+
+function recentPRsCacheKey(userId: string, cluster: string): string {
+  return `${userId}:${cluster}`
+}
+
+export function clearRecentPRsCacheForTest(): void {
+  recentPRsCache.clear()
+}
+
+export function fetchRecentPRs(userId: string, cluster: string): Promise<RecentPRsResponse> {
+  const key = recentPRsCacheKey(userId, cluster)
+  const cached = recentPRsCache.get(key)
+  const now = Date.now()
+
+  if (cached?.data && cached.expiresAt && cached.expiresAt > now) {
+    return Promise.resolve(cached.data)
+  }
+
+  if (cached?.promise) {
+    return cached.promise
+  }
+
+  if (cached) {
+    recentPRsCache.delete(key)
+  }
+
+  const request = fetch(`/api/drawer/recent-prs?cluster=${encodeURIComponent(cluster)}`, {
+    cache: 'no-store',
+  }).then((response) => {
+    if (!response.ok) throw new Error('Failed')
+    return response.json() as Promise<RecentPRsResponse>
+  })
+
+  const promise = request.then(
+    (data) => {
+      if (recentPRsCache.get(key)?.promise === promise) {
+        recentPRsCache.set(key, {
+          data,
+          expiresAt: Date.now() + RECENT_PRS_CACHE_TTL_MS,
+        })
+      }
+      return data
+    },
+    (error) => {
+      if (recentPRsCache.get(key)?.promise === promise) {
+        recentPRsCache.delete(key)
+      }
+      throw error
+    },
+  )
+
+  recentPRsCache.set(key, { promise })
+  return promise
+}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -21,16 +83,19 @@ export function RecentPRs(props: { userId: string; cluster: string }): JSX.Eleme
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    fetch(`/api/drawer/recent-prs?cluster=${encodeURIComponent(props.cluster)}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed'))))
-      .then((data: { prs: PR[] }) => {
+    setError(null)
+
+    fetchRecentPRs(props.userId, props.cluster)
+      .then((data) => {
         if (!cancelled) {
           setPrs(data.prs)
+          setError(null)
           setLoading(false)
         }
       })
       .catch(() => {
         if (!cancelled) {
+          setPrs(null)
           setError('Could not load recent PRs')
           setLoading(false)
         }
@@ -38,13 +103,13 @@ export function RecentPRs(props: { userId: string; cluster: string }): JSX.Eleme
     return () => {
       cancelled = true
     }
-  }, [props.cluster])
+  }, [props.userId, props.cluster])
 
   if (loading) {
     return (
       <div className="space-y-2">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-8 rounded bg-slate-700/50 animate-pulse" />
+          <div key={i} className="h-8 animate-pulse rounded bg-slate-700/50" />
         ))}
       </div>
     )
@@ -66,18 +131,20 @@ export function RecentPRs(props: { userId: string; cluster: string }): JSX.Eleme
           href={pr.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-start gap-2 text-sm hover:bg-slate-700/40 rounded px-2 py-1 -mx-2 transition-colors group"
+          className="group -mx-2 flex items-start gap-2 rounded px-2 py-1 text-sm transition-colors hover:bg-slate-700/40"
         >
-          <span className="text-slate-500 shrink-0 mt-0.5">#{pr.number}</span>
-          <span className="flex-1 text-slate-200 group-hover:text-white line-clamp-1">{pr.title}</span>
-          <span className="text-slate-500 text-xs shrink-0 mt-0.5">{timeAgo(pr.updated_at)}</span>
+          <span className="mt-0.5 shrink-0 text-slate-500">#{pr.number}</span>
+          <span className="line-clamp-1 flex-1 text-slate-200 group-hover:text-white">
+            {pr.title}
+          </span>
+          <span className="mt-0.5 shrink-0 text-xs text-slate-500">{timeAgo(pr.updated_at)}</span>
         </a>
       ))}
       <a
         href={`https://github.com/pulls?q=is:pr+author:@me`}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+        className="text-xs text-slate-500 transition-colors hover:text-slate-300"
       >
         See more on GitHub →
       </a>
