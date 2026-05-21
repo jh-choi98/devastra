@@ -149,9 +149,11 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 
 **Refresh button states:**
 
-- Idle: clock-arrow icon.
-- Cooldown: countdown text (`4:32`) within button; disabled cursor; tooltip on hover.
-- Loading: spinner.
+- Idle: `Refresh`.
+- Queued: `Queued...`; disabled cursor.
+- Running: `Syncing...`; disabled cursor.
+- Cooldown: `Refresh (Nm)`; disabled cursor. Clicks are ignored so no duplicate refresh request is sent.
+- Disconnected/dispatch-failed responses return the control to idle; the cached constellation remains visible.
 
 **Share button states:**
 
@@ -400,9 +402,10 @@ All banners apply over the main constellation, never block it. Multi-banner prio
 
 ### H.1 — Refresh-in-progress
 
-- Refresh button spinner (header).
+- Refresh button shows `Queued...` while the manual job is pending, then `Syncing...` while it is running.
 - Floating text bottom-right: `Looking for new activity...`
 - After 30s: `Still syncing — this can take a moment for active accounts`
+- Realtime is primary. A lightweight `/api/sync/latest-job` polling fallback runs only while a manual sync is active, so missed Realtime events do not leave the header stuck in an in-progress state.
 
 ### H.1a — Constellation build-in-progress
 
