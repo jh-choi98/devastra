@@ -29,7 +29,7 @@
 │   │   ├── og/
 │   │   │   ├── profile/[username]/route.tsx
 │   │   │   └── recap/[recap_id]/route.tsx
-│   │   ├── refresh/route.ts            # Manual refresh trigger (migrating to Server Action)
+│   │   ├── refresh/route.ts            # Manual refresh gate + concrete job dispatch
 │   │   ├── sync/latest-job/route.ts    # Lightweight sync-job polling fallback while Realtime is primary
 │   │   ├── unsubscribe/route.ts        # POST endpoint, idempotent unsubscribe action
 │   │   └── webhooks/
@@ -140,7 +140,9 @@
 │   │   ├── runner.ts                   # Inngest function definitions
 │   │   ├── initial.ts                  # Initial sync (capped at 1 year, ADR-50)
 │   │   ├── incremental.ts              # Daily / manual incremental sync
-│   │   ├── manual.ts                   # Manual refresh trigger
+│   │   ├── manual.ts                   # Manual refresh worker, supports pre-created jobs
+│   │   ├── manual-refresh-gate.ts      # Duplicate-sync and cooldown decision logic
+│   │   ├── stale-jobs.ts               # Pending/running timeout detection and repair
 │   │   ├── backfill.ts                 # Fast Settings rebuild + GitHub enrichment backfill
 │   │   ├── denorm.ts                   # Rebuild territories + landmarks from activities
 │   │   ├── dates.ts                    # GitHub timestamp normalization for DB writes
