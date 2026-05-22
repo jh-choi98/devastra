@@ -39,7 +39,8 @@ import {
   mergeCachedActivityAttribution,
   type CachedActivityAttribution,
 } from './cached-attribution'
-import { cacheManifestContextForRepo, getValidatedCachedManifestContext } from './manifest-cache'
+import { cacheManifestContextForRepo } from './manifest-cache'
+import { planManifestContextRefresh } from './manifest-context-planning'
 import { markHistoricalBootstrapChecked } from './historical-cache'
 import type { GetStepTools } from 'inngest'
 import type { inngest } from '@/lib/inngest/client'
@@ -393,17 +394,10 @@ async function buildManifestContextsForRepos(
   dbRepos: BackfillRepo[],
   github: GitHubSourceClient,
 ): Promise<Record<string, ClassificationContext>> {
-  const manifestContexts = buildDefaultManifestContexts(dbRepos)
-  const reposToFetch: BackfillRepo[] = []
-
-  for (const repo of dbRepos.slice(0, MAX_BACKFILL_MANIFEST_REPO_PROBES)) {
-    const cached = getValidatedCachedManifestContext(repo)
-    if (cached) {
-      manifestContexts[repo.externalRepoId] = cached
-    } else {
-      reposToFetch.push(repo)
-    }
-  }
+  const { manifestContexts, reposToFetch } = planManifestContextRefresh(
+    dbRepos,
+    MAX_BACKFILL_MANIFEST_REPO_PROBES,
+  )
 
   const entries = await mapWithConcurrency(
     reposToFetch,
