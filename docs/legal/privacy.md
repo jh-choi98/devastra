@@ -86,8 +86,8 @@ DevAstra uses the following third-party services. Each is a sub-processor under 
 |---|---|
 | **Supabase** (Auth, Database, Storage, Realtime, Vault) | Identity provider, primary database, encryption key storage |
 | **Vercel** | Application hosting, edge runtime, OG image generation, performance analytics |
-| **Inngest** | Background job orchestration (sync, weekly recap generation, cron tasks) |
-| **Resend** | Transactional email delivery (weekly recap emails) |
+| **Inngest** | Background job orchestration (sync, Phase 2 weekly recap generation, cron tasks) |
+| **Resend** | Transactional email delivery (Phase 2 weekly recap emails) |
 | **Sentry** | Error monitoring (with automatic PII scrubbing) |
 | **PostHog** | Funnel analytics (cookieless mode) |
 | **GitHub** | OAuth identity provider and source of activity data you authorize |
@@ -106,7 +106,7 @@ You can, at any time:
 - **Adjust included repositories.** Choose which public repos contribute to your constellation.
 - **Disconnect GitHub.** Removes the OAuth token; your constellation data is preserved for re-connection.
 - **Delete your account.** All data is permanently erased.
-- **Unsubscribe from emails.** One-click unsubscribe link in every recap email; no login required.
+- **Unsubscribe from emails.** If weekly recap emails are enabled, each recap email includes a one-click unsubscribe link; no login required.
 - **Request a data export.** Email `privacy@devastra.app` from your registered email address. We respond within 30 days with a JSON / CSV archive of all data we hold.
 
 If you are in the EU/UK, you have additional rights under GDPR: access, rectification, erasure, restriction, portability, objection, and to lodge a complaint with your supervisory authority.
@@ -129,7 +129,7 @@ To report a security vulnerability, see `SECURITY.md` at the root of the public 
 
 ## Changes to this policy
 
-When this policy materially changes, the "Last updated" date above is bumped and a notice is shown at the top of the page for at least 30 days. Substantial changes are also announced via the weekly recap email.
+When this policy materially changes, the "Last updated" date above is bumped and a notice is shown at the top of the page for at least 30 days. If weekly recap emails are enabled, substantial changes may also be announced there.
 
 ## Contact
 

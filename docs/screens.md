@@ -337,17 +337,16 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 
 1. **Account info** (read-only) — compact: avatar + `@username` on one line, email on the next.
 2. **Public profile** — toggle. OFF state: just toggle + helper `Make your constellation public at devastra.app/{username}`. ON state: toggle expansion below with URL · Copy · `Preview →`.
-3. **Email recap** — toggle + sub-text `Sundays. Skipped after 2 quiet weeks. Next recap: May 18`.
-4. **Timezone** — IANA dropdown, browser default. Sub-text live: `Your weekly recap arrives Sunday at 6 PM in this timezone.` Auto-save on change. The dropdown is rendered from a deterministic server-provided option list, with the user's current timezone always included; client-only `Intl.supportedValuesOf('timeZone')` must not drive the initial option render because Node and Chrome can ship different ICU timezone lists.
-5. **Username change** — text input + inline live validation + URL preview `devastra.app/{new}`. On save success: helper `Anyone with your old URL devastra.app/{old} will be redirected to your new one.`
-6. **Included repos** — default _collapsed_ section. The collapsed state shows only the included/total count and privacy note; the full repo list is lazy-loaded when the user expands the editor. Expand → search box + list of repos. Each row: name + language + toggle. Save button at bottom of section. On save: pre-save change-summary modal (`These changes will affect your constellation:` + brief rebuild note).
-7. **Danger zone** — red border + heading `Danger zone`. Two sub-sections:
+3. **Timezone** — IANA dropdown, browser default. MVP sub-text live: `Dates are shown in this timezone.` Auto-save on change. When weekly recap email is re-enabled in Phase 2, this line becomes `Your weekly recap arrives Sunday at 6 PM in this timezone.` The dropdown is rendered from a deterministic server-provided option list, with the user's current timezone always included; client-only `Intl.supportedValuesOf('timeZone')` must not drive the initial option render because Node and Chrome can ship different ICU timezone lists.
+4. **Username change** — text input + inline live validation + URL preview `devastra.app/{new}`. On save success: helper `Anyone with your old URL devastra.app/{old} will be redirected to your new one.`
+5. **Included repos** — default _collapsed_ section. The collapsed state shows only the included/total count and privacy note; the full repo list is lazy-loaded when the user expands the editor. Expand → search box + list of repos. Each row: name + language + toggle. Save button at bottom of section. On save: pre-save change-summary modal (`These changes will affect your constellation:` + brief rebuild note).
+6. **Danger zone** — red border + heading `Danger zone`. Two sub-sections:
    - **Disconnect GitHub** — description + Disconnect button → E.1 modal.
    - **Delete account** — description + Delete button (red text) → E.2 modal.
 
 **Save model:**
 
-- Toggles (public, email recap, timezone): auto-save + toast.
+- Public profile toggle and timezone: auto-save + toast.
 - Username, repos: explicit Save button per section.
 
 **Validation copy:**
@@ -494,6 +493,8 @@ See `docs/flow.md` Sub-flow A. Stage-up is the moment cluster color **becomes vi
 
 ## J — Email templates
 
+**Phase 2 deferred:** Weekly recap email templates are retained as the re-enable spec, but MVP launch does not expose the Settings Email recap control or register recap send/generate Inngest functions unless `ENABLE_EMAIL_RECAPS=1`.
+
 All emails are dark-sky themed (Gmail dark mode looks correct without inversion). Max width 600px. Footer: `Unsubscribe · Privacy · Settings`. Image-blocked clients: alt text `Your DevAstra constellation, week of May 10`.
 
 ### J.1 — Weekly recap active
@@ -558,6 +559,8 @@ No dedicated page. After Avatar dropdown → Sign out:
 ### M4 — Email unsubscribe landing (`/unsubscribe?token={jwt}`)
 
 **Purpose:** one-click unsubscribe from weekly recap emails. Works without login.
+
+**Phase 2 deferred:** This page and API remain available for existing/test recap links, but no new weekly recap emails are sent during MVP launch unless `ENABLE_EMAIL_RECAPS=1`.
 
 **Behavior on GET with valid token:**
 

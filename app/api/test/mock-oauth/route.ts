@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server'
 
 const TEST_GITHUB_ID = 999999999
 const TEST_GITHUB_LOGIN = 'test-e2e-user'
-const TEST_EMAIL = `${TEST_GITHUB_LOGIN}@test.devastra.local`
 const TEST_PASSWORD = 'test-e2e-password-devonly'
 
 export async function GET(request: Request) {
@@ -19,47 +18,26 @@ export async function GET(request: Request) {
   const { createAdminClient } = await import('@/lib/auth/supabase-server')
   const { db } = await import('@/lib/db/client')
   const { users } = await import('@/lib/db/schema/users')
+  const { eq } = await import('drizzle-orm')
 
   const adminClient = createAdminClient()
+  const testEmail = `${TEST_GITHUB_LOGIN}+${Date.now()}@test.devastra.local`
+  await db.delete(users).where(eq(users.githubLogin, TEST_GITHUB_LOGIN))
 
-  // Ensure test user exists in Supabase Auth
-  const { data: listData } = await adminClient.auth.admin.listUsers()
-  const existingAuthUser = listData?.users?.find((u) => u.email === TEST_EMAIL)
-
-  if (!existingAuthUser) {
-    const { error: createError } = await adminClient.auth.admin.createUser({
-      email: TEST_EMAIL,
-      password: TEST_PASSWORD,
-      email_confirm: true,
-      user_metadata: {
-        provider_id: String(TEST_GITHUB_ID),
-        user_name: TEST_GITHUB_LOGIN,
-        avatar_url: null,
-      },
+  const { error: createError } = await adminClient.auth.admin.createUser({
+    email: testEmail,
+    password: TEST_PASSWORD,
+    email_confirm: true,
+    user_metadata: {
+      provider_id: String(TEST_GITHUB_ID),
+      user_name: TEST_GITHUB_LOGIN,
+      avatar_url: null,
+    },
+  })
+  if (createError) {
+    return new NextResponse(`Failed to create test user: ${createError.message}`, {
+      status: 500,
     })
-    if (createError) {
-      return new NextResponse(`Failed to create test user: ${createError.message}`, {
-        status: 500,
-      })
-    }
-  } else {
-    const { error: updateError } = await adminClient.auth.admin.updateUserById(
-      existingAuthUser.id,
-      {
-        email_confirm: true,
-        password: TEST_PASSWORD,
-        user_metadata: {
-          provider_id: String(TEST_GITHUB_ID),
-          user_name: TEST_GITHUB_LOGIN,
-          avatar_url: null,
-        },
-      },
-    )
-    if (updateError) {
-      return new NextResponse(`Failed to update test user: ${updateError.message}`, {
-        status: 500,
-      })
-    }
   }
 
   // Sign in to get a session token
@@ -74,7 +52,7 @@ export async function GET(request: Request) {
     },
   )
   const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({
-    email: TEST_EMAIL,
+    email: testEmail,
     password: TEST_PASSWORD,
   })
 
@@ -92,7 +70,7 @@ export async function GET(request: Request) {
       githubId: TEST_GITHUB_ID,
       githubLogin: TEST_GITHUB_LOGIN,
       displayUsername: TEST_GITHUB_LOGIN,
-      email: TEST_EMAIL,
+      email: testEmail,
       avatarUrl: null,
       isPublic: false,
       emailRecapEnabled: true,
@@ -105,10 +83,10 @@ export async function GET(request: Request) {
   const redirectUrl = new URL('/onboarding/repos', request.url)
   const response = NextResponse.redirect(redirectUrl)
 
-  // Supabase SSR uses these cookie names
   const projectRef =
     process.env.NEXT_PUBLIC_SUPABASE_URL?.match(/https:\/\/([^.]+)/)?.[1] ?? 'local'
-  response.cookies.set(`sb-${projectRef}-auth-token`, JSON.stringify(signInData.session), {
+  const cookieValue = `base64-${Buffer.from(JSON.stringify(signInData.session)).toString('base64url')}`
+  response.cookies.set(`sb-${projectRef}-auth-token`, cookieValue, {
     httpOnly: true,
     secure: false,
     sameSite: 'lax',

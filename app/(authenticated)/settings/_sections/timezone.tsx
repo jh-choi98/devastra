@@ -3,17 +3,20 @@
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { setTimezone } from '../_actions'
+import { getTimezonePreviewLine } from '../_timezones'
 
 interface TimezoneSectionProps {
   initialTimezone: string
   initialPreviewLine: string
   timezones: string[]
+  emailRecapsEnabled?: boolean
 }
 
 export function TimezoneSection({
   initialTimezone,
   initialPreviewLine,
   timezones,
+  emailRecapsEnabled = true,
 }: TimezoneSectionProps) {
   const [timezone, setTz] = useState(initialTimezone)
   const [previewLine, setPreviewLine] = useState(initialPreviewLine)
@@ -21,20 +24,7 @@ export function TimezoneSection({
 
   function handleChange(tz: string) {
     setTz(tz)
-    // Compute preview line client-side
-    try {
-      const sunday = new Date()
-      sunday.setDate(sunday.getDate() + ((7 - sunday.getDay()) % 7 || 7))
-      sunday.setHours(18, 0, 0, 0)
-      const formatted = sunday.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: tz,
-      })
-      setPreviewLine(`Your weekly recap arrives Sunday at ${formatted} in this timezone.`)
-    } catch {
-      setPreviewLine('Your weekly recap arrives Sunday in this timezone.')
-    }
+    setPreviewLine(getTimezonePreviewLine(tz, { emailRecapsEnabled }))
     startTransition(async () => {
       try {
         await setTimezone(tz)

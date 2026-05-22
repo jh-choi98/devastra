@@ -72,12 +72,22 @@ export async function sendWeeklyRecapEmail(opts: { recapId: string }): Promise<v
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
     },
   })
+  if (result.error) {
+    const message =
+      typeof result.error === 'object' && 'message' in result.error
+        ? String(result.error.message)
+        : JSON.stringify(result.error)
+    throw new Error(`Resend email send failed: ${message}`)
+  }
+
+  const externalMessageId = result.data?.id
+  if (!externalMessageId) throw new Error('Resend email send failed: missing message id')
 
   await db.insert(emailSends).values({
     userId: user.id,
     emailType,
     relatedId: recap.id,
-    externalMessageId: result.data?.id ?? null,
+    externalMessageId,
     bounced: false,
   })
 

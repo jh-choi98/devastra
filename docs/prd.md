@@ -24,7 +24,7 @@ If the constellation is **pretty but disconnected from meaning**, the user react
 - star ↔ actual `tech_key` (with detection rule)
 - cluster ↔ actual growth domain (one of six)
 - drawer ↔ explanation ("why is this lit?")
-- weekly recap ↔ this-week change
+- weekly recap ↔ this-week change (Phase 2; dormant in MVP launch)
 - public profile ↔ shareable identity
 - labels ↔ clarity without clutter
 - sparse users ↔ honest early-state visual treatment; never fake stars or inflate activity
@@ -50,11 +50,10 @@ If the constellation is **pretty but disconnected from meaning**, the user react
 - **Stage-up moments** — cluster aura expansion + ripple when `total_weight` crosses thresholds
 - **Manual refresh** — 5-minute cooldown per user; pull-to-refresh on mobile
 - **Public profile** — opt-in `/{username}` page with identical interactive constellation + sticky `Create yours, free →` CTA
-- **Weekly recap email** — Sunday delivery in user's local timezone; three variants (active week / empty week / first week); subject line uses constellation language
 - **Welcome-back overlay** — appears after ≥4 weeks of absence
 - **Misclassification feedback plumbing** — per-star correction modal and rate-limited storage are prepared, but the drawer entrypoint is hidden while a lower-friction feedback surface is redesigned
-- **Static OG image generation** — dark-sky share image for `/api/og/profile/[username]` and `/api/og/recap/[recap_id]`, aligned with the live constellation's current stars/background while remaining an SVG-only static renderer
-- **Settings** — public toggle, disconnect GitHub, delete account, email preferences, timezone, username change, included repos
+- **Static OG image generation** — dark-sky share image for `/api/og/profile/[username]`, aligned with the live constellation's current stars/background while remaining an SVG-only static renderer
+- **Settings** — public toggle, disconnect GitHub, delete account, timezone, username change, included repos
 - **Username history with permanent redirect** — old `/{username}` URLs forward to new ones forever
 
 ## Out of scope (explicit non-goals)
@@ -64,7 +63,7 @@ If the constellation is **pretty but disconnected from meaning**, the user react
 | Monetization    | Paid tier · Team/org constellation · Private repo support · Multi-identity (work + personal GitHub) · Custom domain · Theme customization · Embed widget · Poster export |
 | Social          | Friend comparison · Weekly shipping league · Leaderboards · Skill ranking · Following / subscriptions · Comments / reactions                                             |
 | Analytics depth | Rare star UI (logic prepared, hidden until `tech_global_stats.eligible_user_count ≥ 500`) · Per-star numeric rankings · "You are top N%" framing                         |
-| Notifications   | Push · Slack · Discord · Welcome email · Achievement / level-up copy · "+XP" framing                                                                                     |
+| Notifications   | Weekly recap email (Phase 2 deferred) · Push · Slack · Discord · Welcome email · Achievement / level-up copy · "+XP" framing                                             |
 | Platforms       | Mobile native app · PWA / service worker · Browser extension · Public API · Embed iframe                                                                                 |
 | Content         | `/recap/{id}` archive page · LLM-generated copy in core flow · Tutorial / help center · Status page · View-in-browser email link                                         |
 | Other           | i18n (English only) · Cookie consent banner (PostHog runs in cookieless mode)                                                                                            |
@@ -78,7 +77,7 @@ Decision rule for "MVP succeeded, build v0.2":
 | Closed beta size | ≥50 invited users with completed signup                                | Supabase `users` count                                   |
 | Activation rate  | ≥60% of OAuth-completed users reach first-reveal                       | PostHog funnel: `landing_view` → `first_reveal_complete` |
 | Share rate       | ≥20% of activated users toggle profile to public                       | PostHog event: `public_toggle_on`                        |
-| Return rate      | ≥40% of activated users click weekly recap email at least once         | PostHog event: `recap_email_clicked`                     |
+| Return rate      | ≥40% of activated users return within 7 days after first reveal        | PostHog cohort / pageview analysis                       |
 | Qualitative      | ≥3 unsolicited social shares (X / LinkedIn) of own constellation       | Founder manual count                                     |
 
 If activation < 60%, fix onboarding before scaling. If share rate < 20%, the constellation isn't compelling enough — iterate viz, not features.
