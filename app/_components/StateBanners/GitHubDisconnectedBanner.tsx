@@ -9,7 +9,10 @@ const COPY: Record<Variant, string> = {
 
 export function GitHubDisconnectedBanner({ variant }: { variant: Variant }) {
   return (
-    <div className="w-full flex items-center justify-between gap-4 bg-slate-800/90 backdrop-blur border-b border-slate-700 px-4 py-2.5 text-sm text-slate-200">
+    <div
+      data-testid="github-disconnected-banner"
+      className="w-full flex items-center justify-between gap-4 bg-slate-800/90 backdrop-blur border-t border-slate-700 px-4 py-2.5 text-sm text-slate-200"
+    >
       <span>{COPY[variant]}</span>
       <a
         href="/api/auth/sign-in"

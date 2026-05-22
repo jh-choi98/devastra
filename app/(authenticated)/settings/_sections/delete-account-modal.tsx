@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { deleteAccount } from '../_actions'
 
 interface DeleteAccountModalProps {
@@ -12,6 +12,19 @@ interface DeleteAccountModalProps {
 export function DeleteAccountModal({ open, displayUsername, onClose }: DeleteAccountModalProps) {
   const [input, setInput] = useState('')
   const [pending, startTransition] = useTransition()
+
+  useEffect(() => {
+    if (!open) return
+
+    setInput('')
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, onClose])
 
   if (!open) return null
 
@@ -44,7 +57,6 @@ export function DeleteAccountModal({ open, displayUsername, onClose }: DeleteAcc
         <p className="text-sm text-zinc-400 mb-3">This cannot be undone. We will delete:</p>
         <ul className="list-disc list-inside text-sm text-zinc-400 space-y-1 mb-6">
           <li>Your constellation</li>
-          <li>All weekly recaps</li>
           <li>Your public profile</li>
           <li>All account data</li>
         </ul>

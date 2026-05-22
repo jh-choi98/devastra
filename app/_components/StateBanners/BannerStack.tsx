@@ -25,11 +25,13 @@ export function BannerStack(props: {
   const [syncFailedDismissed, setSyncFailedDismissed] = useState(false)
   const { state } = props
 
-  // Top-strip priority: disconnected > systemStatus > welcomeBack > thisWeek
+  // Top-strip priority: disconnected > systemStatus > welcomeBack > thisWeek.
+  // Disconnected uses the same priority but renders at the viewport bottom.
   let topBanner: React.ReactNode = null
+  let bottomBanner: React.ReactNode = null
 
   if (state.githubDisconnected) {
-    topBanner = <GitHubDisconnectedBanner variant={state.githubDisconnected.variant} />
+    bottomBanner = <GitHubDisconnectedBanner variant={state.githubDisconnected.variant} />
   } else if (state.systemStatus) {
     topBanner = (
       <SystemStatusBanner
@@ -63,6 +65,15 @@ export function BannerStack(props: {
       {topBanner && (
         <div className="absolute inset-x-0 top-16 z-40 sm:top-20">
           {topBanner}
+        </div>
+      )}
+      {bottomBanner && (
+        <div
+          className={`fixed inset-x-0 z-40 ${
+            showSyncFailed ? 'bottom-12 sm:bottom-11' : 'bottom-0'
+          }`}
+        >
+          {bottomBanner}
         </div>
       )}
       {showSyncFailed && (

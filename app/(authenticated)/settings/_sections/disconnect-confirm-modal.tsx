@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useEffect, useTransition } from 'react'
 import { disconnectGitHub } from '../_actions'
 
 interface DisconnectConfirmModalProps {
@@ -10,6 +10,17 @@ interface DisconnectConfirmModalProps {
 
 export function DisconnectConfirmModal({ open, onClose }: DisconnectConfirmModalProps) {
   const [pending, startTransition] = useTransition()
+
+  useEffect(() => {
+    if (!open) return
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, onClose])
 
   if (!open) return null
 

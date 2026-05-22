@@ -15,12 +15,30 @@ export async function GET(request: Request) {
   }
 
   const { createClient } = await import('@supabase/supabase-js')
-  const { createAdminClient } = await import('@/lib/auth/supabase-server')
+  const { createAdminClient, createServerClient } = await import('@/lib/auth/supabase-server')
   const { db } = await import('@/lib/db/client')
   const { users } = await import('@/lib/db/schema/users')
   const { eq } = await import('drizzle-orm')
 
   const adminClient = createAdminClient()
+  const serverClient = createServerClient()
+  const {
+    data: { user: existingAuthUser },
+  } = await serverClient.auth.getUser()
+
+  if (existingAuthUser) {
+    await db
+      .update(users)
+      .set({
+        githubAccessTokenEnc: Buffer.from('mock-github-access-token'),
+        githubRefreshTokenEnc: Buffer.from('mock-github-refresh-token'),
+        githubTokenExpiresAt: null,
+      })
+      .where(eq(users.id, existingAuthUser.id))
+
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
   const testEmail = `${TEST_GITHUB_LOGIN}+${Date.now()}@test.devastra.local`
   await db.delete(users).where(eq(users.githubLogin, TEST_GITHUB_LOGIN))
 
@@ -75,9 +93,27 @@ export async function GET(request: Request) {
       isPublic: false,
       emailRecapEnabled: true,
       timezone: 'UTC',
+      githubAccessTokenEnc: Buffer.from('mock-github-access-token'),
+      githubRefreshTokenEnc: Buffer.from('mock-github-refresh-token'),
       lastEventId: null,
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({
+      target: users.id,
+      set: {
+        githubId: TEST_GITHUB_ID,
+        githubLogin: TEST_GITHUB_LOGIN,
+        displayUsername: TEST_GITHUB_LOGIN,
+        email: testEmail,
+        avatarUrl: null,
+        isPublic: false,
+        emailRecapEnabled: true,
+        timezone: 'UTC',
+        githubAccessTokenEnc: Buffer.from('mock-github-access-token'),
+        githubRefreshTokenEnc: Buffer.from('mock-github-refresh-token'),
+        githubTokenExpiresAt: null,
+        lastEventId: null,
+      },
+    })
 
   // Set cookies and redirect to onboarding
   const redirectUrl = new URL('/onboarding/repos', request.url)
