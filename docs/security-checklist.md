@@ -11,9 +11,9 @@ These MUST be verified before any production deployment.
 ### 1. Test / mock routes are NODE_ENV-guarded [x]
 
 - **Reference:** ADR-47
-- **Verify:** `app/api/test/mock-oauth/route.ts` (and any sibling test routes) begin with `if (process.env.NODE_ENV === 'production') notFound()` as the first executable line. Production deploy returns 404 from these routes (manual curl test).
+- **Verify:** `app/api/test/mock-oauth/route.ts` and any sibling test routes import `notFound` and return `notFound()` before any test-only behavior when `NODE_ENV === 'production'`. Handler-level guards are acceptable when a top-level guard would break production build page-data collection. Production deploy returns 404 from these routes (manual curl test).
 - **Why it matters:** A leaked mock-OAuth route allows arbitrary user impersonation.
-- **Status:** `[x] guarded in app/api/test/mock-oauth/route.ts:12`
+- **Status:** `[x] guarded in app/api/test/mock-oauth/route.ts:9` and `app/api/test/run-manual-sync/route.ts:4`
 
 ### 2. Resend webhook signature verification [x]
 

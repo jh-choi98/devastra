@@ -18,6 +18,7 @@ import { getUsableAccessToken } from '@/lib/github/token'
 import { GitHubClassifier } from '@/features/territories/classifier'
 import { LANDMARK_UNLOCK_THRESHOLD } from '@/features/territories/rules'
 import { GitHubSourceClient } from './sources/github'
+import { discoverUserRepositories } from './repository-discovery'
 import type { ClassificationContext } from '@/features/territories/classifier'
 import type { DbRepository } from '@/lib/db/queries/repositories'
 import type { SourceActivity } from './sources/interface'
@@ -86,6 +87,8 @@ async function syncUserIncremental(userId: string, github: GitHubSourceClient): 
       lastIncrementalSyncAt && now.getTime() - lastIncrementalSyncAt.getTime() < NINETY_DAYS_MS
         ? lastIncrementalSyncAt
         : new Date(now.getTime() - SEVEN_DAYS_MS)
+
+    await discoverUserRepositories(userId, github)
 
     const dbRepos = await getIncludedRepositoriesForUser(userId)
     const repoExternalIds = dbRepos.map((r) => r.externalRepoId)

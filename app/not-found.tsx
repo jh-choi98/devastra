@@ -52,13 +52,7 @@ export default function NotFoundPage(): JSX.Element {
               href="/"
               className="px-6 py-3 bg-indigo-600 text-white rounded-full font-semibold text-sm hover:bg-indigo-500 transition-colors"
             >
-              Create yours, free →
-            </Link>
-            <Link
-              href="/#gallery"
-              className="px-6 py-3 border border-slate-600 text-slate-300 rounded-full text-sm hover:border-slate-400 hover:text-slate-200 transition-colors"
-            >
-              Browse other constellations →
+              Start yours for free →
             </Link>
           </div>
         </div>

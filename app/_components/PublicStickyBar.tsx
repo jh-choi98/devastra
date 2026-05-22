@@ -25,7 +25,7 @@ export function PublicStickyBar({
           data-testid="sticky-cta"
           className="px-6 py-2 bg-white text-indigo-700 rounded-full font-semibold text-sm hover:bg-indigo-50 transition-colors"
         >
-          Create yours, free →
+          Start yours for free →
         </Link>
       </div>
     </motion.div>

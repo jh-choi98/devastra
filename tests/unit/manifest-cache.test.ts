@@ -8,7 +8,6 @@ describe('manifest cache', () => {
   it('reuses cached dependency names only when source pushed_at matches', () => {
     const pushedAt = new Date('2026-05-17T00:00:00.000Z')
     const context = getValidatedCachedManifestContext({
-      id: 'repo-id',
       primaryLanguage: 'TypeScript',
       sourcePushedAt: pushedAt,
       manifestSourcePushedAt: pushedAt,
@@ -30,7 +29,6 @@ describe('manifest cache', () => {
 
   it('rejects cached dependency names when the repository has been pushed since validation', () => {
     const context = getValidatedCachedManifestContext({
-      id: 'repo-id',
       primaryLanguage: 'Go',
       sourcePushedAt: '2026-05-17T00:00:01.000Z',
       manifestSourcePushedAt: '2026-05-17T00:00:00.000Z',

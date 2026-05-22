@@ -420,7 +420,7 @@
 **Date:** 2026-05-14
 **Status:** accepted
 **Context:** Multiple paid feature opportunities exist (team/org constellation, private repos, custom themes, embed widget, poster export, multi-identity) but adding any of them to MVP scope multiplies complexity. Free MVP also lets users feel the product's emotional core without payment friction.
-**Decision:** MVP ships free-only. The compass principle: "free users get the magic; paid users get expansion" — but the entire magic surface is free. `users.plan` column is not added at MVP; will be introduced in the paid-tier feature PR. Conversion CTA copy is always `Create yours, free →`.
+**Decision:** MVP ships free-only. The compass principle: "free users get the magic; paid users get expansion" — but the entire magic surface is free. `users.plan` column is not added at MVP; will be introduced in the paid-tier feature PR. Conversion CTA copy is always `Start yours for free →`.
 **Alternatives:**
 
 - Freemium at launch — rejected: paid tier design distracts from getting the free experience right.
@@ -996,6 +996,7 @@ Tracked via Vercel Speed Insights. Initial JS bundle budget: < 250KB gzipped (Ne
 - Commit-detail enrichment is capped to the latest 50 sampled/relevant activities per sync run. Manual and incremental sync fetch GitHub detail outside DB transactions.
 - Initial sync probes likely manifest paths by primary language and caps manifest-content probing to the first 50 selected repos. Repos that are not manifest-probed still receive default classification context.
 - Parsed manifest dependency names are cached per repository and reused only when GitHub's source `pushed_at` value is unchanged from the value stored with the cache. The cache stores dependency names, not manifest file contents, and a changed or unknown `pushed_at` forces manifest revalidation before a build can complete.
+- Manual and daily incremental sync refresh the user's public repo list once before activity sync so newly created public repos can enter the saved repository set. Existing repo inclusion choices are preserved during this metadata refresh.
 - Initial sync and Settings backfill run a bounded historical bootstrap for selected repos that have no recent activity, capped at 20 repos, 3 commit-list pages per repo, and 100 authored commits per repo. This avoids an empty first constellation when a user intentionally selects older repos while preserving the API budget.
 - Historical bootstrap checks are cached per repository and reused only when GitHub's source `pushed_at` value is unchanged from `historical_bootstrap_source_pushed_at`. Changed or unknown `pushed_at` values force a new bounded historical scan before completion.
 - Syncs that already know selected GitHub node IDs use GraphQL direct node lookup batches for repository metadata instead of re-listing every repository owned by the user.

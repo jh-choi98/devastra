@@ -5,6 +5,13 @@ import { GITHUB_USER_AGENT } from './graphql'
 const GITHUB_API_BASE = 'https://api.github.com'
 const DEFAULT_MAX_REST_CONCURRENCY = 4
 
+function getGitHubApiBase(): string {
+  if (process.env.NODE_ENV !== 'production' && process.env.GITHUB_REST_API_BASE_URL) {
+    return process.env.GITHUB_REST_API_BASE_URL
+  }
+  return GITHUB_API_BASE
+}
+
 export class GitHubAuthError extends Error {
   constructor(message: string) {
     super(message)
@@ -36,7 +43,7 @@ export class GitHubRestClient {
   ) {}
 
   async get<T>(path: string, params?: Record<string, string>): Promise<T> {
-    const url = new URL(`${GITHUB_API_BASE}${path}`)
+    const url = new URL(`${getGitHubApiBase()}${path}`)
     if (params) {
       for (const [k, v] of Object.entries(params)) {
         url.searchParams.set(k, v)
@@ -54,7 +61,7 @@ export class GitHubRestClient {
     let page = 1
 
     while (true) {
-      const url = new URL(`${GITHUB_API_BASE}${path}`)
+      const url = new URL(`${getGitHubApiBase()}${path}`)
       if (params) {
         for (const [k, v] of Object.entries(params)) {
           url.searchParams.set(k, v)
