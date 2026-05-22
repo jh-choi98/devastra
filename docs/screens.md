@@ -43,7 +43,7 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 
 - Dim sky background with faint constellation outline (decorative).
 - Copy: `No constellation at this address`
-- CTAs: `Create yours, free →` (primary) · `Browse other constellations →` (secondary, links to landing gallery)
+- CTA: `Start yours for free →`
 
 ### A.3 — Private profile placeholder (`/{username}` where `is_public = false`)
 
@@ -53,7 +53,7 @@ Screens are grouped into 10 categories (A–J) plus 5 missing-screen additions (
 
 - Dim sky + _unlit/locked_ constellation outline (six dim cluster outlines + faint star positions but no glow).
 - Copy: `{username}'s sky is private`
-- CTA: `Create yours, free →`
+- CTA: `Start yours for free →`
 
 ### A.4 — Rate-limit page (429)
 
@@ -254,7 +254,7 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 2. **Lit stars list** — each row: star icon (color, size matched to canvas), tech name, brightness descriptor (`faint` / `emerging` / `steady` / `bright` / `radiant` mapped from landmark weight), first-lit date, top contributing repo (`from juho/my-app`). Row is clickable → toggles inline `Why is this lit?` expansion. Recently unlocked/brightened rows are visually marked.
 3. **`Why is this lit?` expansion (per star, on click)** — detection-rule summary (e.g. `Lit from TypeScript files and React-related paths`), contributing repos list (1–3 repos with the most matches), activity breakdown (`12 commits · 3 PRs`). It does not include inline correction links; the drawer should stay focused on explanation and exploration.
 4. **Recent PRs** — up to 3 recent PR rows (title + repo + relative time). Titles are fetched from GitHub API on drawer open and are never persisted. The client dedupes in-flight requests for the same user/cluster and may reuse a few-minute success result for immediate reopens; the route may also reuse a bounded, instance-local success result keyed by user id + cluster. Loading state shows skeleton rows. `See more on GitHub →` link.
-5. **(Visitor view only) CTA footer** — `Want to see yours? Create yours, free →`.
+5. **(Visitor view only) CTA footer** — `Want to see yours? Start yours for free →`.
 
 **Star focus from canvas star click:** the matching star row is highlighted (subtle background tint), auto-scrolled into view, and its `Why is this lit?` expansion is auto-opened.
 
@@ -301,7 +301,6 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 - **Heading:** `Delete your account`
 - **Body:** `This cannot be undone. We will delete:`
   - Your constellation
-  - All weekly recaps
   - Your public profile
   - All account data
 - **Input:** `Type your username to confirm: {username}` (label above input).
@@ -339,7 +338,7 @@ Visual language: Stellarium atmosphere-OFF mode (`docs/adr.md` ADR-61). Cluster 
 2. **Public profile** — toggle. OFF state: just toggle + helper `Make your constellation public at devastra.app/{username}`. ON state: toggle expansion below with URL · Copy · `Preview →`.
 3. **Timezone** — IANA dropdown, browser default. MVP sub-text live: `Dates are shown in this timezone.` Auto-save on change. When weekly recap email is re-enabled in Phase 2, this line becomes `Your weekly recap arrives Sunday at 6 PM in this timezone.` The dropdown is rendered from a deterministic server-provided option list, with the user's current timezone always included; client-only `Intl.supportedValuesOf('timeZone')` must not drive the initial option render because Node and Chrome can ship different ICU timezone lists.
 4. **Username change** — text input + inline live validation + URL preview `devastra.app/{new}`. On save success: helper `Anyone with your old URL devastra.app/{old} will be redirected to your new one.`
-5. **Included repos** — default _collapsed_ section. The collapsed state shows only the included/total count and privacy note; the full repo list is lazy-loaded when the user expands the editor. Expand → search box + list of repos. Each row: name + language + toggle. Save button at bottom of section. On save: pre-save change-summary modal (`These changes will affect your constellation:` + brief rebuild note).
+5. **Included repos** — default _collapsed_ section. The collapsed state shows only the included/total count and privacy note; the full repo list is lazy-loaded from saved repository rows when the user expands the editor. Manual and daily sync refresh that saved list from GitHub before activity sync, so newly created public repos appear after the next sync. Expand → search box + list of repos. Each row: name + language + toggle. Save button at bottom of section. On save: pre-save change-summary modal (`These changes will affect your constellation:` + brief rebuild note).
 6. **Danger zone** — red border + heading `Danger zone`. Two sub-sections:
    - **Disconnect GitHub** — description + Disconnect button → E.1 modal.
    - **Delete account** — description + Delete button (red text) → E.2 modal.
@@ -370,8 +369,8 @@ Three render variations: visitor (unauthenticated or other user), owner self-vie
 - **Header text below:** `Viewing {username}'s constellation`
 - **Constellation:** identical interactive rendering as owner view; tap/click opens drawer.
 - **First-time reveal per session:** short 3–5s reveal animation when the user lands on this URL for the first time per session.
-- **Sticky bottom CTA:** full-width bar `Create yours, free →`. Visible from page load. Pulses once after the visitor opens the first drawer.
-- **Drawer footer:** `Want to see yours? Create yours, free →`
+- **Sticky bottom CTA:** full-width bar `Start yours for free →`. Visible from page load. Pulses once after the visitor opens the first drawer.
+- **Drawer footer:** `Want to see yours? Start yours for free →`
 - **Footer:** none.
 
 ### G.2 — Owner self-view

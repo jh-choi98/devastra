@@ -192,7 +192,7 @@ export function ClusterDrawer(props: {
                     href={`/?from=profile&inviter=${encodeURIComponent(props.ownerUsername)}`}
                     className="block text-center text-sm text-slate-400 transition-colors hover:text-slate-200"
                   >
-                    Want to see yours? Create yours, free →
+                    Want to see yours? Start yours for free →
                   </a>
                 </div>
               )}

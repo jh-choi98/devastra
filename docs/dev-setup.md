@@ -46,6 +46,22 @@ Populate `.env.local` with the values below. All secrets are server-side unless 
 | `GITHUB_OAUTH_CLIENT_SECRET` | same OAuth App page → "Generate a new client secret"                                                                                                    |
 | `APP_HOSTNAME_ALLOWLIST`     | Comma-separated list. Local dev: `localhost:3000`. Production: `devastra.app,www.devastra.app`. Used by OAuth origin validation (`docs/adr.md` ADR-47). |
 
+### Local E2E test overrides
+
+| Variable                   | Usage                                                                                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `ALLOW_MOCK_OAUTH`         | Dev/test-only. Set to `1` to enable `/api/test/mock-oauth`; production always returns 404.                                              |
+| `PLAYWRIGHT_USE_MOCK_OAUTH` | Dev/test-only. Set to `1` with `ALLOW_MOCK_OAUTH=1` to route `/api/auth/sign-in` through the mock OAuth flow for E2E tests.             |
+| `ALLOW_TEST_SYNC`          | Dev/test-only. Set to `1` to enable `/api/test/run-manual-sync`; production always returns 404.                                         |
+| `GITHUB_REST_API_BASE_URL` | Dev/test-only mock GitHub REST base URL for local E2E tests. Ignored when `NODE_ENV=production`.                                       |
+| `GITHUB_GRAPHQL_API_URL`   | Dev/test-only mock GitHub GraphQL endpoint for local E2E tests. Ignored when `NODE_ENV=production`.                                    |
+
+Mock OAuth notes:
+
+- `/api/test/mock-oauth` creates or reconnects the fixed local test account and redirects through the onboarding flow. It is double-gated by non-production `NODE_ENV` plus `ALLOW_MOCK_OAUTH=1`.
+- `PLAYWRIGHT_USE_MOCK_OAUTH=1` only redirects `/api/auth/sign-in` to `/api/test/mock-oauth`. The landing page `Sign in with GitHub` button still uses the browser Supabase OAuth client, so E2E tests that need deterministic local auth should navigate to `/api/test/mock-oauth` directly or use a link that targets `/api/auth/sign-in`.
+- `/api/test/run-manual-sync` is for local E2E sync checks only. It requires `ALLOW_TEST_SYNC=1` and remains production-404.
+
 ### Background jobs
 
 | Variable              | Where to get it                            |

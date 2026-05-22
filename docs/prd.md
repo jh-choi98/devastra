@@ -49,7 +49,7 @@ If the constellation is **pretty but disconnected from meaning**, the user react
 - **First-ever star cinematic** — separate moment when `lit_star_count` transitions 0 → ≥1
 - **Stage-up moments** — cluster aura expansion + ripple when `total_weight` crosses thresholds
 - **Manual refresh** — 5-minute cooldown per user; pull-to-refresh on mobile
-- **Public profile** — opt-in `/{username}` page with identical interactive constellation + sticky `Create yours, free →` CTA
+- **Public profile** — opt-in `/{username}` page with identical interactive constellation + sticky `Start yours for free →` CTA
 - **Welcome-back overlay** — appears after ≥4 weeks of absence
 - **Misclassification feedback plumbing** — per-star correction modal and rate-limited storage are prepared, but the drawer entrypoint is hidden while a lower-friction feedback surface is redesigned
 - **Static OG image generation** — dark-sky share image for `/api/og/profile/[username]`, aligned with the live constellation's current stars/background while remaining an SVG-only static renderer

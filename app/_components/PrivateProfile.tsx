@@ -72,7 +72,7 @@ export function PrivateProfile({ username }: { username: string }): JSX.Element 
             href="/"
             className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-full font-semibold text-sm hover:bg-indigo-500 transition-colors"
           >
-            Create yours, free →
+            Start yours for free →
           </Link>
         </div>
       </main>

@@ -285,6 +285,7 @@ GitHub API calls are a constrained product budget, not an implementation detail 
 - Commit-detail enrichment is capped to the latest 50 relevant activities per sync run. Manual and incremental sync fetch GitHub detail outside DB transactions.
 - Initial sync probes likely manifest paths by primary language, and manifest-content probing is capped to the first 50 selected repos. Every repo still receives default classification context even when its manifest is not probed.
 - Parsed manifest dependency names are cached on `repositories.manifest_context` and reused only when the latest source `pushed_at` matches `manifest_source_pushed_at`. This avoids re-reading unchanged manifest files without accepting stale dependency evidence.
+- Manual and daily incremental sync refresh the user's public GitHub repo list once before activity sync. New public repos are inserted as included by default; existing user exclusions are preserved because metadata upserts never overwrite `repositories.is_included`.
 - Initial sync and Settings backfill may run a bounded historical bootstrap for selected repos with no recent activity. It is limited to 20 repos, 3 commit-list pages per repo, and 100 authored commits per repo; commit-detail enrichment remains capped separately.
 - A quiet repo's historical bootstrap result is treated as reusable only when the latest source `pushed_at` matches `historical_bootstrap_source_pushed_at`. This lets unchanged old repos skip repeat commit-list scans without hiding changes.
 - Settings backfill skips repeated recent commit-list REST calls only when the latest source `pushed_at` exactly matches `commits_fetched_source_pushed_at`. The marker is advanced only after activity rows are cached successfully, so a failed fetch cannot make a repo look complete.
@@ -361,6 +362,8 @@ DATABASE_URL                            # Drizzle runtime — transaction-mode p
 DIRECT_URL                              # Drizzle Kit migrations only — direct (:5432)
 GITHUB_OAUTH_CLIENT_ID
 GITHUB_OAUTH_CLIENT_SECRET             # server-only
+GITHUB_REST_API_BASE_URL                # dev/test-only mock GitHub REST base; ignored in production
+GITHUB_GRAPHQL_API_URL                  # dev/test-only mock GitHub GraphQL URL; ignored in production
 INNGEST_EVENT_KEY
 INNGEST_SIGNING_KEY                    # server-only
 RESEND_API_KEY                          # server-only
@@ -373,6 +376,9 @@ NEXT_PUBLIC_POSTHOG_KEY
 NEXT_PUBLIC_POSTHOG_HOST
 OG_RENDER_VERSION                       # cache-busting token; bump on any global render change
 APP_HOSTNAME_ALLOWLIST                  # comma-separated; used by OAuth origin check (ADR-47)
+ALLOW_MOCK_OAUTH                        # dev/test-only; enables /api/test/mock-oauth outside production
+PLAYWRIGHT_USE_MOCK_OAUTH               # dev/test-only; routes /api/auth/sign-in to mock OAuth when ALLOW_MOCK_OAUTH=1
+ALLOW_TEST_SYNC                         # dev/test-only; enables /api/test/run-manual-sync outside production
 CONSTELLATION_RENDERER                  # 'webgl' (default if unset) | 'svg'; server-side read, instant rollback (ADR-62)
 ENABLE_DEV_MAP                          # '1' enables /dev/map in non-dev environments; used by CI / Vercel preview for visual regression (ADR-63)
 ```
