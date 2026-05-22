@@ -3,6 +3,13 @@ import 'server-only'
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
 export const GITHUB_USER_AGENT = 'DevAstra/0.1 (+https://devastra.app)'
 
+function getGitHubGraphQLUrl(): string {
+  if (process.env.NODE_ENV !== 'production' && process.env.GITHUB_GRAPHQL_API_URL) {
+    return process.env.GITHUB_GRAPHQL_API_URL
+  }
+  return GITHUB_GRAPHQL_URL
+}
+
 export class GitHubAuthError extends Error {
   constructor(message: string) {
     super(message)
@@ -21,7 +28,7 @@ export class GitHubGraphQLClient {
   constructor(private token: string) {}
 
   async query<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-    const response = await fetch(GITHUB_GRAPHQL_URL, {
+    const response = await fetch(getGitHubGraphQLUrl(), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.token}`,

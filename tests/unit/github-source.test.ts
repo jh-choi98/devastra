@@ -84,6 +84,7 @@ describe('GitHubSourceClient.listAuthoredRepos', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
     vi.clearAllMocks()
   })
 
@@ -130,6 +131,29 @@ describe('GitHubSourceClient.listAuthoredRepos', () => {
     const repos = await client.listAuthoredRepos()
     expect(repos).toHaveLength(0)
   })
+
+  it('uses the dev/test REST API base URL override outside production', async () => {
+    vi.stubEnv('GITHUB_REST_API_BASE_URL', 'http://127.0.0.1:4010')
+    mockFetch.mockResolvedValueOnce(okJson([]))
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    await client.listAuthoredRepos()
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('http://127.0.0.1:4010/user/repos')
+  })
+
+  it('ignores the REST API base URL override in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('GITHUB_REST_API_BASE_URL', 'http://127.0.0.1:4010')
+    mockFetch.mockResolvedValueOnce(okJson([]))
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    await client.listAuthoredRepos()
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('https://api.github.com/user/repos')
+  })
 })
 
 describe('GitHubSourceClient.fetchReposByExternalIds', () => {
@@ -142,6 +166,7 @@ describe('GitHubSourceClient.fetchReposByExternalIds', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
     vi.clearAllMocks()
   })
 
@@ -206,6 +231,41 @@ describe('GitHubSourceClient.fetchReposByExternalIds', () => {
 
     const client = new GitHubSourceClient('test-token', 'user-id')
     await expect(client.fetchReposByExternalIds(['R_private'])).resolves.toEqual([])
+  })
+
+  it('uses the dev/test GraphQL URL override outside production', async () => {
+    vi.stubEnv('GITHUB_GRAPHQL_API_URL', 'http://127.0.0.1:4010/graphql')
+    mockFetch.mockResolvedValueOnce(
+      okJson({
+        data: {
+          nodes: [],
+        },
+      }),
+    )
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    await client.fetchReposByExternalIds(['R_one'])
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('http://127.0.0.1:4010/graphql')
+  })
+
+  it('ignores the GraphQL URL override in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('GITHUB_GRAPHQL_API_URL', 'http://127.0.0.1:4010/graphql')
+    mockFetch.mockResolvedValueOnce(
+      okJson({
+        data: {
+          nodes: [],
+        },
+      }),
+    )
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    await client.fetchReposByExternalIds(['R_one'])
+
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.github.com/graphql')
   })
 })
 
