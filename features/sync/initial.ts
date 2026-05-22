@@ -308,6 +308,7 @@ export async function run(
             primaryLanguage: repo.primaryLanguage,
             sourcePushedAt: repo.pushedAt ?? null,
             isIncluded: true,
+            isAvailable: true,
           })
           .onConflictDoUpdate({
             target: [repositories.userId, repositories.source, repositories.externalRepoId],
@@ -316,6 +317,7 @@ export async function run(
               name: repo.name,
               primaryLanguage: repo.primaryLanguage,
               sourcePushedAt: repo.pushedAt ?? null,
+              isAvailable: true,
             },
           })
           .returning()

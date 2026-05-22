@@ -79,6 +79,7 @@ const includedRepo: DbRepository = {
   name: 'new-repo',
   primaryLanguage: 'TypeScript',
   isIncluded: true,
+  isAvailable: true,
   sourcePushedAt: new Date('2026-05-21T12:00:00.000Z'),
   manifestContext: null,
   manifestSourcePushedAt: null,

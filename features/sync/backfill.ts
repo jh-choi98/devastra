@@ -433,9 +433,15 @@ async function refreshIncludedRepositoryMetadata(
   )
   const sourceById = new Map(sourceRepos.map((repo) => [repo.externalRepoId, repo]))
 
-  return mapWithConcurrency(dbRepos, MANIFEST_FETCH_CONCURRENCY, async (repo) => {
+  const refreshed = await mapWithConcurrency(dbRepos, MANIFEST_FETCH_CONCURRENCY, async (repo) => {
     const source = sourceById.get(repo.externalRepoId)
-    if (!source) return repo
+    if (!source) {
+      await db
+        .update(repositories)
+        .set({ isIncluded: false, isAvailable: false })
+        .where(and(eq(repositories.id, repo.id), eq(repositories.userId, userId)))
+      return null
+    }
 
     const [updated] = await db
       .update(repositories)
@@ -444,12 +450,15 @@ async function refreshIncludedRepositoryMetadata(
         name: source.name,
         primaryLanguage: source.primaryLanguage,
         sourcePushedAt: source.pushedAt ?? null,
+        isAvailable: true,
       })
       .where(and(eq(repositories.id, repo.id), eq(repositories.userId, userId)))
       .returning()
 
     return updated ? serializeRepo(updated) : repo
   })
+
+  return refreshed.flatMap((repo) => (repo ? [repo] : []))
 }
 
 async function reclassifyIncludedActivities(

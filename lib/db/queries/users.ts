@@ -111,7 +111,11 @@ export async function getSettingsPageData(userId: string): Promise<SettingsPageD
     .from(users)
     .leftJoin(
       repositories,
-      and(eq(repositories.userId, users.id), withUserScope(userId, repositories.userId)),
+      and(
+        eq(repositories.userId, users.id),
+        eq(repositories.isAvailable, true),
+        withUserScope(userId, repositories.userId),
+      ),
     )
     .where(eq(users.id, userId))
     .groupBy(
@@ -142,7 +146,7 @@ export async function getUserRepoSummary(userId: string): Promise<UserRepoSummar
       includedCount: sql<number>`count(*) filter (where ${repositories.isIncluded})::int`,
     })
     .from(repositories)
-    .where(eq(repositories.userId, userId))
+    .where(and(eq(repositories.userId, userId), eq(repositories.isAvailable, true)))
 
   return {
     totalCount: Number(summary?.totalCount ?? 0),
@@ -161,7 +165,7 @@ export async function listUserRepos(userId: string): Promise<DbRepositoryRow[]> 
       isIncluded: repositories.isIncluded,
     })
     .from(repositories)
-    .where(eq(repositories.userId, userId))
+    .where(and(eq(repositories.userId, userId), eq(repositories.isAvailable, true)))
 }
 
 export async function updateUserField<K extends keyof typeof users.$inferSelect>(

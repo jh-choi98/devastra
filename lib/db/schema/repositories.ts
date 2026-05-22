@@ -25,6 +25,7 @@ export const repositories = pgTable(
     name: text('name').notNull(),
     primaryLanguage: text('primary_language'),
     isIncluded: boolean('is_included').notNull().default(true),
+    isAvailable: boolean('is_available').notNull().default(true),
     sourcePushedAt: timestamp('source_pushed_at', { withTimezone: true }),
     manifestContext: jsonb('manifest_context'),
     manifestSourcePushedAt: timestamp('manifest_source_pushed_at', { withTimezone: true }),
@@ -48,5 +49,6 @@ export const repositories = pgTable(
       table.externalRepoId,
     ),
     index('repositories_user_is_included_idx').on(table.userId, table.isIncluded),
+    index('repositories_user_is_available_idx').on(table.userId, table.isAvailable),
   ],
 )

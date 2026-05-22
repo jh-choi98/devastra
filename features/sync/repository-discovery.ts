@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { sql } from 'drizzle-orm'
+import { and, eq, notInArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { repositories } from '@/lib/db/schema/repositories'
 import type { DbRepository } from '@/lib/db/queries/repositories'
@@ -11,9 +11,21 @@ export async function discoverUserRepositories(
   github: GitHubSourceClient,
 ): Promise<DbRepository[]> {
   const sourceRepos = await github.listAuthoredRepos()
-  if (sourceRepos.length === 0) return []
+  if (sourceRepos.length === 0) {
+    await db
+      .update(repositories)
+      .set({ isIncluded: false, isAvailable: false })
+      .where(
+        and(
+          eq(repositories.userId, userId),
+          eq(repositories.source, 'github'),
+          eq(repositories.isAvailable, true),
+        ),
+      )
+    return []
+  }
 
-  return db
+  const discoveredRepos = await db
     .insert(repositories)
     .values(
       sourceRepos.map((repo) => ({
@@ -25,6 +37,7 @@ export async function discoverUserRepositories(
         primaryLanguage: repo.primaryLanguage,
         sourcePushedAt: repo.pushedAt ?? null,
         isIncluded: true,
+        isAvailable: true,
       })),
     )
     .onConflictDoUpdate({
@@ -34,7 +47,25 @@ export async function discoverUserRepositories(
         name: sql`excluded.name`,
         primaryLanguage: sql`excluded.primary_language`,
         sourcePushedAt: sql`excluded.source_pushed_at`,
+        isAvailable: true,
       },
     })
     .returning()
+
+  await db
+    .update(repositories)
+    .set({ isIncluded: false, isAvailable: false })
+    .where(
+      and(
+        eq(repositories.userId, userId),
+        eq(repositories.source, 'github'),
+        eq(repositories.isAvailable, true),
+        notInArray(
+          repositories.externalRepoId,
+          sourceRepos.map((repo) => repo.externalRepoId),
+        ),
+      ),
+    )
+
+  return discoveredRepos
 }

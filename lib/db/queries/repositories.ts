@@ -45,6 +45,7 @@ export async function upsertRepository(params: {
           primaryLanguage: params.primaryLanguage ?? null,
           sourcePushedAt: params.sourcePushedAt ?? null,
           isIncluded: params.isIncluded ?? true,
+          isAvailable: true,
         })
         .where(eq(repositories.id, existing.id))
         .returning()
@@ -62,6 +63,7 @@ export async function upsertRepository(params: {
         primaryLanguage: params.primaryLanguage ?? null,
         sourcePushedAt: params.sourcePushedAt ?? null,
         isIncluded: params.isIncluded ?? true,
+        isAvailable: true,
       })
       .returning()
     return repo
@@ -74,9 +76,18 @@ export async function getIncludedRepositoriesForUser(userId: string): Promise<Db
   return db
     .select()
     .from(repositories)
-    .where(and(eq(repositories.userId, userId), eq(repositories.isIncluded, true)))
+    .where(
+      and(
+        eq(repositories.userId, userId),
+        eq(repositories.isIncluded, true),
+        eq(repositories.isAvailable, true),
+      ),
+    )
 }
 
 export async function getAllRepositoriesForUser(userId: string): Promise<DbRepository[]> {
-  return db.select().from(repositories).where(eq(repositories.userId, userId))
+  return db
+    .select()
+    .from(repositories)
+    .where(and(eq(repositories.userId, userId), eq(repositories.isAvailable, true)))
 }

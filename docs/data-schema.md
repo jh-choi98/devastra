@@ -48,6 +48,7 @@ Public-facing access goes through `users_public_view` which selects only `id`, `
 | name                                  | text        | no       | e.g. `'next.js'`                                                                                                   |
 | primary_language                      | text        | yes      | reported by source; used as a low-confidence fallback signal only after path and manifest evidence                 |
 | is_included                           | boolean     | no       | default `true`; toggled in Settings                                                                                |
+| is_available                          | boolean     | no       | default `true`; set `false` when the source no longer returns the repo; hidden from Settings and sync selection     |
 | source_pushed_at                      | timestamptz | yes      | source-reported last push timestamp; used to validate manifest dependency cache before reuse                       |
 | manifest_context                      | jsonb       | yes      | parsed dependency names only, grouped by manifest type; never stores manifest file contents                        |
 | manifest_source_pushed_at             | timestamptz | yes      | `source_pushed_at` value the manifest cache was validated against                                                  |
@@ -301,6 +302,7 @@ CASCADE delete from `auth.users` removes all user-scoped data atomically. Hard d
 | `users(github_id) UNIQUE`                                | auth callback lookup                                                   |
 | `users(display_username) UNIQUE`                         | `/{username}` resolution                                               |
 | `repositories(user_id, is_included)`                     | sync filtering                                                         |
+| `repositories(user_id, is_available)`                    | Settings and sync filtering for repos still returned by the source      |
 | `repositories(user_id, source, external_repo_id) UNIQUE` | idempotent UPSERT                                                      |
 | `activities(user_id, occurred_at DESC)`                  | drawer recent-N queries, growth_30d window scan, since-last-visit diff |
 | `activities(repo_id, occurred_at DESC)`                  | repo-scoped recompute on include/exclude toggle                        |

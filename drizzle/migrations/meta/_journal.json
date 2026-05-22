@@ -57,6 +57,13 @@
       "when": 1779049200000,
       "tag": "0007_repository_commit_fetch_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779434088000,
+      "tag": "0008_repository_availability",
+      "breakpoints": true
     }
   ]
 }
