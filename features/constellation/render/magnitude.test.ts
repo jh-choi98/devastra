@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   BRIGHTNESS_SCALE_STOPS,
   brightnessDescriptor,
+  countLitStars,
+  isLitStar,
   magnitudeFor,
   topQuintileThreshold,
 } from './magnitude'
@@ -84,5 +86,19 @@ describe('brightnessDescriptor', () => {
 
   it('keeps scale stops ordered from radiant to newly lit', () => {
     expect(BRIGHTNESS_SCALE_STOPS.map((stop) => stop.minWeight)).toEqual([200, 80, 30, 10, 5])
+  })
+})
+
+describe('lit star helpers', () => {
+  it('counts only unlocked stars at the renderable brightness floor', () => {
+    const landmarks = [
+      { weight: 80, firstUnlockedAt: '2026-05-01T00:00:00Z' },
+      { weight: 5, firstUnlockedAt: '2026-05-02T00:00:00Z' },
+      { weight: 12, firstUnlockedAt: null },
+      { weight: 4, firstUnlockedAt: '2026-05-03T00:00:00Z' },
+    ]
+
+    expect(countLitStars(landmarks)).toBe(2)
+    expect(landmarks.map(isLitStar)).toEqual([true, true, false, false])
   })
 })

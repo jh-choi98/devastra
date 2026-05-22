@@ -1,9 +1,10 @@
 import 'server-only'
 
-import { sql, eq } from 'drizzle-orm'
+import { isNotNull, sql } from 'drizzle-orm'
 import { db } from '@/lib/db/client'
 import { territories } from '@/lib/db/schema/territories'
 import { landmarks } from '@/lib/db/schema/landmarks'
+import { withUserScope, withUserScopeAnd } from '@/lib/db/queries/_helpers'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { TerritoryType } from '@/features/territories/registry'
 
@@ -26,9 +27,13 @@ export async function getPublicProfileByUsername(
   if (!row) return null
 
   const [territoriesData, landmarksData] = await Promise.all([
-    db.select().from(territories).where(eq(territories.userId, row.id)),
-    db.select().from(landmarks).where(eq(landmarks.userId, row.id)),
+    db.select().from(territories).where(withUserScope(row.id, territories.userId)),
+    db
+      .select()
+      .from(landmarks)
+      .where(withUserScopeAnd(row.id, landmarks.userId, isNotNull(landmarks.firstUnlockedAt))),
   ])
+  const litLandmarksData = landmarksData.filter((l) => l.firstUnlockedAt !== null)
 
   return {
     isPublic: true,
@@ -43,7 +48,7 @@ export async function getPublicProfileByUsername(
         growth30d: Number(t.growth30d),
         stageChangedAt: t.stageChangedAt?.toISOString() ?? null,
       })),
-      landmarks: landmarksData.map((l) => ({
+      landmarks: litLandmarksData.map((l) => ({
         tech_key: l.techKey,
         territory: l.territoryType as TerritoryType,
         weight: Number(l.weight),

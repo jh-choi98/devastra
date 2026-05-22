@@ -52,6 +52,13 @@ describe('public-profile-visibility — profile result shape', () => {
               techKey: 'react',
               territoryType: 'frontend_land',
               weight: '10',
+              firstUnlockedAt: new Date('2026-05-01T00:00:00Z'),
+            },
+            {
+              userId: fakeUserId,
+              techKey: 'css',
+              territoryType: 'frontend_land',
+              weight: '3',
               firstUnlockedAt: null,
             },
           ]),
@@ -71,6 +78,8 @@ describe('public-profile-visibility — profile result shape', () => {
       expect(result.map.territories).toHaveLength(1)
       expect(result.map.territories[0].type).toBe('frontend_land')
       expect(result.map.territories[0].stage).toBe(2)
+      expect(result.map.landmarks).toHaveLength(1)
+      expect(result.map.landmarks[0].tech_key).toBe('react')
       // email and sync state fields must NOT be present
       expect('email' in result).toBe(false)
       expect('lastEventId' in result).toBe(false)
