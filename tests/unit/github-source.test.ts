@@ -233,6 +233,52 @@ describe('GitHubSourceClient.fetchReposByExternalIds', () => {
     await expect(client.fetchReposByExternalIds(['R_private'])).resolves.toEqual([])
   })
 
+  it('skips stale repository node ids without failing the whole lookup', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        okJson({
+          data: { nodes: [null] },
+          errors: [
+            {
+              message: "Could not resolve to a node with the global id of 'R_stale'",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          data: {
+            nodes: [
+              {
+                id: 'R_one',
+                name: 'one',
+                owner: { login: 'user' },
+                isPrivate: false,
+                primaryLanguage: { name: 'TypeScript' },
+                pushedAt: '2026-05-16T00:00:00Z',
+              },
+            ],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          data: { nodes: [null] },
+          errors: [
+            {
+              message: "Could not resolve to a node with the global id of 'R_stale'",
+            },
+          ],
+        }),
+      )
+
+    const client = new GitHubSourceClient('test-token', 'user-id')
+    const repos = await client.fetchReposByExternalIds(['R_one', 'R_stale'])
+
+    expect(repos.map((repo) => repo.externalRepoId)).toEqual(['R_one'])
+    expect(mockFetch).toHaveBeenCalledTimes(3)
+  })
+
   it('uses the dev/test GraphQL URL override outside production', async () => {
     vi.stubEnv('GITHUB_GRAPHQL_API_URL', 'http://127.0.0.1:4010/graphql')
     mockFetch.mockResolvedValueOnce(

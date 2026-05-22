@@ -113,6 +113,13 @@ type RepositoryNodesData = {
   } | null>
 }
 
+function isUnresolvableNodeError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    /Could not resolve to (?:a node|.* with the global id)/i.test(err.message)
+  )
+}
+
 type AuthoredActivitiesResult = {
   activities: SourceActivity[]
   commitFetchedRepoExternalIds: string[]
@@ -158,9 +165,7 @@ export class GitHubSourceClient implements SourceClient {
 
     const repos: SourceRepo[] = []
     for (const ids of chunkArray(externalRepoIds, REPOSITORY_NODE_BATCH_SIZE)) {
-      const data = await this.withAuthRetry(() =>
-        this.graphql.query<RepositoryNodesData>(REPOSITORY_NODES_QUERY, { ids }),
-      )
+      const data = await this.fetchRepositoryNodesByIds(ids)
 
       for (const node of data.nodes) {
         if (!node?.id || !node.name || !node.owner) continue
@@ -183,6 +188,31 @@ export class GitHubSourceClient implements SourceClient {
       const repo = byId.get(id)
       return repo ? [repo] : []
     })
+  }
+
+  private async fetchRepositoryNodesByIds(ids: string[]): Promise<RepositoryNodesData> {
+    try {
+      return await this.withAuthRetry(() =>
+        this.graphql.query<RepositoryNodesData>(REPOSITORY_NODES_QUERY, { ids }),
+      )
+    } catch (err) {
+      if (!isUnresolvableNodeError(err)) throw err
+      if (ids.length === 1) return { nodes: [null] }
+
+      const nodes: RepositoryNodesData['nodes'] = []
+      for (const id of ids) {
+        try {
+          const data = await this.withAuthRetry(() =>
+            this.graphql.query<RepositoryNodesData>(REPOSITORY_NODES_QUERY, { ids: [id] }),
+          )
+          nodes.push(data.nodes[0] ?? null)
+        } catch (innerErr) {
+          if (!isUnresolvableNodeError(innerErr)) throw innerErr
+          nodes.push(null)
+        }
+      }
+      return { nodes }
+    }
   }
 
   async listAuthoredActivities(opts: {
