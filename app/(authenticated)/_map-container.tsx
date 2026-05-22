@@ -17,6 +17,7 @@ import { getDrawerData } from './_actions'
 import { acknowledgeFirstEverCinematic } from '@/features/sync/cinematic-acknowledge'
 import { RevealSequence } from '@/app/_components/Constellation/cinematics/RevealSequence'
 import { isBlockingBuildJob, getBuildStatusCopy } from './_use-reveal-sequence'
+import { countLitStars } from '@/features/constellation/render/magnitude'
 import type { ConstellationData } from '@/app/_components/Constellation/Constellation'
 import type { ClusterDrawerData } from '@/app/_components/ClusterDrawer/ClusterDrawer'
 import type { TerritoryType } from '@/features/territories/registry'
@@ -208,7 +209,7 @@ export function LivingMapContainer({
       territory: l.territory,
     }))
 
-  const litStarCount = data.landmarks.length
+  const litStarCount = countLitStars(data.landmarks)
   const activeClusterCount = data.territories.filter((t) => t.stage > 1).length
 
   return (

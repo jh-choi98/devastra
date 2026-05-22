@@ -1006,3 +1006,24 @@ Tracked via Vercel Speed Insights. Initial JS bundle budget: < 250KB gzipped (Ne
 - Language-only classification — rejected: fast but misleading for full-stack, backend-in-TypeScript, test-heavy, docs-heavy, and data-heavy repos.
 - Full repository tree/content scan — rejected: expensive, rate-limit risky, and unnecessary for MVP accuracy.
   **Consequences:** First reveal is cheaper and more reliable, but obscure stacks may need future catalog rules. Parser/classifier tests are required for any new GitHub node shape or catalog entry. Sync code must preserve caps and DB-transaction boundaries unless a dedicated ADR replaces this budget.
+
+---
+
+## ADR-66: Weekly recap email deferred to Phase 2 behind a server-side flag
+
+**Date:** 2026-05-22
+**Status:** accepted
+**Context:** Local real-send testing confirmed that the weekly recap path depends on operational email setup outside application code: `devastra.app` must be verified in Resend, SPF/DKIM/DMARC must be correct, bounce handling must be monitored, and unsubscribe/deliverability checks must pass before launch. The MVP's core value is the constellation, sync, refresh, public profile, and sharing; email recap is a retention enhancement with disproportionate operational risk if shipped half-ready.
+**Decision:**
+
+- Weekly recap email is **Phase 2 deferred** and disabled by default.
+- `ENABLE_EMAIL_RECAPS=1` is the server-side flag that re-enables the product surface.
+- Settings hides the Email recap section while the flag is unset. Timezone remains visible for account/date display and does not mention recap delivery while email is disabled.
+- The Inngest route registers `weeklyRecapGenerate` and `weeklyRecapSend` only when the flag is set, so the cron and `recap/email.send` handler are dormant by default.
+- Existing schema (`users.email_recap_enabled`, `weekly_recaps`, `email_sends`), unsubscribe flow, Resend webhook, React Email templates, and tests remain in the codebase as Phase 2 infrastructure.
+- Before enabling in production, complete the deliverability checklist: Resend domain verification for `devastra.app`, SPF/DKIM/DMARC, verified sender, successful real delivery to a test inbox, bounce webhook verification, unsubscribe/undo verification, and no failed sends recorded as successful.
+  **Alternatives:**
+- Ship email in MVP — rejected: domain verification and deliverability are not product-polish details; they determine whether users trust the product.
+- Delete the email code and schema — rejected: the implementation and tests are useful Phase 2 groundwork, and the dormant tables cascade on account delete.
+- Keep only the Settings toggle hidden but leave cron registered — rejected: hidden product surfaces must not send surprise emails.
+  **Consequences:** ADR-6, ADR-14, ADR-32, ADR-36, and ADR-45 remain the Phase 2 email design spec rather than MVP launch requirements. Re-enabling email is a configuration plus operational-readiness decision, not a schema migration. MVP success metrics cannot depend on weekly recap click-through.

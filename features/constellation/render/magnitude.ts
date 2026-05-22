@@ -29,6 +29,22 @@ export const BRIGHTNESS_SCALE_STOPS: readonly BrightnessScaleStop[] = [
   { descriptor: 'faint', minWeight: 5, compactLabel: '5' },
 ] as const
 
+export const MIN_LIT_STAR_WEIGHT =
+  BRIGHTNESS_SCALE_STOPS[BRIGHTNESS_SCALE_STOPS.length - 1].minWeight
+
+export type LitStarCandidate = {
+  weight: number
+  firstUnlockedAt: string | null
+}
+
+export function isLitStar(candidate: LitStarCandidate): boolean {
+  return candidate.firstUnlockedAt !== null && candidate.weight >= MIN_LIT_STAR_WEIGHT
+}
+
+export function countLitStars(candidates: readonly LitStarCandidate[]): number {
+  return candidates.filter(isLitStar).length
+}
+
 /**
  * Maps a landmark's weight to render parameters.
  *

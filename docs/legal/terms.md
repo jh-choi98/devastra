@@ -50,11 +50,11 @@ When sync is delayed or paused due to GitHub API issues, our infrastructure, or 
 
 ## Email communications
 
-If you enable weekly recap emails (default), we send one email per week with your constellation diff. You can unsubscribe at any time via the link in any recap email or from Settings.
+Weekly recap emails are deferred to Phase 2 and are not sent during MVP launch. If enabled later, we may send one email per week with your constellation diff, and you can unsubscribe at any time via the link in any recap email or from Settings.
 
-After **two consecutive empty weeks** (no GitHub activity), we automatically skip the recap until your activity resumes. This is intentional, not an error.
+When recap emails are enabled, after **two consecutive empty weeks** (no GitHub activity), we automatically skip the recap until your activity resumes. This is intentional, not an error.
 
-Three consecutive email bounces automatically disable recap emails for your account.
+When recap emails are enabled, three consecutive email bounces automatically disable recap emails for your account.
 
 We do not send marketing emails. Transactional emails (account-related notices) may be sent regardless of recap preferences.
 
@@ -92,7 +92,7 @@ These Terms are governed by the laws of the founder's jurisdiction. Disputes are
 
 ## Changes to these Terms
 
-When these Terms materially change, the "Last updated" date above is bumped and a notice is shown at the top of the page for at least 30 days. Substantial changes are also announced via the weekly recap email. Continued use after the notice period constitutes acceptance.
+When these Terms materially change, the "Last updated" date above is bumped and a notice is shown at the top of the page for at least 30 days. If weekly recap emails are enabled, substantial changes may also be announced there. Continued use after the notice period constitutes acceptance.
 
 ## Contact
 

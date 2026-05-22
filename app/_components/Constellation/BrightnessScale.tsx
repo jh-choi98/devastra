@@ -3,11 +3,11 @@
 import { useId, useMemo, useState } from 'react'
 import {
   BRIGHTNESS_SCALE_STOPS,
+  countLitStars,
   type BrightnessDescriptor,
 } from '@/features/constellation/render/magnitude'
 import type { ConstellationData } from './types'
 
-const SCALE_MIN = 5
 const SIGNAL_RANGES: Record<BrightnessDescriptor, string> = {
   faint: '5-9',
   emerging: '10-29',
@@ -118,11 +118,8 @@ export function BrightnessScale({ data }: { data: ConstellationData }) {
   const [focused, setFocused] = useState(false)
 
   const summary = useMemo(() => {
-    const weights = data.landmarks
-      .filter((landmark) => landmark.firstUnlockedAt !== null && landmark.weight >= SCALE_MIN)
-      .map((landmark) => landmark.weight)
     return {
-      litCount: weights.length,
+      litCount: countLitStars(data.landmarks),
     }
   }, [data.landmarks])
 

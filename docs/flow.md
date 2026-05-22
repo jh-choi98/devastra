@@ -37,6 +37,8 @@ These emerged from 117 flow + sub-flow decisions and govern every implementation
 
 ## Flow 2 — Returning user via weekly recap
 
+**Phase 2 deferred:** Weekly recap email is dormant for MVP launch. The Settings Email recap section is hidden, weekly recap Inngest generate/send functions are not registered unless `ENABLE_EMAIL_RECAPS=1`, and this flow remains the re-enable specification after Resend domain verification and deliverability checks pass.
+
 **Entry trigger:** user receives weekly recap email (Sunday 18:00 user local time; generated Sunday 09:00 UTC by `recap/weekly.generated` Inngest cron).
 
 1. **Email arrives.** Subject is active-week dynamic with priority _stage-up > new star > brightest cluster_:
@@ -107,22 +109,21 @@ Section order, top to bottom:
 
 1. **Account info** (read-only) — compact: avatar + `@username` on one line, email on the next.
 2. **Public profile** — toggle. When `is_public = true`, expansion below toggle: `Your constellation is public · devastra.app/{username} [Copy] [Preview →]`. Toggling OFF: immediate apply + toast `Your constellation is now private. Existing shared links will show a private placeholder.` Toggling ON: immediate apply with the URL/Copy/Preview inline expansion. Both update the path via `revalidatePath('/${username}')`.
-3. **Email recap** — toggle + sub-text `Sundays. Skipped after 2 quiet weeks. Next recap: May 18`.
-4. **Timezone** — IANA dropdown, default detected from browser. Sub-text: `Your weekly recap arrives Sunday at 6 PM in this timezone.` Auto-save on change.
-5. **Username** — text input with inline live validation (length 2–30, regex `/^[a-z0-9-_]+$/`, reserved name check, collision check). Live URL preview: `devastra.app/{new_username}`. On save: confirmation note `Anyone with your old URL devastra.app/{old} will be redirected to your new one.` Old username is written to `username_history` and reserved permanently. Validation errors:
+3. **Timezone** — IANA dropdown, default detected from browser. MVP sub-text: `Dates are shown in this timezone.` Auto-save on change. When weekly recap email is re-enabled in Phase 2, this line becomes `Your weekly recap arrives Sunday at 6 PM in this timezone.`
+4. **Username** — text input with inline live validation (length 2–30, regex `/^[a-z0-9-_]+$/`, reserved name check, collision check). Live URL preview: `devastra.app/{new_username}`. On save: confirmation note `Anyone with your old URL devastra.app/{old} will be redirected to your new one.` Old username is written to `username_history` and reserved permanently. Validation errors:
    - <2 chars → `At least 2 characters`
    - > 30 chars → `Up to 30 characters`
    - Invalid chars → `Only lowercase letters, numbers, hyphens, and underscores`
    - Reserved → `This name is reserved`
    - Collision → `This name is taken`
-6. **Included repos** — default collapsed section. The collapsed state reads only the repo summary count; expanding lazy-loads the full `repositories` list so Settings remains quick to open. Toggling repos and pressing Save first opens a pre-save confirmation note. Confirming creates a `sync_jobs` row in `pending` state, dispatches `sync/backfill.requested` with the fast rebuild path, and returns to the main constellation. The existing constellation is subtly dimmed/blurred behind a bottom-right build-in-progress panel until saved activity and project manifests have both been checked, so the user never mistakes language-only intermediate data for the final result. The fast path refreshes selected repo metadata by GitHub node ID, reuses parsed dependency cache only when the source `pushed_at` value proves the repo has not changed, skips repeat historical scans only when the same `pushed_at` value proves a quiet repo was already checked, and skips repeat recent commit-list REST calls only when the same `pushed_at` value proves authored commits were already cached. If selected repos have no saved matching activity, the job waits for GitHub historical bootstrap before completing. Newly discovered stars/connections animate into the constellation when the completed build refreshes.
-7. **Danger zone** — red border + heading `Danger zone`. Two sub-sections, Disconnect above and Delete below.
+5. **Included repos** — default collapsed section. The collapsed state reads only the repo summary count; expanding lazy-loads the full `repositories` list so Settings remains quick to open. Toggling repos and pressing Save first opens a pre-save confirmation note. Confirming creates a `sync_jobs` row in `pending` state, dispatches `sync/backfill.requested` with the fast rebuild path, and returns to the main constellation. The existing constellation is subtly dimmed/blurred behind a bottom-right build-in-progress panel until saved activity and project manifests have both been checked, so the user never mistakes language-only intermediate data for the final result. The fast path refreshes selected repo metadata by GitHub node ID, reuses parsed dependency cache only when the source `pushed_at` value proves the repo has not changed, skips repeat historical scans only when the same `pushed_at` value proves a quiet repo was already checked, and skips repeat recent commit-list REST calls only when the same `pushed_at` value proves authored commits were already cached. If selected repos have no saved matching activity, the job waits for GitHub historical bootstrap before completing. Newly discovered stars/connections animate into the constellation when the completed build refreshes.
+6. **Danger zone** — red border + heading `Danger zone`. Two sub-sections, Disconnect above and Delete below.
    - **Disconnect GitHub** — confirm modal: heading `Disconnect GitHub?` + body `Your constellation stays. Public profile becomes private. Reconnect anytime.` Buttons: Cancel (text link, left) + Disconnect (red filled, right). Dismiss via X / Cancel / ESC; outside-click is disabled. On confirm: `users.github_access_token_enc = NULL`, `is_public = false`. Mobile: centered modal. The main page surfaces a dismissible banner `GitHub disconnected — reconnect to sync new activity` + Reconnect button, and the settings page reveals a Reconnect entry point.
    - **Delete account** — confirm modal: heading `Delete your account` + body `This cannot be undone. We will delete:` followed by bullets (your constellation / all weekly recaps / your public profile / all account data). Input labeled `Type your username to confirm: {username}`. Delete button is enabled only when input exactly matches. Button copy: `Permanently delete` (red filled). Dismiss via X / Cancel / ESC; outside-click is disabled. Mobile: full-screen modal. On confirm: hard delete via `auth.users` cascade. After confirm: page `/account-deleted` with body `Thanks for trying DevAstra. Your account has been deleted.` + `Go to landing now →`. Auto-redirect to `/` after 5s.
 
 **All mutations** are Next.js Server Actions with Zod input validation. Errors surface as inline messages or toast.
 
-**Save model:** toggles (public, email recap, timezone) auto-save; complex forms (username, included repos) require explicit Save.
+**Save model:** public toggle and timezone auto-save; complex forms (username, included repos) require explicit Save.
 
 ## Sub-flow A — Stage-up moment
 
@@ -219,7 +220,7 @@ Pre-launch QA checklist; not an implementation flow. Run all five flows end-to-e
 
 - **Delete account** is the user-facing right-to-be-forgotten path (Flow 5 §Danger zone). Hard delete; no soft-delete window.
 - **Data export** is not in the UI. Privacy Policy states: `Email privacy@devastra.app for data export. We will respond within 30 days.` Founder runs an internal SQL script to produce a zip on request.
-- **Unsubscribe link** in every recap email footer leads to `/unsubscribe?token={jwt}` — token includes `user_id`, `email_type`, version claim. One-click action sets `email_recap_enabled = false` and shows post-unsubscribe page (`docs/screens.md` §Unsubscribe page) with 30s `Undo →` action. Token never expires (so old emails still work) but supports incident-time revocation via version bump (`docs/adr.md` ADR-48).
+- **Unsubscribe link** behavior is retained for Phase 2 recap emails. Each footer link leads to `/unsubscribe?token={jwt}` — token includes `user_id`, `email_type`, version claim. One-click action sets `email_recap_enabled = false` and shows post-unsubscribe page (`docs/screens.md` §Unsubscribe page) with 30s `Undo →` action. Token never expires (so old emails still work) but supports incident-time revocation via version bump (`docs/adr.md` ADR-48).
 - **Sub-processors disclosed in Privacy Policy:** Supabase, Vercel, Inngest, Resend, Sentry, PostHog, GitHub. Each with one-line purpose.
 - **Cookie consent:** PostHog runs in cookieless mode (`docs/adr.md` ADR-60); no banner.
 - **PII scrubbing:** PostHog masks all inputs and URL `/{username}` paths; Sentry `beforeSend` strips token / authorization / cookie patterns automatically.

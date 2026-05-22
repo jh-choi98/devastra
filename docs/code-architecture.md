@@ -367,6 +367,7 @@ RESEND_API_KEY                          # server-only
 RESEND_WEBHOOK_SECRET                   # server-only; verifies bounce webhook
 UNSUBSCRIBE_TOKEN_SECRET                # server-only; signs unsubscribe JWTs
 UNSUBSCRIBE_TOKEN_VERSION               # increment to revoke all outstanding tokens
+ENABLE_EMAIL_RECAPS                     # '1' re-enables Phase 2 weekly recap Settings UI + Inngest functions
 SENTRY_DSN
 NEXT_PUBLIC_POSTHOG_KEY
 NEXT_PUBLIC_POSTHOG_HOST

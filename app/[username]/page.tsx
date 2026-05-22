@@ -10,6 +10,7 @@ import { PublicProfileMap } from './_public-profile-map'
 import { VisitorReveal } from './_components/VisitorReveal'
 import { ogVersionParam } from '@/lib/og/version'
 import { publicUrl } from '@/lib/utils/public-base-url'
+import { countLitStars } from '@/features/constellation/render/magnitude'
 
 export const revalidate = 3600
 
@@ -73,7 +74,7 @@ export default async function PublicProfilePage({ params }: PageParams) {
     : viewer.id === userId ? 'owner_self'
     : 'logged_in_visitor'
 
-  const litCount = profile.map.landmarks.length
+  const litCount = countLitStars(profile.map.landmarks)
   const activeClusterCount = profile.map.territories.filter((t) => t.stage > 1).length
 
   const identityTop = variant === 'owner_self'

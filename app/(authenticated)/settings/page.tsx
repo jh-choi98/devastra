@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/auth/supabase-server'
 import { getSettingsPageData } from '@/lib/db/queries/users'
+import { isEmailRecapFeatureEnabled } from '@/features/recap/feature-flag'
 import { AccountInfoSection } from './_sections/account-info'
 import { PublicProfileSection } from './_sections/public-profile'
 import { EmailRecapSection } from './_sections/email-recap'
@@ -9,7 +10,7 @@ import { TimezoneSection } from './_sections/timezone'
 import { UsernameChangeSection } from './_sections/username-change'
 import { IncludedReposSection } from './_sections/included-repos'
 import { DangerZoneSection } from './_sections/danger-zone'
-import { getTimezoneOptions } from './_timezones'
+import { getTimezoneOptions, getTimezonePreviewLine } from './_timezones'
 
 function getNextSunday(): string {
   const now = new Date()
@@ -18,22 +19,6 @@ function getNextSunday(): string {
   const next = new Date(now)
   next.setUTCDate(now.getUTCDate() + daysUntilSunday)
   return next.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-}
-
-function getTimezonePreviewLine(tz: string): string {
-  try {
-    const sunday = new Date()
-    sunday.setDate(sunday.getDate() + ((7 - sunday.getDay()) % 7 || 7))
-    sunday.setHours(18, 0, 0, 0)
-    const time = sunday.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone: tz,
-    })
-    return `Your weekly recap arrives Sunday at ${time} in this timezone.`
-  } catch {
-    return 'Your weekly recap arrives Sunday in this timezone.'
-  }
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://devastra.app'
@@ -48,8 +33,9 @@ export default async function SettingsPage() {
   const user = await getSettingsPageData(authUser.id)
   if (!user) redirect('/')
 
-  const nextRecapDate = getNextSunday()
-  const timezonePreview = getTimezonePreviewLine(user.timezone)
+  const emailRecapsEnabled = isEmailRecapFeatureEnabled()
+  const nextRecapDate = emailRecapsEnabled ? getNextSunday() : null
+  const timezonePreview = getTimezonePreviewLine(user.timezone, { emailRecapsEnabled })
   const timezoneOptions = getTimezoneOptions(user.timezone)
 
   return (
@@ -98,17 +84,22 @@ export default async function SettingsPage() {
 
           <hr className="border-zinc-800" />
 
-          <EmailRecapSection
-            initialEnabled={user.emailRecapEnabled}
-            nextRecapDate={nextRecapDate}
-          />
+          {emailRecapsEnabled ? (
+            <>
+              <EmailRecapSection
+                initialEnabled={user.emailRecapEnabled}
+                nextRecapDate={nextRecapDate ?? ''}
+              />
 
-          <hr className="border-zinc-800" />
+              <hr className="border-zinc-800" />
+            </>
+          ) : null}
 
           <TimezoneSection
             initialTimezone={user.timezone}
             initialPreviewLine={timezonePreview}
             timezones={timezoneOptions}
+            emailRecapsEnabled={emailRecapsEnabled}
           />
 
           <hr className="border-zinc-800" />
